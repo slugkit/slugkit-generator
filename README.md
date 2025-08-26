@@ -193,6 +193,7 @@ The library supports loading dictionaries from text-based structured files with 
 
 <details>
 <summary>JSON and YAML formats for dictionaries</summary>
+
 ```json
 {
     "noun" : {
