@@ -54,10 +54,13 @@ int main(int argc, char* argv[]) try {
     auto count = vm["count"].as<std::size_t>();
 
     userver::engine::RunStandalone([&] {
+        auto pattern_ptr = std::make_shared<slugkit::generator::Pattern>(pattern);
+        std::cerr << "Pattern complexity: " << pattern_ptr->Complexity() << "\n---\n";
+        // Run the generator in a standalone userver context
         if (count == 1) {
-            std::cout << generator(pattern, seed, sequence) << '\n';
+            std::cout << generator(pattern_ptr, seed, sequence) << '\n';
         } else {
-            generator(pattern, seed, sequence, count, [](const std::string& slug) { std::cout << slug << '\n'; });
+            generator(pattern_ptr, seed, sequence, count, [](const std::string& slug) { std::cout << slug << '\n'; });
         }
     });
 

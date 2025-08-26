@@ -25,7 +25,96 @@ A high-performance C++ library for generating aesthetically pleasing, determinis
 ### Basic Usage
 
 ```cpp
-// TODO: Add basic usage example
+#include <slugkit/generator/generator.hpp>
+// for loading dictionaries from JSON/YAML files
+#include <slugkit/generator/structured_loader.hpp>
+
+```
+
+<details>
+
+<summary>Rest of includes and boring main boilerplate</summary>
+
+```cpp
+#include <userver/engine/run_standalone.hpp>
+#include <userver/formats/yaml.hpp>
+
+#include <boost/program_options.hpp>
+
+#include <fstream>
+#include <iostream>
+
+#include <fmt/format.h>
+
+int main(int argc, char* argv[]) {
+    namespace po = boost::program_options;
+    po::options_description desc("YAML Dictionary Generator");
+    // clang-format off
+    desc.add_options()
+        ("help,h", "produce help message")
+        ("file,f", po::value<std::string>()->required(), "file to read")
+        ("pattern,p", po::value<std::string>()->required(), "pattern to use")
+        ("count,c", po::value<std::size_t>()->default_value(1), "number of slugs to generate")
+        ("sequence,n", po::value<std::size_t>()->default_value(0), "sequence number")
+        ("seed,s", po::value<std::string>(), "seed for the generator. If not provided, a random seed will be used")
+    ;
+    // clang-format on
+
+    po::variables_map vm;
+    po::store(po::parse_command_line(argc, argv, desc), vm);
+    if (vm.count("help")) {
+        std::cout << desc << std::endl;
+        return 0;
+    }
+    po::notify(vm);
+
+    auto file_name = vm["file"].as<std::string>();
+    std::ifstream file(file_name);
+    if (!file.is_open()) {
+        throw std::runtime_error(fmt::format("Failed to open file: {}", file_name));
+    }
+
+    auto pattern = vm["pattern"].as<std::string>();
+    auto sequence = vm["sequence"].as<std::size_t>();
+    std::string seed;
+    if (vm.count("seed")) {
+        seed = vm["seed"].as<std::string>();
+    } else {
+        seed = generator.RandomSeed();
+    }
+    auto count = vm["count"].as<std::size_t>();
+
+```
+
+</details>
+
+**Generating slugs**
+
+```cpp
+    // Read yaml from file stream
+    auto yaml = userver::formats::yaml::FromStream(file);
+    // Parse dictionaries from the file
+    auto dictionary_set = yaml.As<slugkit::generator::DictionarySet>();
+    // Initialize the generator
+    slugkit::generator::Generator generator(std::move(dictionary_set));
+
+    userver::engine::RunStandalone([&] {
+        if (count == 1) {
+            std::cout << generator(pattern, seed, sequence) << '\n';
+        } else {
+            generator(pattern, seed, sequence, count, [](const std::string& slug) { std::cout << slug << '\n'; });
+        }
+    });
+} // end of main
+```
+
+**Validating pattern**
+
+```cpp
+    // you don't actually need a generator, as the pattern parser check if the syntax is fine
+    // it won't check for dictionary or tag presense
+    slugkit::generator::Pattern parsed_pattern{pattern};
+    std::cout << "Pattern complexity: " << parsed_pattern.Complexity() << '\n';
 ```
 
 ## Pattern Language
@@ -99,6 +188,7 @@ escape_symbol     := '\';
 ### Core Classes
 
 #### `Pattern`
+
 Parses pattern strings into executable generation templates. [^1]
 
 ```cpp
@@ -119,7 +209,7 @@ int main(int argc, char* argv)
 ```
 
 #### `Generator` 
-Main generation engine for producing slugs from parsed patterns.
+Main generation engine for producing slugs from parsed patterns. [^1]
 
 ```cpp
 #include <slugkit/generator/generator.hpp>
@@ -158,18 +248,20 @@ int main(int argc, char* argv)
 ```
 
 #### `Dictionary`
-Handles loading and filtering of word dictionaries.
+
+Handles storing and filtering of word dictionaries.
+
+> [!TIP]
+> You can use the [`structured_loader.hpp`](slugkit/include/slugkit/generator/structured_loader.hpp) 
+> header to parse a DictionarySet from YAML or JSON.
 
 ```cpp
-// TODO: Add DictionaryLoader API examples
+// TODO: Add loading dictionaries examples
 ```
 
-### Number and Special Character Generators
+#### `PatternSettings`
 
-```cpp
-// TODO: Add number/special generator examples
-
-```
+Datatype used for storing selected dictionary sizes to avoid sequence skewing when a dictionary size changes.
 
 [^1]: This is example code, to run such a main you'll need to wrap the code in `userver::engine::RunStandalone` call.
 
@@ -182,7 +274,6 @@ For applications requiring JSON or YAML serialisation:
 #include <slugkit/generator/serialization.hpp>  // Template serialisers/parsers
 #include <userver/formats/json.hpp> // JSON support
 
-// TODO: Add serialisation examples
 ```
 
 These headers are optional and not included by default to minimise dependencies.
@@ -268,7 +359,10 @@ Detailed benchmarks will be added in future releases.
 > to a bigger CMake project with `add_subdirectory`
 
 ```bash
-# TODO: Add build instructions
+mkdir build
+cd build
+cmake ..
+make
 ```
 
 ### Running Tests
@@ -276,7 +370,8 @@ Detailed benchmarks will be added in future releases.
 When plugged into build sytem, it adds a CTest target which is run by `make test`
 
 ```bash
-# TODO: Add test instructions
+cd build
+make && make test
 ```
 
 ## Dependencies

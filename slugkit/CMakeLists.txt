@@ -15,8 +15,14 @@ set(${PROJECT_NAME}_UTILS_SRC
 add_library(${PROJECT_NAME}-utils STATIC
     ${${PROJECT_NAME}_UTILS_SRC}
 )
-target_link_libraries(${PROJECT_NAME}-utils PUBLIC userver::core)
-target_include_directories(${PROJECT_NAME}-utils PUBLIC ${${PROJECT_NAME}_INCLUDE_ROOT})
+target_link_libraries(${PROJECT_NAME}-utils
+    PUBLIC
+        userver::core
+)
+target_include_directories(${PROJECT_NAME}-utils
+    PUBLIC
+        ${${PROJECT_NAME}_INCLUDE_ROOT}
+)
 
 # Generator library
 set(${PROJECT_NAME}_SRC
@@ -33,7 +39,6 @@ add_library(${PROJECT_NAME} STATIC
 target_link_libraries(
     ${PROJECT_NAME}
     PUBLIC
-        userver::core
         ${PROJECT_NAME}-utils
 )
 target_include_directories(
