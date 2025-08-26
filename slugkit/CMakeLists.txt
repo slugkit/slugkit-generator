@@ -1,0 +1,71 @@
+cmake_minimum_required(VERSION 3.20)
+project(slugkit-generator CXX)
+
+set(${PROJECT_NAME}_INCLUDE_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/include)
+set(${PROJECT_NAME}_SRC_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/src)
+
+# Utils library
+set(${PROJECT_NAME}_UTILS_SRC
+    ${${PROJECT_NAME}_SRC_ROOT}/slugkit/utils/numeric.cpp
+    ${${PROJECT_NAME}_SRC_ROOT}/slugkit/utils/roman.cpp
+    ${${PROJECT_NAME}_SRC_ROOT}/slugkit/utils/text.cpp
+    ${${PROJECT_NAME}_SRC_ROOT}/slugkit/utils/primes.cpp
+)
+
+add_library(${PROJECT_NAME}-utils STATIC
+    ${${PROJECT_NAME}_UTILS_SRC}
+)
+target_link_libraries(${PROJECT_NAME}-utils PUBLIC userver::core)
+target_include_directories(${PROJECT_NAME}-utils PUBLIC ${${PROJECT_NAME}_INCLUDE_ROOT})
+
+# Generator library
+set(${PROJECT_NAME}_SRC
+    ${${PROJECT_NAME}_SRC_ROOT}/slugkit/generator/permutations.cpp
+    ${${PROJECT_NAME}_SRC_ROOT}/slugkit/generator/dictionary.cpp
+    ${${PROJECT_NAME}_SRC_ROOT}/slugkit/generator/pattern.cpp
+    ${${PROJECT_NAME}_SRC_ROOT}/slugkit/generator/pattern_generator.cpp
+    ${${PROJECT_NAME}_SRC_ROOT}/slugkit/generator/generator.cpp
+)
+
+add_library(${PROJECT_NAME} STATIC
+    ${${PROJECT_NAME}_SRC}
+)
+target_link_libraries(
+    ${PROJECT_NAME}
+    PUBLIC
+        userver::core
+        ${PROJECT_NAME}-utils
+)
+target_include_directories(
+    ${PROJECT_NAME} 
+    PUBLIC 
+        ${${PROJECT_NAME}_INCLUDE_ROOT}
+)
+target_include_directories(
+    ${PROJECT_NAME}
+    PRIVATE
+        ${${PROJECT_NAME}_SRC_ROOT}
+)
+
+set(TEST_SRC_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/tests)
+set(${PROJECT_NAME}_TEST_SRC
+    ${TEST_SRC_ROOT}/numerics_test.cpp
+    ${TEST_SRC_ROOT}/roman_test.cpp
+    ${TEST_SRC_ROOT}/pattern_test.cpp
+    ${TEST_SRC_ROOT}/permutation_test.cpp
+    ${TEST_SRC_ROOT}/dictionary_test.cpp
+    ${TEST_SRC_ROOT}/generator_test.cpp
+    ${TEST_SRC_ROOT}/mix_case_test.cpp
+)
+
+add_executable(test_${PROJECT_NAME} ${${PROJECT_NAME}_TEST_SRC})
+target_link_libraries(test_${PROJECT_NAME} PUBLIC ${PROJECT_NAME} userver::utest)
+target_include_directories(
+    test_${PROJECT_NAME}
+    PRIVATE
+        ${${PROJECT_NAME}_INCLUDE_ROOT}
+        ${${PROJECT_NAME}_SRC_ROOT}
+)
+add_google_tests(test_${PROJECT_NAME})
+
+add_subdirectory(examples)

@@ -1,0 +1,54 @@
+adjective:
+  language: en
+  words:
+    - word: big
+      tags:
+        - size
+    - word: small
+      tags:
+        - size
+    - word: red
+      tags:
+        - color
+    - word: blue
+      tags:
+        - color
+    - word: green
+      tags:
+        - color
+noun:
+  language: en
+  words:
+    - word: apple
+      tags:
+        - fruit
+    - word: banana
+      tags:
+        - fruit
+    - word: orange
+      tags:
+        - fruit
+verb:
+  language: en
+  words:
+    - word: run
+      tags:
+        - action
+    - word: jump
+      tags:
+        - action
+    - word: walk
+      tags:
+        - action
+    - word: swim
+      tags:
+        - action
+    - word: fly
+      tags:
+        - action
+    - word: walk
+      tags:
+        - action
+    - word: swim
+      tags:
+        - action
