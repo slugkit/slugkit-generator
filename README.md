@@ -236,7 +236,7 @@ noun:
 
 ## Example Application
 
-The repository includes a complete [example application](slugkit/examples/main.cpp) demonstrating:
+The repository includes a complete [example application](slugkit/examples/yaml-dict/main.cpp) demonstrating:
 
 - Dictionary loading from YAML files
 - Bulk slug generation
