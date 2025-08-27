@@ -4,6 +4,7 @@
 
 #include <slugkit/generator/types.hpp>
 
+#include <iosfwd>
 #include <map>
 #include <memory>
 #include <set>
@@ -129,6 +130,31 @@ public:
     DictionarySet(std::vector<Dictionary> dictionaries);
 
     FilteredDictionaryConstPtr Filter(const Selector& selector) const;
+
+    auto size() const -> std::size_t {
+        return dictionaries_.size();
+    }
+
+    /// @brief Parses a dictionary set from a format string.
+    ///
+    /// @param data The data to parse from.
+    /// @return The parsed dictionary set.
+    template <typename Format>
+    static auto Parse(const std::string& data) -> DictionarySet;
+
+    /// @brief Parses a dictionary set from a format stream.
+    ///
+    /// @param stream The stream to parse from.
+    /// @return The parsed dictionary set.
+    template <typename Format>
+    static auto Parse(std::istream& stream) -> DictionarySet;
+
+    /// @brief Parses a dictionary set from a format object.
+    ///
+    /// @param format The format object to parse from.
+    /// @return The parsed dictionary set.
+    template <typename Value>
+    static auto Parse(const Value& value) -> DictionarySet;
 
 private:
     std::map<std::string, Dictionary> dictionaries_;

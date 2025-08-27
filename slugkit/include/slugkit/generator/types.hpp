@@ -42,13 +42,10 @@ inline auto ToString(CaseType case_type) -> std::string_view {
 template <typename TagsType>
 struct BasicWord {
     std::string word;
-    // TODO: remove kind and language as they are properties of the dictionary
-    std::string kind;
-    std::string language;
     TagsType tags;
 
     auto operator==(const BasicWord& other) const -> bool {
-        return word == other.word && kind == other.kind && tags == other.tags && language == other.language;
+        return word == other.word && tags == other.tags;
     }
 
     [[nodiscard]] auto ToString() const -> std::string;

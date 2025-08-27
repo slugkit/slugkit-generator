@@ -39,8 +39,7 @@ int main(int argc, char* argv[]) try {
         throw std::runtime_error(fmt::format("Failed to open file: {}", file_name));
     }
 
-    auto yaml = userver::formats::yaml::FromStream(file);
-    auto dictionary_set = yaml.As<slugkit::generator::DictionarySet>();
+    auto dictionary_set = slugkit::generator::DictionarySet::Parse<userver::formats::yaml::Value>(file);
     slugkit::generator::Generator generator(std::move(dictionary_set));
 
     auto pattern = vm["pattern"].as<std::string>();

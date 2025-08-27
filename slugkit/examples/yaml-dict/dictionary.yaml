@@ -1,54 +1,164 @@
 adjective:
   language: en
   words:
-    - word: big
-      tags:
-        - size
-    - word: small
-      tags:
-        - size
-    - word: red
-      tags:
-        - color
-    - word: blue
-      tags:
-        - color
-    - word: green
-      tags:
-        - color
+    big: [size]
+    small: [size]
+    red: [color]
+    blue: [color]
+    green: [color]
 noun:
   language: en
   words:
-    - word: apple
-      tags:
-        - fruit
-    - word: banana
-      tags:
-        - fruit
-    - word: orange
-      tags:
-        - fruit
+    apple: [fruit]
+    banana: [fruit]
+    orange: [fruit]
 verb:
   language: en
   words:
-    - word: run
-      tags:
-        - action
-    - word: jump
-      tags:
-        - action
-    - word: walk
-      tags:
-        - action
-    - word: swim
-      tags:
-        - action
-    - word: fly
-      tags:
-        - action
-    - word: walk
-      tags:
-        - action
-    - word: swim
-      tags:
-        - action
+    run: [action]
+    jump: [action]
+    walk: [action]
+    swim: [action]
+    fly: [action]
+    walk: [action]
+    swim: [action]
+
+# Mahjong
+mahjong:
+  words:
+    # Winds (風牌)
+    🀀: [wind, kaze, フウハイ, ふうはい, 風牌, east, ton, トン, とな, 東, 风牌, fēng pái, 東, dōng]
+    🀁: [wind, kaze, フウハイ, ふうはい, 風牌, south, nan, ナン, なん, 南, 风牌, fēng pái, 南, nán]
+    🀂: [wind, kaze, フウハイ, ふうはい, 風牌, west, shā, シャー, しゃー, 西, 风牌, fēng pái, 西, xī]
+    🀃: [wind, kaze, フウハイ, ふうはい, 風牌, north, pei, ペイ, ぺい, 北, 风牌, fēng pái, 北, běi]
+
+    # Dragons (龍牌)
+    🀄: [dragon, ryūhai, リュウハイ, りゅうはい, 龍牌, red, chun, チュン, ちゅん, 中, 三元牌, sān yuán pái, 中, zhōng]
+    🀅: [dragon, ryūhai, リュウハイ, りゅうはい, 龍牌, green, hatsu, ハツ, はつ, 發, 三元牌, sān yuán pái, 發, fā]
+    🀆: [dragon, ryūhai, リュウハイ, りゅうはい, 龍牌, white, haku, ハク, はく, 白, 三元牌, sān yuán pái, 白, bái]
+
+    # Characters (万子)
+    🀇: ["1", characters, manzu, マンズ, まんず, 万子, 萬子, 万, wàn]
+    🀈: ["2", characters, manzu, マンズ, まんず, 万子, 萬子, 万, wàn]
+    🀉: ["3", characters, manzu, マンズ, まんず, 万子, 萬子, 万, wàn]
+    🀊: ["4", characters, manzu, マンズ, まんず, 万子, 萬子, 万, wàn]
+    🀋: ["5", characters, manzu, マンズ, まんず, 万子, 萬子, 万, wàn]
+    🀌: ["6", characters, manzu, マンズ, まんず, 万子, 萬子, 万, wàn]
+    🀍: ["7", characters, manzu, マンズ, まんず, 万子, 萬子, 万, wàn]
+    🀎: ["8", characters, manzu, マンズ, まんず, 万子, 萬子, 万, wàn]
+    🀏: ["9", characters, manzu, マンズ, まんず, 万子, 萬子, 万, wàn]
+
+    # Bamboo (索子)
+    🀐: ["1", bamboo, souzu, ソーズ, そうず, 索子, 索, suǒ]
+    🀑: ["2", bamboo, souzu, ソーズ, そうず, 索子, 索, suǒ]
+    🀒: ["3", bamboo, souzu, ソーズ, そうず, 索子, 索, suǒ]
+    🀓: ["4", bamboo, souzu, ソーズ, そうず, 索子, 索, suǒ]
+    🀔: ["5", bamboo, souzu, ソーズ, そうず, 索子, 索, suǒ]
+    🀕: ["6", bamboo, souzu, ソーズ, そうず, 索子, 索, suǒ]
+    🀖: ["7", bamboo, souzu, ソーズ, そうず, 索子, 索, suǒ]
+    🀗: ["8", bamboo, souzu, ソーズ, そうず, 索子, 索, suǒ]
+    🀘: ["9", bamboo, souzu, ソーズ, そうず, 索子, 索, suǒ]
+
+    # Dots (筒子)
+    🀙: ["1", dots, pinzu, ピンズ, ぴんず, 筒子, 筒, tǒng]
+    🀚: ["2", dots, pinzu, ピンズ, ぴんず, 筒子, 筒, tǒng]
+    🀛: ["3", dots, pinzu, ピンズ, ぴんず, 筒子, 筒, tǒng]
+    🀜: ["4", dots, pinzu, ピンズ, ぴんず, 筒子, 筒, tǒng]
+    🀝: ["5", dots, pinzu, ピンズ, ぴんず, 筒子, 筒, tǒng]
+    🀞: ["6", dots, pinzu, ピンズ, ぴんず, 筒子, 筒, tǒng]
+    🀟: ["7", dots, pinzu, ピンズ, ぴんず, 筒子, 筒, tǒng]
+    🀠: ["8", dots, pinzu, ピンズ, ぴんず, 筒子, 筒, tǒng]
+    🀡: ["9", dots, pinzu, ピンズ, ぴんず, 筒子, 筒, tǒng]
+
+    # Flowers (花牌)
+    🀢: [flower, hana, ハナハイ, はなはい, 花牌, 梅, méi]
+    🀣: [flower, hana, ハナハイ, はなはい, 花牌, 蘭, lán]
+    🀤: [flower, hana, ハナハイ, はなはい, 花牌, 竹, zhú]
+    🀥: [flower, hana, ハナハイ, はなはい, 花牌, 菊, jú]
+
+    # Seasons (季節牌)
+    🀦: [season, kisetsu, キセツハイ, きせつはい, 季節牌, 春, chūn]
+    🀧: [season, kisetsu, キセツハイ, きせつはい, 季節牌, 夏, xià]
+    🀨: [season, kisetsu, キセツハイ, きせつはい, 季節牌, 秋, qiū]
+    🀩: [season, kisetsu, キセツハイ, きせつはい, 季節牌, 冬, dōng]
+
+    # Joker & back (鬼牌)
+    🀪: [joker, jōkā, ジョーカー, じょーかー, 鬼札, 鬼牌, guǐ pái]
+    🀫: [back, uramen, ウラメン, うらめん, 裏面, 背面, bèi miàn]
+
+# Cards
+card:
+  words:
+    # Spades
+    🂡: [spades, ace, a]
+    🂢: [spades, "2"]
+    🂣: [spades, "3"]
+    🂤: [spades, "4"]
+    🂥: [spades, "5"]
+    🂦: [spades, "6"]
+    🂧: [spades, "7"]
+    🂨: [spades, "8"]
+    🂩: [spades, "9"]
+    🂪: [spades, "10"]
+    🂫: [spades, jack, j]
+    🂭: [spades, queen, q]
+    🂮: [spades, king, k]
+
+    # Hearts
+    🂱: [hearts, ace, a]
+    🂲: [hearts, "2"]
+    🂳: [hearts, "3"]
+    🂴: [hearts, "4"]
+    🂵: [hearts, "5"]
+    🂶: [hearts, "6"]
+    🂷: [hearts, "7"]
+    🂸: [hearts, "8"]
+    🂹: [hearts, "9"]
+    🂺: [hearts, "10"]
+    🂻: [hearts, jack, j]
+    🂽: [hearts, queen, q]
+    🂾: [hearts, king, k]
+
+    # Diamonds
+    🃁: [diamonds, ace, a]
+    🃂: [diamonds, "2"]
+    🃃: [diamonds, "3"]
+    🃄: [diamonds, "4"]
+    🃅: [diamonds, "5"]
+    🃆: [diamonds, "6"]
+    🃇: [diamonds, "7"]
+    🃈: [diamonds, "8"]
+    🃉: [diamonds, "9"]
+    🃊: [diamonds, "10"]
+    🃋: [diamonds, jack, j]
+    🃍: [diamonds, queen, q]
+    🃎: [diamonds, king, k]
+
+    # Clubs
+    🃑: [clubs, ace, a]
+    🃒: [clubs, "2"]
+    🃓: [clubs, "3"]
+    🃔: [clubs, "4"]
+    🃕: [clubs, "5"]
+    🃖: [clubs, "6"]
+    🃗: [clubs, "7"]
+    🃘: [clubs, "8"]
+    🃙: [clubs, "9"]
+    🃚: [clubs, "10"]
+    🃛: [clubs, jack, j]
+    🃝: [clubs, queen, q]
+    🃞: [clubs, king, k]
+
+    # Jokers and back
+    🃏: [joker, joker]
+    🂿: [joker, joker]
+    🃠: [back, back]
+# Dice
+dice:
+  words:
+    ⚀: ["1"]
+    ⚁: ["2"]
+    ⚂: ["3"]
+    ⚃: ["4"]
+    ⚄: ["5"]
+    ⚅: ["6"]

@@ -16,13 +16,7 @@ Permutation GeneratePermutation(std::string_view seed, std::size_t size, std::si
 
 using PermutationGenerator = std::function<Permutation(std::string_view seed, std::size_t size, std::size_t limit)>;
 
-/// @brief Permutation with a max value (uses Feistel permutation for power of two max values or LCG for other values).
-/// @note The domain of the permutation is [0, max_value).
-/// @param max_value The maximum value for the permutation.
-/// @param seed The seed for the permutation.
-/// @param sequence The sequence number for the permutation.
-/// @param rounds The number of rounds for the permutation (default 4).
-std::uint64_t Permute(std::uint64_t max_value, std::string_view seed, std::uint64_t sequence, std::uint32_t rounds = 4);
+constexpr std::uint32_t kDefaultRounds = 4;
 
 /// @brief Permutation with a max value (uses Feistel permutation for power of two max values or LCG for other values).
 /// @note The domain of the permutation is [0, max_value).
@@ -30,7 +24,21 @@ std::uint64_t Permute(std::uint64_t max_value, std::string_view seed, std::uint6
 /// @param seed The seed for the permutation.
 /// @param sequence The sequence number for the permutation.
 /// @param rounds The number of rounds for the permutation (default 4).
-std::uint64_t Permute(std::uint64_t max_value, std::uint32_t seed, std::uint64_t sequence, std::uint32_t rounds = 4);
+auto Permute(
+    std::uint64_t max_value,
+    std::string_view seed,
+    std::uint64_t sequence,
+    std::uint32_t rounds = kDefaultRounds
+) -> std::uint64_t;
+
+/// @brief Permutation with a max value (uses Feistel permutation for power of two max values or LCG for other values).
+/// @note The domain of the permutation is [0, max_value).
+/// @param max_value The maximum value for the permutation.
+/// @param seed The seed for the permutation.
+/// @param sequence The sequence number for the permutation.
+/// @param rounds The number of rounds for the permutation (default 4).
+auto Permute(std::uint64_t max_value, std::uint32_t seed, std::uint64_t sequence, std::uint32_t rounds = kDefaultRounds)
+    -> std::uint64_t;
 
 /// @brief Permutation with a power of two max value (uses Feistel permutation).
 /// @note The domain of the permutation is [0, max_value).
@@ -39,10 +47,18 @@ std::uint64_t Permute(std::uint64_t max_value, std::uint32_t seed, std::uint64_t
 /// @param sequence The sequence number for the permutation.
 /// @param rounds The number of rounds for the permutation (default 4).
 /// @return The permutation.
-std::uint64_t
-PermutePowerOf2(std::uint64_t max_value, std::string_view seed, std::uint64_t sequence, std::uint32_t rounds = 4);
-std::uint64_t
-PermutePowerOf2(std::uint64_t max_value, std::uint32_t hash, std::uint64_t sequence, std::uint32_t rounds = 4);
+auto PermutePowerOf2(
+    std::uint64_t max_value,
+    std::string_view seed,
+    std::uint64_t sequence,
+    std::uint32_t rounds = kDefaultRounds
+) -> std::uint64_t;
+auto PermutePowerOf2(
+    std::uint64_t max_value,
+    std::uint32_t seed_hash,
+    std::uint64_t sequence,
+    std::uint32_t rounds = kDefaultRounds
+) -> std::uint64_t;
 
 /// @brief Permutation with a power of two max value (uses Feistel permutation).
 /// @note The domain of the permutation is [0, 2^64).
@@ -50,6 +66,8 @@ PermutePowerOf2(std::uint64_t max_value, std::uint32_t hash, std::uint64_t seque
 /// @param sequence The sequence number for the permutation.
 /// @param rounds The number of rounds for the permutation (default 4).
 /// @return The permutation.
-std::uint64_t PermutePowerOf2(std::string_view seed, std::uint64_t sequence, std::uint32_t rounds = 4);
-std::uint64_t PermutePowerOf2(std::uint32_t hash, std::uint64_t sequence, std::uint32_t rounds = 4);
+auto PermutePowerOf2(std::string_view seed, std::uint64_t sequence, std::uint32_t rounds = kDefaultRounds)
+    -> std::uint64_t;
+auto PermutePowerOf2(std::uint32_t seed_hash, std::uint64_t sequence, std::uint32_t rounds = kDefaultRounds)
+    -> std::uint64_t;
 }  // namespace slugkit::generator
