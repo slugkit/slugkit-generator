@@ -42,8 +42,15 @@ struct PatternSettings {
     /// @brief The selectors settings for the pattern.
     /// Settings are stored for selectors only, number generators are skipped.
     std::vector<SelectorSettings> selectors;
+    // TODO: remove capacity and max_pattern_length from here
     numeric::BigInt capacity;
     std::int32_t max_pattern_length;
 };
+
+/// @brief Information about a pattern.
+// struct PatternInfo : PatternSettings {
+//     numeric::BigInt capacity;
+//     std::int32_t max_pattern_length;
+// };
 
 }  // namespace slugkit::generator

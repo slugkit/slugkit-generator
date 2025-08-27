@@ -342,44 +342,162 @@ The repository includes a complete [example application](slugkit/examples/yaml-d
 <details>
 <summary>Benchmark results</summary>
 
-Benchmarks were run in a arm64 ubuntu docker container on a MacBook M4 Max with 48Gb RAM.
+Benchmarks were run in a arm64 ubuntu docker container on a MacBook M4 Max with 48Gb RAM. Theese are results as of August 27, 2025
 
-### [Generating Permutations](slugkit/benchmarks/permute_benchmark.cpp)
 
-| Benchmark       | Time | CPU | Iterations |
-| --------------  | ---- | --- | ---------- |
-| PermutePowerOf2 | 3.15 ns | 3.15 ns | 224086588 |
-| Permute         | 10.4 ns | 10.4 ns | 67255957 |
+### [Seed Hash Computation](slugkit/benchmarks/permute_benchmark.cpp)
 
-### [Parsing Patterns](slugkit/benchmarks/parse_benchmark.cpp)
+| Benchmark                                     | Time  |           CPU | Iterations |     |
+| ----                                          | ---   | ---           | ---        | --- |
+| FNV1aHash/1 | 0.710 ns | 0.710 ns | 921441116 |  |
+| FNV1aHash/2 | 0.964 ns | 0.964 ns | 733653608 |  |
+| FNV1aHash/4 | 1.44 ns | 1.44 ns | 485777702 |  |
+| FNV1aHash/8 | 2.51 ns | 2.50 ns | 293386083 |  |
+| FNV1aHash/16 | 4.97 ns | 4.97 ns | 138698088 |  |
+| FNV1aHash/32 | 10.6 ns | 10.6 ns | 64218883 |  |
+| FNV1aHash/64 | 27.8 ns | 27.8 ns | 25193522 |  |
 
-| Benchmark                     | Time      | CPU       | Iterations |
-| --------------                | ----      | ---       | ---------- |
-| ParseNumberPlaceholder        | 44.0 ns   | 44.0 ns   | 15580770   |
-| ParseSpecialFixedPlaceholder  | 45.0 ns   | 45.0 ns   | 15612219   |
-| ParseSpecialRangePlaceholder  | 57.4 ns   | 57.4 ns   | 11600223   |
-| ParseSelector                 | 55.4 ns   | 55.3 ns   | 12635322   |
-| ParseSelectorUppercase        | 55.5 ns   | 55.5 ns   | 12597934   |
-| ParseSelectorTitlecase        | 55.6 ns   | 55.6 ns   | 12492230   |
-| ParseSelectorMixedcase        | 55.6 ns   | 55.6 ns   | 12249192   |
-| ParseSelectorWithTag          | 92.8 ns   | 92.8 ns   | 7559739    |
-| ParseSelectorWithTags         | 129 ns    | 129 ns    | 5399839    |
-| ParseSelectorWithSize         | 80.2 ns   | 80.2 ns   | 8730053    |
-| ParseSelectorWithSizeAndTags  | 151 ns    | 151 ns    | 4590447    |
-| ParsePattern2Components       | 109 ns    | 109 ns    | 6336557    |
-| ParsePattern3Components       | 169 ns    | 169 ns    | 4177438    |
-| ParsePattern4Components       | 206 ns    | 205 ns    | 3296737    |
-| ParseDemoPattern              | 206 ns    | 206 ns    | 3362208    |
+### [Permutations](slugkit/benchmarks/permute_benchmark.cpp)
 
-### [Formatting Pattterns](slugkit/benchmarks/format_pattern_benchmark.cpp)
+| Benchmark                                     | Time  |           CPU | Iterations |     |
+| ----                                          | ---   | ---           | ---        | --- |
+| PermutePowerOf2/1 | 3.45 ns | 3.45 ns | 202300738 | 2^1 |
+| PermutePowerOf2/2 | 3.44 ns | 3.44 ns | 203448723 | 2^2 |
+| PermutePowerOf2/4 | 3.44 ns | 3.44 ns | 204280305 | 2^4 |
+| PermutePowerOf2/8 | 3.47 ns | 3.47 ns | 203780641 | 2^8 |
+| PermutePowerOf2/16 | 3.47 ns | 3.47 ns | 200099813 | 2^16 |
+| PermutePowerOf2/18 | 3.46 ns | 3.46 ns | 203496999 | 2^18 |
+| Permute/1 | 1.74 ns | 1.74 ns | 400163020 | 10^1 |
+| Permute/2 | 2.07 ns | 2.07 ns | 339638412 | 10^2 |
+| Permute/4 | 3.06 ns | 3.06 ns | 228591396 | 10^4 |
+| Permute/8 | 8.09 ns | 8.09 ns | 86644744 | 10^8 |
+| Permute/16 | 16.1 ns | 16.1 ns | 42681702 | 10^16 |
+| Permute/18 | 20.5 ns | 20.5 ns | 33777983 | 10^18 |
 
-| Benchmark                     | Time      | CPU       | Iterations |
-| --------------                | ----      | ---       | ---------- |
-| FormatPattern1Component       | 17.7 ns   | 17.7 ns   | 39286446   |
-| FormatPattern2Components      | 24.7 ns   | 24.6 ns   | 28194968   |
-| FormatPattern3Components      | 32.9 ns   | 32.9 ns   | 21244589   |
-| FormatPattern4Components      | 39.8 ns   | 39.8 ns   | 17477136   |
-| FormatPattern10Components     | 80.6 ns   | 80.6 ns   | 8659990    |
+### [Parsing](slugkit/benchmarks/parse_benchmark.cpp)
+
+| Benchmark                                     | Time  |           CPU | Iterations |     |
+| ----                                          | ---   | ---           | ---        | --- |
+| ParsePattern/0 | 47.3 ns | 47.3 ns | 14588729 | {number:8d} |
+| ParsePattern/1 | 47.1 ns | 47.1 ns | 14897991 | {special:8} |
+| ParsePattern/2 | 65.4 ns | 65.4 ns | 11137327 | {special:8-12} |
+| ParsePattern/3 | 52.6 ns | 52.6 ns | 13018674 | {noun} |
+| ParsePattern/4 | 52.7 ns | 52.7 ns | 13348928 | {Noun} |
+| ParsePattern/5 | 52.0 ns | 52.0 ns | 13084866 | {NOUN} |
+| ParsePattern/6 | 52.5 ns | 52.5 ns | 13590012 | {nOun} |
+| ParsePattern/7 | 58.2 ns | 58.2 ns | 11705816 | {adjective} |
+| ParsePattern/8 | 57.0 ns | 57.0 ns | 12329407 | {ADJECTIVE} |
+| ParsePattern/9 | 57.1 ns | 57.1 ns | 12384193 | {Adjective} |
+| ParsePattern/10 | 57.5 ns | 57.5 ns | 12138562 | {aDjective} |
+| ParsePattern/11 | 96.7 ns | 96.7 ns | 7090277 | {adjective:+tag} |
+| ParsePattern/12 | 133 ns | 133 ns | 5197656 | {adjective:+tag1-tag2} |
+| ParsePattern/13 | 80.9 ns | 80.9 ns | 8607845 | {adjective:==10} |
+| ParsePattern/14 | 158 ns | 158 ns | 4460496 | {adjective:+tag1-tag2==10} |
+| ParsePattern/15 | 114 ns | 114 ns | 6402224 | {adjective}-{noun} |
+| ParsePattern/16 | 171 ns | 171 ns | 4136135 | {adjective}-{noun}-{verb} |
+| ParsePattern/17 | 214 ns | 214 ns | 3271819 | {adverb}-{adjective}-{noun}-{number:4x} |
+
+### [Formatting](slugkit/benchmarks/format_pattern_benchmark.cpp)
+
+| Benchmark                                     | Time  |           CPU | Iterations |     |
+| ----                                          | ---   | ---           | ---        | --- |
+| FormatPattern/1 | 17.8 ns | 17.8 ns | 38671069 | 1 components |
+| FormatPattern/2 | 24.8 ns | 24.8 ns | 28105339 | 2 components |
+| FormatPattern/3 | 32.7 ns | 32.7 ns | 21385705 | 3 components |
+| FormatPattern/4 | 39.7 ns | 39.7 ns | 17407353 | 4 components |
+| FormatPattern/5 | 47.7 ns | 47.7 ns | 14599787 | 5 components |
+| FormatPattern/6 | 54.5 ns | 54.5 ns | 12422406 | 6 components |
+| FormatPattern/7 | 60.8 ns | 60.8 ns | 11477934 | 7 components |
+| FormatPattern/8 | 67.2 ns | 67.2 ns | 10347829 | 8 components |
+| FormatPattern/9 | 74.9 ns | 74.9 ns | 9268469 | 9 components |
+| FormatPattern/10 | 81.2 ns | 81.2 ns | 8572465 | 10 components |
+
+### [Generate Numbers](slugkit/benchmarks/generate_numbers_benchmarks.cpp)
+
+| Benchmark                                     | Time  |           CPU | Iterations |     |
+| ----                                          | ---   | ---           | ---        | --- |
+| GenerateHexNumbers/1 | 23.7 ns | 23.7 ns | 29600228 | number:1x |
+| GenerateHexNumbers/2 | 25.8 ns | 25.8 ns | 26996569 | number:2x |
+| GenerateHexNumbers/4 | 26.4 ns | 26.4 ns | 26204703 | number:4x |
+| GenerateHexNumbers/8 | 27.4 ns | 27.4 ns | 25370489 | number:8x |
+| GenerateHexNumbers/16 | 32.7 ns | 32.7 ns | 21690834 | number:16x |
+| GenerateHexNumbersUppercase/1 | 24.4 ns | 24.4 ns | 29197958 | number:1X |
+| GenerateHexNumbersUppercase/2 | 25.6 ns | 25.6 ns | 27273427 | number:2X |
+| GenerateHexNumbersUppercase/4 | 26.7 ns | 26.7 ns | 26269937 | number:4X |
+| GenerateHexNumbersUppercase/8 | 27.1 ns | 27.1 ns | 24933618 | number:8X |
+| GenerateHexNumbersUppercase/16 | 32.3 ns | 32.3 ns | 21996090 | number:16X |
+| GenerateDecNumbers/1 | 53.1 ns | 53.1 ns | 13137676 | number:1d |
+| GenerateDecNumbers/2 | 62.0 ns | 62.0 ns | 11020267 | number:2d |
+| GenerateDecNumbers/4 | 61.5 ns | 61.5 ns | 11267780 | number:4d |
+| GenerateDecNumbers/8 | 57.8 ns | 57.8 ns | 11721555 | number:8d |
+| GenerateDecNumbers/16 | 81.6 ns | 81.6 ns | 8495975 | number:16d |
+| GenerateDecNumbers/18 | 95.1 ns | 95.1 ns | 7423016 | number:18d |
+| GenerateRomanNumbersUppercase/1 | 18.6 ns | 18.6 ns | 37532196 | number:1R |
+| GenerateRomanNumbersUppercase/2 | 14.9 ns | 14.9 ns | 46977672 | number:2R |
+| GenerateRomanNumbersUppercase/4 | 12.0 ns | 12.0 ns | 59216753 | number:4R |
+| GenerateRomanNumbersUppercase/8 | 32.9 ns | 32.9 ns | 21482395 | number:8R |
+| GenerateRomanNumbersUppercase/15 | 25.7 ns | 25.6 ns | 27407411 | number:15R |
+| GenerateRomanNumbersLowercase/1 | 65.0 ns | 65.0 ns | 10604648 | number:1r |
+| GenerateRomanNumbersLowercase/2 | 61.1 ns | 61.1 ns | 11372898 | number:2r |
+| GenerateRomanNumbersLowercase/4 | 65.4 ns | 65.4 ns | 10757226 | number:4r |
+| GenerateRomanNumbersLowercase/8 | 104 ns | 104 ns | 6710809 | number:8r |
+| GenerateRomanNumbersLowercase/15 | 96.5 ns | 96.5 ns | 7291240 | number:15r |
+
+### [Genereate Single Words](slugkit/benchmarks/generate_from_dictionary_benchmark.cpp)
+
+| Benchmark                                     | Time  |           CPU | Iterations |     |
+| ----                                          | ---   | ---           | ---        | --- |
+| GenerateFromDictionary/1000 | 193 ns | 193 ns | 3628202 |  |
+| GenerateFromDictionary/10000 | 202 ns | 202 ns | 3463411 |  |
+| GenerateFromDictionary/100000 | 201 ns | 201 ns | 3478886 |  |
+| GenerateFromDictionary/1000000 | 354 ns | 354 ns | 2034558 |  |
+| GenerateFromDictionaryUppercase/1000 | 341 ns | 341 ns | 2080563 |  |
+| GenerateFromDictionaryUppercase/10000 | 346 ns | 346 ns | 2007091 |  |
+| GenerateFromDictionaryUppercase/100000 | 348 ns | 348 ns | 2022727 |  |
+| GenerateFromDictionaryUppercase/1000000 | 503 ns | 502 ns | 1309848 |  |
+| GenerateFromDictionaryTitleCase/1000 | 6539 ns | 6539 ns | 108670 |  |
+| GenerateFromDictionaryTitleCase/10000 | 6559 ns | 6559 ns | 105645 |  |
+| GenerateFromDictionaryTitleCase/100000 | 6689 ns | 6689 ns | 105084 |  |
+| GenerateFromDictionaryTitleCase/1000000 | 6670 ns | 6670 ns | 105205 |  |
+| GenerateFromDictionaryMixedCase/1000 | 359 ns | 359 ns | 1950292 |  |
+| GenerateFromDictionaryMixedCase/10000 | 402 ns | 402 ns | 1749132 |  |
+| GenerateFromDictionaryMixedCase/100000 | 442 ns | 442 ns | 1370841 |  |
+| GenerateFromDictionaryMixedCase/1000000 | 664 ns | 664 ns | 1033152 |  |
+
+### [Filter Dictionaries](slugkit/benchmarks/filter_dictionary_benchmarks.cpp)
+
+| Benchmark                                     | Time  |           CPU | Iterations |     |
+| ----                                          | ---   | ---           | ---        | --- |
+| FilterDictionary/0 | 237672 ns | 237658 ns | 2964 | word |
+| FilterDictionary/1 | 680540 ns | 680531 ns | 1014 | word:+tag1 |
+| FilterDictionary/2 | 615504 ns | 615497 ns | 1143 | word:+tag2 |
+| FilterDictionary/3 | 594529 ns | 594521 ns | 1194 | word:+tag3 |
+| FilterDictionary/4 | 597221 ns | 597153 ns | 1194 | word:+tag4 |
+| FilterDictionary/5 | 663979 ns | 663971 ns | 1051 | word:-tag1 |
+| FilterDictionary/6 | 684307 ns | 684254 ns | 1016 | word:-tag2 |
+| FilterDictionary/7 | 728133 ns | 728124 ns | 947 | word:-tag3 |
+| FilterDictionary/8 | 759104 ns | 759020 ns | 922 | word:-tag4 |
+| FilterDictionary/9 | 1136285 ns | 1136270 ns | 612 | word:+tag1-tag2 |
+
+### [Estimate Pattern Capacity](slugkit/benchmarks/generate_slugs_benchmarks.cpp)
+
+| Benchmark                                     | Time  |           CPU | Iterations |     |
+| ----                                          | ---   | ---           | ---        | --- |
+| CalculateSettings/0 | 73940 ns | 73767 ns | 9488 | {verb}-{adverb} |
+| CalculateSettings/1 | 301710 ns | 301705 ns | 2304 | {adverb}-{noun}-{verb} |
+| CalculateSettings/2 | 301914 ns | 301913 ns | 2293 | {adverb}-{noun}-{verb}-{number:4x} |
+| CalculateSettings/3 | 301136 ns | 301135 ns | 2311 | {adverb}-{noun}-{verb}-{adverb}-{noun}-{verb} |
+| CalculateSettings/4 | 302194 ns | 302193 ns | 2306 | {adverb}-{noun}-{verb}-{adverb}-{noun}-{verb}-{adverb}-{noun}-{verb} |
+
+### [Generate Slugs](slugkit/benchmarks/generate_slugs_benchmarks.cpp)
+
+| Benchmark                                     | Time  |           CPU | Iterations |     |
+| ----                                          | ---   | ---           | ---        | --- |
+| GenerateSlugs/0 | 73533 ns | 73532 ns | 9426 | {verb}-{adverb} |
+| GenerateSlugs/1 | 303032 ns | 303031 ns | 2317 | {adverb}-{noun}-{verb} |
+| GenerateSlugs/2 | 301868 ns | 301867 ns | 2310 | {adverb}-{noun}-{verb}-{number:4x} |
+| GenerateSlugs/3 | 613231 ns | 613229 ns | 1128 | {adverb}-{noun}-{verb}-{adverb}-{noun}-{verb} |
+| GenerateSlugs/4 | 916800 ns | 916798 ns | 757 | {adverb}-{noun}-{verb}-{adverb}-{noun}-{verb}-{adverb}-{noun}-{verb} |
 
 </details>
 

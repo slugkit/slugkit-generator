@@ -1,7 +1,10 @@
 #include <benchmark/benchmark.h>
 
+#include "helpers.hpp"
+
 #include <slugkit/generator/dictionary.hpp>
 #include <slugkit/generator/pattern_generator.hpp>
+
 #include <userver/engine/run_standalone.hpp>
 
 #include <fmt/format.h>
@@ -10,18 +13,10 @@ namespace slugkit::generator::benchmarks {
 
 using namespace literals;
 
-auto FillDictionary(int size) -> Dictionary {
-    std::vector<Word> words;
-    for (int i = 0; i < size; ++i) {
-        words.push_back({fmt::format("word{}", i), {}});
-    }
-    return Dictionary{"word", "en", std::move(words)};
-}
-
 void GenerateFromDictionary(benchmark::State& state) {
     userver::engine::RunStandalone([&] {
         const auto dict_size = state.range(0);
-        Dictionary dictionary = FillDictionary(dict_size);
+        Dictionary dictionary = FillDictionary({.name = "word", .language = "en", .size = dict_size, .tags = {}});
         auto filtered_dictionary = dictionary.Filter("word"_selector);
         SelectorSubstitutionGenerator generator{filtered_dictionary, {dict_size, dict_size}};
         auto seed_hash = PatternGenerator::SeedHash("test");
@@ -36,7 +31,7 @@ void GenerateFromDictionary(benchmark::State& state) {
 void GenerateFromDictionaryUppercase(benchmark::State& state) {
     userver::engine::RunStandalone([&] {
         const auto dict_size = state.range(0);
-        Dictionary dictionary = FillDictionary(dict_size);
+        Dictionary dictionary = FillDictionary({.name = "word", .language = "en", .size = dict_size, .tags = {}});
         auto filtered_dictionary = dictionary.Filter("WORD"_selector);
         SelectorSubstitutionGenerator generator{filtered_dictionary, {dict_size, dict_size}};
         auto seed_hash = PatternGenerator::SeedHash("test");
@@ -51,7 +46,7 @@ void GenerateFromDictionaryUppercase(benchmark::State& state) {
 void GenerateFromDictionaryTitleCase(benchmark::State& state) {
     userver::engine::RunStandalone([&] {
         const auto dict_size = state.range(0);
-        Dictionary dictionary = FillDictionary(dict_size);
+        Dictionary dictionary = FillDictionary({.name = "word", .language = "en", .size = dict_size, .tags = {}});
         auto filtered_dictionary = dictionary.Filter("Word"_selector);
         SelectorSubstitutionGenerator generator{filtered_dictionary, {dict_size, dict_size}};
         auto seed_hash = PatternGenerator::SeedHash("test");
@@ -66,7 +61,7 @@ void GenerateFromDictionaryTitleCase(benchmark::State& state) {
 void GenerateFromDictionaryMixedCase(benchmark::State& state) {
     userver::engine::RunStandalone([&] {
         const auto dict_size = state.range(0);
-        Dictionary dictionary = FillDictionary(dict_size);
+        Dictionary dictionary = FillDictionary({.name = "word", .language = "en", .size = dict_size, .tags = {}});
         auto filtered_dictionary = dictionary.Filter("wOrD"_selector);
         SelectorSubstitutionGenerator generator{filtered_dictionary, {dict_size, dict_size}};
         auto seed_hash = PatternGenerator::SeedHash("test");
