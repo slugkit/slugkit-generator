@@ -14,54 +14,54 @@ using namespace literals;
 namespace {
 
 const std::vector<Word> kNouns = {
-    {"noun1", "noun", "en", {}},
-    {"noun2", "noun", "en", {}},
-    {"noun3", "noun", "en", {"tag1"}},
-    {"noun4", "noun", "en", {"tag2", "nsfw"}},
-    {"noun5", "noun", "en", {"tag1", "tag2"}},
+    {"noun1", {}},
+    {"noun2", {}},
+    {"noun3", {"tag1"}},
+    {"noun4", {"tag2", "nsfw"}},
+    {"noun5", {"tag1", "tag2"}},
 };
 
 const std::vector<Word> kAdjectives = {
-    {"adjective1", "adjective", "en", {}},
-    {"adjective2", "adjective", "en", {}},
-    {"adjective3", "adjective", "en", {"tag1"}},
-    {"adjective4", "adjective", "en", {"tag2", "nsfw"}},
-    {"adjective5", "adjective", "en", {"tag1", "tag2"}},
-    {"adjective6", "adjective", "en", {"tag1", "tag2", "nsfw"}},
-    {"adjective7", "adjective", "en", {"tag1", "tag2", "nsfw"}},
+    {"adjective1", {}},
+    {"adjective2", {}},
+    {"adjective3", {"tag1"}},
+    {"adjective4", {"tag2", "nsfw"}},
+    {"adjective5", {"tag1", "tag2"}},
+    {"adjective6", {"tag1", "tag2", "nsfw"}},
+    {"adjective7", {"tag1", "tag2", "nsfw"}},
 };
 
 const std::vector<Word> kVerbs = {
-    {"verb1", "verb", "en", {}},
-    {"verb2", "verb", "en", {}},
-    {"verb3", "verb", "en", {"tag1"}},
-    {"verb4", "verb", "en", {"tag2", "nsfw"}},
-    {"verb5", "verb", "en", {"tag1", "tag2"}},
-    {"verb6", "verb", "en", {"tag1", "tag2", "nsfw"}},
-    {"verb7", "verb", "en", {"tag1", "tag2", "nsfw"}},
-    {"verb8", "verb", "en", {"tag1", "tag2", "nsfw"}},
-    {"verb9", "verb", "en", {"tag1", "tag2", "nsfw"}},
-    {"verb10", "verb", "en", {"tag1", "tag2", "nsfw"}},
+    {"verb1", {}},
+    {"verb2", {}},
+    {"verb3", {"tag1"}},
+    {"verb4", {"tag2", "nsfw"}},
+    {"verb5", {"tag1", "tag2"}},
+    {"verb6", {"tag1", "tag2", "nsfw"}},
+    {"verb7", {"tag1", "tag2", "nsfw"}},
+    {"verb8", {"tag1", "tag2", "nsfw"}},
+    {"verb9", {"tag1", "tag2", "nsfw"}},
+    {"verb10", {"tag1", "tag2", "nsfw"}},
 };
 
 const std::vector<Word> kAdverbs = {
-    {"adverb1", "adverb", "en", {}},
-    {"adverb2", "adverb", "en", {}},
-    {"adverb3", "adverb", "en", {"tag1"}},
-    {"adverb4", "adverb", "en", {"tag2", "nsfw"}},
-    {"adverb5", "adverb", "en", {"tag1", "tag2"}},
-    {"adverb6", "adverb", "en", {"tag1", "tag2", "nsfw"}},
-    {"adverb7", "adverb", "en", {"tag1", "tag2", "nsfw"}},
-    {"adverb8", "adverb", "en", {"tag1", "tag2", "nsfw"}},
-    {"adverb9", "adverb", "en", {"tag1", "tag2", "nsfw"}},
+    {"adverb1", {}},
+    {"adverb2", {}},
+    {"adverb3", {"tag1"}},
+    {"adverb4", {"tag2", "nsfw"}},
+    {"adverb5", {"tag1", "tag2"}},
+    {"adverb6", {"tag1", "tag2", "nsfw"}},
+    {"adverb7", {"tag1", "tag2", "nsfw"}},
+    {"adverb8", {"tag1", "tag2", "nsfw"}},
+    {"adverb9", {"tag1", "tag2", "nsfw"}},
 };
 
 const std::vector<Word> kLanguageAgnosticNouns = {
-    {"noun1", "noun", "", {}},
-    {"noun2", "noun", "", {}},
-    {"noun3", "noun", "", {"tag1"}},
-    {"noun4", "noun", "", {"tag2", "nsfw"}},
-    {"noun5", "noun", "", {"tag1", "tag2"}},
+    {"noun1", {}},
+    {"noun2", {}},
+    {"noun3", {"tag1"}},
+    {"noun4", {"tag2", "nsfw"}},
+    {"noun5", {"tag1", "tag2"}},
 };
 
 const std::map<std::string, Dictionary> kDictionaries = {

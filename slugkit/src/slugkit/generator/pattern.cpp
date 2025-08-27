@@ -173,15 +173,7 @@ bool Selector::IsNSFW() const {
     return include_tags.contains("nsfw") || !exclude_tags.contains("nsfw");
 }
 
-bool Matches(const Selector& selector, const Word& word, bool skip_dictionary_check) {
-    if (!skip_dictionary_check) {
-        if (selector.kind != word.kind) {
-            return false;
-        }
-        if (selector.language.has_value() && selector.language != word.language) {
-            return false;
-        }
-    }
+bool Matches(const Selector& selector, const Word& word) {
     if (!selector.include_tags.empty()) {
         if (!utils::IsSubset(selector.include_tags, word.tags)) {
             return false;

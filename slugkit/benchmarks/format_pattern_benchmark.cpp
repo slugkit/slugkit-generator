@@ -6,68 +6,41 @@ namespace slugkit::generator::benchmarks {
 
 using namespace literals;
 
+namespace {
+
+constexpr std::string_view kPlaceholder = "{adjective}";
 auto constexpr kSubstitution = "chlorobenzylidenemalononitrile";
 
-void FormatPattern1Component(benchmark::State& state) {
-    auto pattern = "{adjective}"_pattern;
-    Pattern::Substitutions substitutions{kSubstitution};
+auto GeneratePattern(std::int64_t num_components) -> PatternPtr {
+    std::string pattern_str{kPlaceholder};
+    auto size = num_components * kPlaceholder.size() + num_components - 1;
+    pattern_str.reserve(size);
+    for (std::int64_t i = 1; i < num_components; ++i) {
+        pattern_str.append("-").append(kPlaceholder);
+    }
+    return std::make_shared<Pattern>(pattern_str);
+}
+
+auto GenerateSubstitutions(std::int64_t num_components) -> Pattern::Substitutions {
+    Pattern::Substitutions substitutions;
+    for (std::int64_t i = 0; i < num_components; ++i) {
+        substitutions.push_back(kSubstitution);
+    }
+    return substitutions;
+}
+
+}  // namespace
+
+void FormatPattern(benchmark::State& state) {
+    auto pattern = GeneratePattern(state.range(0));
+    auto substitutions = GenerateSubstitutions(state.range(0));
+    state.SetLabel(fmt::format("{} components", state.range(0)));
     for ([[maybe_unused]] auto _ : state) {
-        auto result = pattern.Format(substitutions);
+        auto result = pattern->Format(substitutions);
         benchmark::DoNotOptimize(result);
     }
 }
 
-void FormatPattern2Components(benchmark::State& state) {
-    auto pattern = "{adjective}-{noun}"_pattern;
-    Pattern::Substitutions substitutions{kSubstitution, kSubstitution};
-    for ([[maybe_unused]] auto _ : state) {
-        auto result = pattern.Format(substitutions);
-        benchmark::DoNotOptimize(result);
-    }
-}
-
-void FormatPattern3Components(benchmark::State& state) {
-    auto pattern = "{adjective}-{noun}-{verb}"_pattern;
-    Pattern::Substitutions substitutions{kSubstitution, kSubstitution, kSubstitution};
-    for ([[maybe_unused]] auto _ : state) {
-        auto result = pattern.Format(substitutions);
-        benchmark::DoNotOptimize(result);
-    }
-}
-
-void FormatPattern4Components(benchmark::State& state) {
-    auto pattern = "{adjective}-{noun}-{verb}-{adjective}"_pattern;
-    Pattern::Substitutions substitutions{kSubstitution, kSubstitution, kSubstitution, kSubstitution};
-    for ([[maybe_unused]] auto _ : state) {
-        auto result = pattern.Format(substitutions);
-        benchmark::DoNotOptimize(result);
-    }
-}
-
-void FormatPattern10Components(benchmark::State& state) {
-    auto pattern = "{adjective}-{noun}-{verb}-{adjective}-{noun}-{verb}-{adjective}-{noun}-{verb}-{adjective}"_pattern;
-    Pattern::Substitutions substitutions{
-        kSubstitution,
-        kSubstitution,
-        kSubstitution,
-        kSubstitution,
-        kSubstitution,
-        kSubstitution,
-        kSubstitution,
-        kSubstitution,
-        kSubstitution,
-        kSubstitution
-    };
-    for ([[maybe_unused]] auto _ : state) {
-        auto result = pattern.Format(substitutions);
-        benchmark::DoNotOptimize(result);
-    }
-}
-
-BENCHMARK(FormatPattern1Component);
-BENCHMARK(FormatPattern2Components);
-BENCHMARK(FormatPattern3Components);
-BENCHMARK(FormatPattern4Components);
-BENCHMARK(FormatPattern10Components);
+BENCHMARK(FormatPattern)->DenseRange(1, 10);
 
 }  // namespace slugkit::generator::benchmarks

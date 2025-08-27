@@ -289,19 +289,16 @@ The library supports loading dictionaries from text-based structured files with 
 {
     "noun" : {
         "lang": "en",
-        "words": [
-            {
-                "word": "slug",
-                "tags": [
+        "words": {
+            "slug": [
                     "action",
                     "artifact",
                     "device",
                     "event",
                     "object"
-                ]
-            }
+                ]            
             // ...
-        ]
+        }
     }
 }
 ```
@@ -310,15 +307,15 @@ The library supports loading dictionaries from text-based structured files with 
 noun:
     lang: en
     words:
-        - word: slug
-          tags:
-            - action
-            - artifact
-            - device
-            - event
-            - object
+      slug:
+        - action
+        - artifact
+        - device
+        - event
+        - object
         # ...
 ```
+
 </details>
 
 > [!IMPORTANT]

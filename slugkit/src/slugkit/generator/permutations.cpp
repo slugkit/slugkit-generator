@@ -13,7 +13,7 @@ constexpr std::uint32_t kFNV1aOffsetBasis = 0x811c9dc5;
 constexpr std::uint64_t kMulxMix64Constant = 0xff51afd7ed558ccdull;
 constexpr std::uint64_t kMulxMix64Constant2 = 0xc4ceb9fe1a85ec53ull;
 
-std::uint32_t FeistelRound(std::uint32_t value, std::uint32_t key, std::uint32_t half_bits) {
+auto FeistelRound(std::uint32_t value, std::uint32_t key, std::uint32_t half_bits) -> std::uint32_t {
     std::uint64_t x = static_cast<std::uint64_t>(value) ^ key;
     x ^= (x >> 33);
     x *= kMulxMix64Constant;
@@ -23,7 +23,7 @@ std::uint32_t FeistelRound(std::uint32_t value, std::uint32_t key, std::uint32_t
     return static_cast<std::uint32_t>(x);
 }
 
-std::uint64_t LCGPermute(std::uint64_t max_value, std::uint32_t hash, std::uint64_t sequence) {
+auto LCGPermute(std::uint64_t max_value, std::uint32_t hash, std::uint64_t sequence) -> std::uint64_t {
     sequence = sequence % max_value;
     std::uint64_t multiplier = hash | 1;  // ensure multiplier is odd
     while (std::gcd(multiplier, max_value) != 1) {
@@ -33,11 +33,11 @@ std::uint64_t LCGPermute(std::uint64_t max_value, std::uint32_t hash, std::uint6
     return (multiplier * sequence + increment) % max_value;
 }
 
-std::uint64_t
-PermuteWithHalfBits(std::uint32_t hash, std::uint32_t half_bits, std::uint64_t sequence, std::uint32_t rounds) {
+auto PermuteWithHalfBits(std::uint32_t hash, std::uint32_t half_bits, std::uint64_t sequence, std::uint32_t rounds)
+    -> std::uint64_t {
     std::uint64_t mask = (1ull << half_bits) - 1;
-    std::uint32_t l = static_cast<std::uint32_t>(sequence >> half_bits);
-    std::uint32_t r = static_cast<std::uint32_t>(sequence) & mask;
+    auto l = static_cast<std::uint32_t>(sequence >> half_bits);
+    auto r = static_cast<std::uint32_t>(sequence) & mask;
 
     for (std::uint32_t i = 0; i < rounds; ++i) {
         auto new_l = r;
@@ -50,7 +50,7 @@ PermuteWithHalfBits(std::uint32_t hash, std::uint32_t half_bits, std::uint64_t s
 
 }  // namespace
 
-std::uint32_t FNV1aHash(std::string_view str) {
+auto FNV1aHash(std::string_view str) -> std::uint32_t {
     std::uint32_t hash = kFNV1aOffsetBasis;
     for (char c : str) {
         hash ^= static_cast<std::uint8_t>(c);
@@ -59,7 +59,7 @@ std::uint32_t FNV1aHash(std::string_view str) {
     return hash;
 }
 
-Permutation GeneratePermutation(std::uint32_t seed_value, std::size_t size, std::size_t limit) {
+auto GeneratePermutation(std::uint32_t seed_value, std::size_t size, std::size_t limit) -> Permutation {
     Permutation permutation(size);
     for (std::size_t i = 0; i < size; ++i) {
         permutation[i] = i;
@@ -80,7 +80,7 @@ Permutation GeneratePermutation(std::uint32_t seed_value, std::size_t size, std:
     return Permutation{permutation.begin(), permutation.begin() + limit};
 }
 
-Permutation GeneratePermutation(std::string_view seed, std::size_t size, std::size_t limit) {
+auto GeneratePermutation(std::string_view seed, std::size_t size, std::size_t limit) -> Permutation {
     auto seed_value = FNV1aHash(seed);
     return GeneratePermutation(seed_value, size, limit);
 }
@@ -88,8 +88,8 @@ Permutation GeneratePermutation(std::string_view seed, std::size_t size, std::si
 //-------------------------------------------------------------
 // Permute with a power of two max value and a string seed
 //-------------------------------------------------------------
-std::uint64_t
-PermutePowerOf2(std::uint64_t max_value, std::string_view seed, std::uint64_t sequence, std::uint32_t rounds) {
+auto PermutePowerOf2(std::uint64_t max_value, std::string_view seed, std::uint64_t sequence, std::uint32_t rounds)
+    -> std::uint64_t {
     std::uint32_t hash = FNV1aHash(seed);
     return PermutePowerOf2(max_value, hash, sequence, rounds);
 }
@@ -97,8 +97,8 @@ PermutePowerOf2(std::uint64_t max_value, std::string_view seed, std::uint64_t se
 //-------------------------------------------------------------
 // Permute with a power of two max value and a uint32_t seed
 //-------------------------------------------------------------
-std::uint64_t
-PermutePowerOf2(std::uint64_t max_value, std::uint32_t hash, std::uint64_t sequence, std::uint32_t rounds) {
+auto PermutePowerOf2(std::uint64_t max_value, std::uint32_t hash, std::uint64_t sequence, std::uint32_t rounds)
+    -> std::uint64_t {
     if (max_value == 0) {
         return PermutePowerOf2(hash, sequence, rounds);
     }
@@ -115,7 +115,7 @@ PermutePowerOf2(std::uint64_t max_value, std::uint32_t hash, std::uint64_t seque
 //-------------------------------------------------------------
 // Permute with 2^64 max value and a string seed
 //-------------------------------------------------------------
-std::uint64_t PermutePowerOf2(std::string_view seed, std::uint64_t sequence, std::uint32_t rounds) {
+auto PermutePowerOf2(std::string_view seed, std::uint64_t sequence, std::uint32_t rounds) -> std::uint64_t {
     std::uint32_t hash = FNV1aHash(seed);
     return PermuteWithHalfBits(hash, 32, sequence, rounds);
 }
@@ -123,14 +123,15 @@ std::uint64_t PermutePowerOf2(std::string_view seed, std::uint64_t sequence, std
 //-------------------------------------------------------------
 // Permute with 2^64 max value and a uint32_t seed
 //-------------------------------------------------------------
-std::uint64_t PermutePowerOf2(std::uint32_t hash, std::uint64_t sequence, std::uint32_t rounds) {
+auto PermutePowerOf2(std::uint32_t hash, std::uint64_t sequence, std::uint32_t rounds) -> std::uint64_t {
     return PermuteWithHalfBits(hash, 32, sequence, rounds);
 }
 
 //-------------------------------------------------------------
 // Permute with an arbitrary max value and a string seed
 //-------------------------------------------------------------
-std::uint64_t Permute(std::uint64_t max_value, std::string_view seed, std::uint64_t sequence, std::uint32_t rounds) {
+auto Permute(std::uint64_t max_value, std::string_view seed, std::uint64_t sequence, std::uint32_t rounds)
+    -> std::uint64_t {
     std::uint32_t hash = FNV1aHash(seed);
     return Permute(max_value, hash, sequence, rounds);
 }
@@ -138,7 +139,8 @@ std::uint64_t Permute(std::uint64_t max_value, std::string_view seed, std::uint6
 //-------------------------------------------------------------
 // Permute with an arbitrary max value and a uint32_t seed
 //-------------------------------------------------------------
-std::uint64_t Permute(std::uint64_t max_value, std::uint32_t hash, std::uint64_t sequence, std::uint32_t rounds) {
+auto Permute(std::uint64_t max_value, std::uint32_t hash, std::uint64_t sequence, std::uint32_t rounds)
+    -> std::uint64_t {
     if (max_value == 0) {
         return PermutePowerOf2(hash, sequence, rounds);
     }

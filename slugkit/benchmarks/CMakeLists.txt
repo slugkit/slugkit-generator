@@ -4,6 +4,7 @@ set(${PROJECT_NAME}_BENCH_SRC
     ${BENCH_SRC_ROOT}/parse_benchmark.cpp
     ${BENCH_SRC_ROOT}/format_pattern_benchmark.cpp
     ${BENCH_SRC_ROOT}/generate_numbers_benchmarks.cpp
+    ${BENCH_SRC_ROOT}/generate_from_dictionary_benchmark.cpp
 )
 add_executable(slugkit-benchmark ${${PROJECT_NAME}_BENCH_SRC} main.cpp)
 target_include_directories(

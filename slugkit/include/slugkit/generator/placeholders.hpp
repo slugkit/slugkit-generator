@@ -77,9 +77,8 @@ private:
 /// @brief Check if a word matches a selector.
 /// @param selector The selector to check.
 /// @param word The word to check.
-/// @param skip_dictionary_check If true, the dictionary check is skipped (kind and language).
 /// @return True if the word matches the selector, false otherwise.
-auto Matches(const Selector& selector, const Word& word, bool skip_dictionary_check = false) -> bool;
+auto Matches(const Selector& selector, const Word& word) -> bool;
 
 /// @brief The base of the number generator.
 /// @note The base is used to calculate the capacity of the number generator.

@@ -8,18 +8,36 @@ namespace slugkit::generator::benchmarks {
 
 using namespace literals;
 
-void GenerateHexNumbers16(benchmark::State& state) {
-    auto generator = NumberSubstitutionGenerator{"number:16x"_number_gen};
+void GenerateHexNumbers(benchmark::State& state) {
+    auto length = static_cast<std::uint8_t>(state.range(0));
+    auto number_gen = NumberGen{length, NumberBase::kHex};
+    auto generator = NumberSubstitutionGenerator{number_gen};
     auto seed_hash = PatternGenerator::SeedHash("test");
+    state.SetLabel(number_gen.ToString());
     for ([[maybe_unused]] auto _ : state) {
         auto result = generator.Generate(seed_hash, 0);
         benchmark::DoNotOptimize(result);
     }
 }
 
-void GenerateDecNumbers18(benchmark::State& state) {
-    auto generator = NumberSubstitutionGenerator{"number:18d"_number_gen};
+void GenerateHexNumbersUppercase(benchmark::State& state) {
+    auto length = static_cast<std::uint8_t>(state.range(0));
+    auto number_gen = NumberGen{length, NumberBase::kHexUpper};
+    auto generator = NumberSubstitutionGenerator{number_gen};
     auto seed_hash = PatternGenerator::SeedHash("test");
+    state.SetLabel(number_gen.ToString());
+    for ([[maybe_unused]] auto _ : state) {
+        auto result = generator.Generate(seed_hash, 0);
+        benchmark::DoNotOptimize(result);
+    }
+}
+
+void GenerateDecNumbers(benchmark::State& state) {
+    auto length = static_cast<std::uint8_t>(state.range(0));
+    auto number_gen = NumberGen{length, NumberBase::kDec};
+    auto generator = NumberSubstitutionGenerator{number_gen};
+    auto seed_hash = PatternGenerator::SeedHash("test");
+    state.SetLabel(number_gen.ToString());
     for ([[maybe_unused]] auto _ : state) {
         auto result = generator.Generate(seed_hash, 0);
         benchmark::DoNotOptimize(result);
@@ -29,8 +47,11 @@ void GenerateDecNumbers18(benchmark::State& state) {
 // 15 is the maximum number of digits for roman numerals
 void GenerateRomanNumbersUppercase(benchmark::State& state) {
     userver::engine::RunStandalone([&] {
-        auto generator = RomanSubstitutionGenerator{"number:15R"_number_gen};
+        auto length = static_cast<std::uint8_t>(state.range(0));
+        auto number_gen = NumberGen{length, NumberBase::kRoman};
+        auto generator = RomanSubstitutionGenerator{number_gen};
         auto seed_hash = PatternGenerator::SeedHash("test");
+        state.SetLabel(number_gen.ToString());
         for ([[maybe_unused]] auto _ : state) {
             auto result = generator.Generate(seed_hash, 0);
             benchmark::DoNotOptimize(result);
@@ -40,8 +61,11 @@ void GenerateRomanNumbersUppercase(benchmark::State& state) {
 
 void GenerateRomanNumbersLowercase(benchmark::State& state) {
     userver::engine::RunStandalone([&] {
-        auto generator = RomanSubstitutionGenerator{"number:15r"_number_gen};
+        auto length = static_cast<std::uint8_t>(state.range(0));
+        auto number_gen = NumberGen{length, NumberBase::kRomanLower};
+        auto generator = RomanSubstitutionGenerator{number_gen};
         auto seed_hash = PatternGenerator::SeedHash("test");
+        state.SetLabel(number_gen.ToString());
         for ([[maybe_unused]] auto _ : state) {
             auto result = generator.Generate(seed_hash, 0);
             benchmark::DoNotOptimize(result);
@@ -49,9 +73,10 @@ void GenerateRomanNumbersLowercase(benchmark::State& state) {
     });
 }
 
-BENCHMARK(GenerateHexNumbers16);
-BENCHMARK(GenerateDecNumbers18);
-BENCHMARK(GenerateRomanNumbersUppercase);
-BENCHMARK(GenerateRomanNumbersLowercase);
+BENCHMARK(GenerateHexNumbers)->RangeMultiplier(2)->Range(1, 16);
+BENCHMARK(GenerateHexNumbersUppercase)->RangeMultiplier(2)->Range(1, 16);
+BENCHMARK(GenerateDecNumbers)->RangeMultiplier(2)->Range(1, 18);
+BENCHMARK(GenerateRomanNumbersUppercase)->RangeMultiplier(2)->Range(1, 15);
+BENCHMARK(GenerateRomanNumbersLowercase)->RangeMultiplier(2)->Range(1, 15);
 
 }  // namespace slugkit::generator::benchmarks

@@ -12,7 +12,7 @@ FilteredDictionary::FilteredDictionary(FilteredDictionary::WordContainerPtr word
     , words_{}
     , max_length_{0} {
     for (auto it = dictionary_->begin(); it != dictionary_->end(); ++it) {
-        if (Matches(selector, *it, true)) {
+        if (Matches(selector, *it)) {
             words_.push_back(it);
             max_length_ = std::max(max_length_, it->word.size());
         }
