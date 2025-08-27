@@ -339,6 +339,8 @@ The repository includes a complete [example application](slugkit/examples/yaml-d
 - **Bulk operations**: Improved per-slug performance at scale
 - **Memory efficient**: Optimised dictionary loading and caching
 
+[Benchmark results August 27, 2025](https://dev.slugkit.dev/articles/governing-faculty-mli)
+
 <details>
 <summary>Benchmark results</summary>
 
@@ -466,6 +468,8 @@ Benchmarks were run in a arm64 ubuntu docker container on a MacBook M4 Max with 
 
 ### [Filter Dictionaries](slugkit/benchmarks/filter_dictionary_benchmarks.cpp)
 
+Those are bad, but optimisations are quite obvious.
+
 | Benchmark                                     | Time  |           CPU | Iterations |     |
 | ----                                          | ---   | ---           | ---        | --- |
 | FilterDictionary/0 | 237672 ns | 237658 ns | 2964 | word |
@@ -481,6 +485,8 @@ Benchmarks were run in a arm64 ubuntu docker container on a MacBook M4 Max with 
 
 ### [Estimate Pattern Capacity](slugkit/benchmarks/generate_slugs_benchmarks.cpp)
 
+Those are bad, but they are heavily dependent on dictionary filtering. Also additional optimisations are available.
+
 | Benchmark                                     | Time  |           CPU | Iterations |     |
 | ----                                          | ---   | ---           | ---        | --- |
 | CalculateSettings/0 | 73940 ns | 73767 ns | 9488 | {verb}-{adverb} |
@@ -489,7 +495,20 @@ Benchmarks were run in a arm64 ubuntu docker container on a MacBook M4 Max with 
 | CalculateSettings/3 | 301136 ns | 301135 ns | 2311 | {adverb}-{noun}-{verb}-{adverb}-{noun}-{verb} |
 | CalculateSettings/4 | 302194 ns | 302193 ns | 2306 | {adverb}-{noun}-{verb}-{adverb}-{noun}-{verb}-{adverb}-{noun}-{verb} |
 
+### [Generate Slugs (Internal)](slugkit/benchmarks/generate_slugs_benchmarks.cpp)
+
+| Benchmark                                     | Time  |           CPU | Iterations |     |
+| ----                                          | ---   | ---           | ---        | --- |
+| GenerateSlugInternal/0 | 455 ns | 455 ns | 1531790 | {verb}-{adverb} |
+| GenerateSlugInternal/1 | 677 ns | 677 ns | 1044044 | {adverb}-{noun}-{verb} |
+| GenerateSlugInternal/2 | 717 ns | 717 ns | 973663 | {adverb}-{noun}-{verb}-{number:4x} |
+| GenerateSlugInternal/3 | 1315 ns | 1315 ns | 533727 | {adverb}-{noun}-{verb}-{adverb}-{noun}-{verb} |
+| GenerateSlugInternal/4 | 1990 ns | 1990 ns | 351967 | {adverb}-{noun}-{verb}-{adverb}-{noun}-{verb}-{adverb}-{noun}-{verb} |
+
 ### [Generate Slugs](slugkit/benchmarks/generate_slugs_benchmarks.cpp)
+
+Those are bad, but they are dependent on dictionary filtering. Note the difference with internal generation.
+Additional optimisations are available.
 
 | Benchmark                                     | Time  |           CPU | Iterations |     |
 | ----                                          | ---   | ---           | ---        | --- |

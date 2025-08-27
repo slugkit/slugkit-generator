@@ -3,6 +3,7 @@
 #include "helpers.hpp"
 
 #include <slugkit/generator/generator.hpp>
+#include <slugkit/generator/pattern_generator.hpp>
 #include <slugkit/generator/permutations.hpp>
 
 #include <userver/engine/run_standalone.hpp>
@@ -42,6 +43,21 @@ void CalculateSettings(benchmark::State& state) {
     });
 }
 
+void GenerateSlugInternal(benchmark::State& state) {
+    userver::engine::RunStandalone([&] {
+        const auto dict_size = state.range(0);
+        auto pattern_str = kPatterns[state.range(0)];
+        auto pattern = std::make_shared<Pattern>(pattern_str);
+        auto generator = PatternGenerator{kDictionaries, pattern};
+        state.SetLabel(pattern_str);
+        auto sequence_number = 0;
+        for ([[maybe_unused]] auto _ : state) {
+            auto result = generator(kSeed, sequence_number++ % dict_size);
+            benchmark::DoNotOptimize(result);
+        }
+    });
+}
+
 void GenerateSlugs(benchmark::State& state) {
     userver::engine::RunStandalone([&] {
         const auto dict_size = state.range(0);
@@ -59,6 +75,7 @@ void GenerateSlugs(benchmark::State& state) {
 }
 
 BENCHMARK(CalculateSettings)->DenseRange(0, kPatterns.size() - 1);
+BENCHMARK(GenerateSlugInternal)->DenseRange(0, kPatterns.size() - 1);
 BENCHMARK(GenerateSlugs)->DenseRange(0, kPatterns.size() - 1);
 
 }  // namespace slugkit::generator::benchmarks
