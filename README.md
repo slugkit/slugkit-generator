@@ -342,7 +342,49 @@ The repository includes a complete [example application](slugkit/examples/yaml-d
 - **Bulk operations**: Improved per-slug performance at scale
 - **Memory efficient**: Optimised dictionary loading and caching
 
-Detailed benchmarks will be added in future releases.
+<details>
+<summary>Benchmark results</summary>
+
+Benchmarks were run in a arm64 ubuntu docker container on a MacBook M4 Max with 48Gb RAM.
+
+### [Generating Permutations](slugkit/benchmarks/permute_benchmark.cpp)
+
+| Benchmark       | Time | CPU | Iterations |
+| --------------  | ---- | --- | ---------- |
+| PermutePowerOf2 | 3.15 ns | 3.15 ns | 224086588 |
+| Permute         | 10.4 ns | 10.4 ns | 67255957 |
+
+### [Parsing Patterns](slugkit/benchmarks/parse_benchmark.cpp)
+
+| Benchmark                     | Time      | CPU       | Iterations |
+| --------------                | ----      | ---       | ---------- |
+| ParseNumberPlaceholder        | 44.0 ns   | 44.0 ns   | 15580770   |
+| ParseSpecialFixedPlaceholder  | 45.0 ns   | 45.0 ns   | 15612219   |
+| ParseSpecialRangePlaceholder  | 57.4 ns   | 57.4 ns   | 11600223   |
+| ParseSelector                 | 55.4 ns   | 55.3 ns   | 12635322   |
+| ParseSelectorUppercase        | 55.5 ns   | 55.5 ns   | 12597934   |
+| ParseSelectorTitlecase        | 55.6 ns   | 55.6 ns   | 12492230   |
+| ParseSelectorMixedcase        | 55.6 ns   | 55.6 ns   | 12249192   |
+| ParseSelectorWithTag          | 92.8 ns   | 92.8 ns   | 7559739    |
+| ParseSelectorWithTags         | 129 ns    | 129 ns    | 5399839    |
+| ParseSelectorWithSize         | 80.2 ns   | 80.2 ns   | 8730053    |
+| ParseSelectorWithSizeAndTags  | 151 ns    | 151 ns    | 4590447    |
+| ParsePattern2Components       | 109 ns    | 109 ns    | 6336557    |
+| ParsePattern3Components       | 169 ns    | 169 ns    | 4177438    |
+| ParsePattern4Components       | 206 ns    | 205 ns    | 3296737    |
+| ParseDemoPattern              | 206 ns    | 206 ns    | 3362208    |
+
+### [Formatting Pattterns](slugkit/benchmarks/format_pattern_benchmark.cpp)
+
+| Benchmark                     | Time      | CPU       | Iterations |
+| --------------                | ----      | ---       | ---------- |
+| FormatPattern1Component       | 17.7 ns   | 17.7 ns   | 39286446   |
+| FormatPattern2Components      | 24.7 ns   | 24.6 ns   | 28194968   |
+| FormatPattern3Components      | 32.9 ns   | 32.9 ns   | 21244589   |
+| FormatPattern4Components      | 39.8 ns   | 39.8 ns   | 17477136   |
+| FormatPattern10Components     | 80.6 ns   | 80.6 ns   | 8659990    |
+
+</details>
 
 ## Building
 
