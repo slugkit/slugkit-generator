@@ -14,17 +14,16 @@ FilteredDictionary::FilteredDictionary(
     std::size_t max_length
 )
     : dictionary_{std::move(words)}
-    , selector_{selector}
+    , case_type_{selector.GetCase()}
     , words_{std::move(storage)}
     , max_length_{max_length} {
 }
 
 std::string FilteredDictionary::operator[](std::size_t index) const {
     const auto& word = *words_[index];
-    const auto& case_type = selector_.GetCase();
     // TODO: get locale based on language
     const auto locale = utils::text::kEnUsLocale;
-    switch (case_type) {
+    switch (case_type_) {
         case CaseType::kNone:
             return word.word;
         case CaseType::kLower:

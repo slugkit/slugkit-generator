@@ -30,12 +30,8 @@ public:
 
     std::string operator[](std::size_t index) const;
 
-    const Selector& GetSelector() const {
-        return selector_;
-    }
-
     CaseType GetCase() const {
-        return selector_.GetCase();
+        return case_type_;
     }
 
     const Word& GetWord(std::size_t index) const {
@@ -58,7 +54,7 @@ private:
     // we hold the pointer to the original dictionary to avoid copying the words
     // and iterators not to be invalidated
     WordContainerPtr dictionary_;
-    Selector selector_;
+    CaseType case_type_;
     StorageType words_;
     std::size_t max_length_;
 };
