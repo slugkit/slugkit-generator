@@ -3,8 +3,6 @@
 #include <slugkit/generator/exceptions.hpp>
 #include <slugkit/generator/pattern_generator.hpp>
 
-#include <userver/logging/log.hpp>
-
 #include <random>
 
 namespace slugkit::generator {

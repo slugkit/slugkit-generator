@@ -1,8 +1,9 @@
 #pragma once
 
 #include <slugkit/generator/pattern.hpp>
-
 #include <slugkit/generator/types.hpp>
+
+#include <userver/utils/fast_pimpl.hpp>
 
 #include <iosfwd>
 #include <map>
@@ -11,8 +12,6 @@
 #include <vector>
 
 namespace slugkit::generator {
-
-class Dictionary;
 
 /// @brief A filtered dictionary is a dictionary that contains only the
 /// words that match the selector.
@@ -27,7 +26,7 @@ public:
     using StorageType = std::vector<Iterator>;
 
 public:
-    FilteredDictionary(WordContainerPtr words, const Selector& selector);
+    FilteredDictionary(WordContainerPtr words, const Selector& selector, StorageType&& storage, std::size_t max_length);
 
     std::string operator[](std::size_t index) const;
 
@@ -75,39 +74,24 @@ class Dictionary {
     using WordContainerPtr = FilteredDictionary::WordContainerPtr;
 
 public:
-    Dictionary(std::string_view kind, std::string_view language, std::vector<Word> words)
-        : kind_(kind)
-        , language_(language)
-        , words_(std::make_shared<WordContainer>(std::move(words))) {
-    }
+    Dictionary(std::string_view kind, std::string_view language, std::vector<Word> words);
 
-    Dictionary(const Dictionary& other) = default;
-    Dictionary(Dictionary&& other) = default;
-    Dictionary& operator=(const Dictionary& other) = default;
-    Dictionary& operator=(Dictionary&& other) = default;
+    Dictionary(const Dictionary& other) noexcept;
+    Dictionary(Dictionary&& other) noexcept;
+    Dictionary& operator=(const Dictionary& other) noexcept;
+    Dictionary& operator=(Dictionary&& other) noexcept;
 
-    const std::string& GetKind() const {
-        return kind_;
-    }
-    const std::string& GetLanguage() const {
-        return language_;
-    }
+    ~Dictionary();
 
-    const Word& GetWord(std::size_t index) const {
-        return (*words_)[index];
-    }
+    const std::string& GetKind() const;
+    const std::string& GetLanguage() const;
+    const Word& GetWord(std::size_t index) const;
 
-    const std::string& operator[](std::size_t index) const {
-        return (*words_)[index].word;
-    }
+    const std::string& operator[](std::size_t index) const;
 
-    std::size_t size() const {
-        return words_->size();
-    }
+    std::size_t size() const;
 
-    bool empty() const {
-        return words_->empty();
-    }
+    bool empty() const;
 
     /// @brief Filters the dictionary by the selector.
     /// Will return an empty dictionary if the selector is empty or if the selector's kind is not the same as the
@@ -117,10 +101,11 @@ public:
     FilteredDictionaryConstPtr Filter(const Selector& selector) const;
 
 private:
-    std::string kind_;
-    std::string language_;
-    WordContainerPtr words_;
-    // TODO Build tag indexes for fast filtering
+    static constexpr auto kPimplSize = 200UL;
+    static constexpr auto kPimplAlignment = 8UL;
+
+    struct Impl;
+    userver::utils::FastPimpl<Impl, kPimplSize, kPimplAlignment> pimpl_;
 };
 
 /// @brief A set of dictionaries that can be used to generate human-readable IDs.

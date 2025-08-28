@@ -1,6 +1,6 @@
 #include <benchmark/benchmark.h>
 
-#include "helpers.hpp"
+#include <slugkit/test_utils/helpers.hpp>
 
 #include <slugkit/generator/generator.hpp>
 #include <slugkit/generator/pattern_generator.hpp>
@@ -20,10 +20,10 @@ const std::vector<std::string> kPatterns = {
 };
 
 const auto kDictionaries = GenerateSet({
-    {.name = "adjective", .language = "en", .size = 30'000, .tags = {}},
-    {.name = "adverb", .language = "en", .size = 10'000, .tags = {}},
-    {.name = "noun", .language = "en", .size = 100'000, .tags = {}},
-    {.name = "verb", .language = "en", .size = 20'000, .tags = {}},
+    {.name = "adjective", .language = "en", .size = 30'000, .tags = {}, .min_length = 0, .max_length = 0},
+    {.name = "adverb", .language = "en", .size = 10'000, .tags = {}, .min_length = 0, .max_length = 0},
+    {.name = "noun", .language = "en", .size = 100'000, .tags = {}, .min_length = 0, .max_length = 0},
+    {.name = "verb", .language = "en", .size = 20'000, .tags = {}, .min_length = 0, .max_length = 0},
 });
 
 constexpr auto kSeed = "test";

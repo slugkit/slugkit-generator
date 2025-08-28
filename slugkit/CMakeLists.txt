@@ -31,6 +31,7 @@ set(${PROJECT_NAME}_SRC
     ${${PROJECT_NAME}_SRC_ROOT}/slugkit/generator/pattern.cpp
     ${${PROJECT_NAME}_SRC_ROOT}/slugkit/generator/pattern_generator.cpp
     ${${PROJECT_NAME}_SRC_ROOT}/slugkit/generator/generator.cpp
+    ${${PROJECT_NAME}_SRC_ROOT}/slugkit/generator/detail/indexes.cpp
 )
 
 add_library(${PROJECT_NAME} STATIC
@@ -50,6 +51,26 @@ target_include_directories(
     ${PROJECT_NAME}
     PRIVATE
         ${${PROJECT_NAME}_SRC_ROOT}
+)
+
+set(${PROJECT_NAME}_TEST_UTILS_SRC
+    ${${PROJECT_NAME}_SRC_ROOT}/slugkit/test_utils/helpers.cpp
+    ${${PROJECT_NAME}_SRC_ROOT}/slugkit/test_utils/helpers.hpp
+)
+
+add_library(${PROJECT_NAME}-test-utils STATIC
+    ${${PROJECT_NAME}_TEST_UTILS_SRC}
+)
+target_include_directories(
+    ${PROJECT_NAME}-test-utils
+    PUBLIC
+        ${${PROJECT_NAME}_INCLUDE_ROOT}
+        ${${PROJECT_NAME}_SRC_ROOT}
+)
+target_link_libraries(
+    ${PROJECT_NAME}-test-utils
+    PUBLIC
+        ${PROJECT_NAME}
 )
 
 add_subdirectory(tests)
