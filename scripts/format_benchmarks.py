@@ -279,7 +279,7 @@ def parse_results(file_name: str) -> str:
             if group_name is None:
                 print(f"Unknown benchmark: {benchmark_name}")
                 group_name = "Other"
-            print(f"Benchmark: {benchmark_name} -> {group_name}")
+            # print(f"Benchmark: {benchmark_name} -> {group_name}")
             if group_name not in groups:                
                 groups[group_name] = BenchmarkGroup(group_name, [])
             groups[group_name].benchmarks.append(BenchmarkResult(benchmark_name, time, cpu, iterations, details))

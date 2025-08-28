@@ -1,6 +1,7 @@
 #include <slugkit/generator/dictionary.hpp>
 
 #include <slugkit/generator/constants.hpp>
+#include <slugkit/generator/detail/caches.hpp>
 #include <slugkit/generator/detail/indexes.hpp>
 #include <slugkit/utils/text.hpp>
 
@@ -44,27 +45,33 @@ std::string FilteredDictionary::operator[](std::size_t index) const {
 //-----------------------------------------------------------------------------
 struct Dictionary::Impl {
     using Iterator = FilteredDictionary::Iterator;
+    using NoCache = detail::FilteredDictionaryNoCache;
+    using Cache = detail::FilteredDictionaryCache;
 
     std::string kind_;
     std::string language_;
     WordContainerPtr words_;
-    detail::CombinedIndex combined_index_;
+    std::shared_ptr<detail::FilteredDictionaryCacheBase> cache_;
 
-    Impl(std::string_view kind, std::string_view language, std::vector<Word>&& words)
+    Impl(std::string_view kind, std::string_view language, std::vector<Word>&& words, bool use_cache)
         : kind_{kind}
         , language_{language}
         , words_{std::make_shared<WordContainer>(std::move(words))}
-        , combined_index_{*words_} {
+        , cache_{} {
+        if (use_cache) {
+            cache_ = std::make_shared<Cache>(words_);
+        } else {
+            cache_ = std::make_shared<NoCache>(words_);
+        }
     }
 
     auto Filter(const Selector& selector) const -> FilteredDictionaryConstPtr {
-        auto result = combined_index_.Query(selector);
-        return std::make_shared<const FilteredDictionary>(words_, selector, std::move(result.words), result.max_length);
+        return cache_->Get(selector);
     }
 };
 
-Dictionary::Dictionary(std::string_view kind, std::string_view language, std::vector<Word> words)
-    : pimpl_{kind, language, std::move(words)} {
+Dictionary::Dictionary(std::string_view kind, std::string_view language, std::vector<Word> words, bool use_cache)
+    : pimpl_{kind, language, std::move(words), use_cache} {
 }
 
 Dictionary::Dictionary(const Dictionary& other) noexcept = default;

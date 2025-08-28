@@ -7,7 +7,7 @@ A high-performance C++ library for generating aesthetically pleasing, determinis
 - **Pattern-Based Generation**: Flexible template system supporting dictionary selectors, number generators, and special characters
 - **Dictionary Integration**: Load and filter word dictionaries with language and tag-based constraints
 - **Deterministic Output**: Seed-based generation ensures reproducible results
-- **High Performance**: Optimised C++ implementation with sub-millisecond generation times
+- **High Performance**: Optimised C++ implementation with *about*-millisecond generation times (25ns - 3µs, depending on pattern complexity)
 - **Minimal Dependencies**: Core library depends only on `userver::core` for text utilities and strong typedefs
 - **Optional Serialisation**: JSON/YAML support available as separate headers
 
@@ -339,8 +339,9 @@ The repository includes a complete [example application](slugkit/examples/yaml-d
 - **Bulk operations**: Improved per-slug performance at scale
 - **Memory efficient**: Optimised dictionary loading and caching
 
-[Benchmark results August 28, 2025](https://dev.slugkit.dev/articles/axiomatic-tutor-mcx)
-[Benchmark results August 27, 2025](https://dev.slugkit.dev/articles/governing-faculty-mli)
+* [Benchmark results August 28, 2025 (after implementing caches)](https://dev.slugkit.dev/articles/smitten-mileage-mdx)
+* [Benchmark results August 28, 2025 (after adding indexes)](https://dev.slugkit.dev/articles/axiomatic-tutor-mcx)
+* [Benchmark results August 27, 2025](https://dev.slugkit.dev/articles/governing-faculty-mli)
 
 ## Building
 
