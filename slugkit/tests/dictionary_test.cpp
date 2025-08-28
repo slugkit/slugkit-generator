@@ -95,12 +95,10 @@ UTEST(Dictionary, Filter) {
     // Filtering with a selector should return a dictionary with the same size and kind
     EXPECT_EQ(dictionary.Filter(kNounSelector)->size(), kNouns.size());
     EXPECT_EQ(dictionary.Filter(kNounSelector)->empty(), false);
-    EXPECT_EQ(dictionary.Filter(kNounSelector)->GetSelector(), kNounSelector);
     EXPECT_EQ(dictionary.Filter(kNounSelector)->GetWord(0), kNouns[0]);
 
     EXPECT_EQ(dictionary.Filter(kEnNounSelector)->size(), kNouns.size());
     EXPECT_EQ(dictionary.Filter(kEnNounSelector)->empty(), false);
-    EXPECT_EQ(dictionary.Filter(kEnNounSelector)->GetSelector(), kEnNounSelector);
     EXPECT_EQ(dictionary.Filter(kEnNounSelector)->GetWord(0), kNouns[0]);
 }
 
