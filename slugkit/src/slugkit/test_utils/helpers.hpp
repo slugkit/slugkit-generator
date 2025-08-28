@@ -14,7 +14,11 @@ struct DictionarySpecs {
     std::string language;
     std::int64_t size;
     std::vector<TagProbability> tags;
+    std::size_t min_length;
+    std::size_t max_length;
 };
+
+auto GenerateWords(const DictionarySpecs& specs) -> std::vector<Word>;
 
 auto FillDictionary(const DictionarySpecs& specs) -> Dictionary;
 

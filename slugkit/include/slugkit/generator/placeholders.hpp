@@ -57,6 +57,27 @@ struct Selector {
         return size_limit.has_value();
     }
 
+    [[nodiscard]] auto HasTags() const -> bool {
+        return !include_tags.empty() || !exclude_tags.empty();
+    }
+
+    [[nodiscard]] auto NoFilter() const -> bool {
+        return include_tags.empty() && exclude_tags.empty() && !HasSizeLimit();
+    }
+
+    /// @brief Check if the selector has mutually exclusive tags.
+    /// If there is a tag in the exclude list that is also in the include list,
+    /// the tags are mutually exclusive and the selector is invalid.
+    [[nodiscard]] auto MutuallyExclusiveTags() const -> std::vector<std::string_view> {
+        std::vector<std::string_view> result;
+        for (const auto& tag : exclude_tags) {
+            if (include_tags.contains(tag)) {
+                result.push_back(tag);
+            }
+        }
+        return result;
+    }
+
     [[nodiscard]] auto LimitsMaxLength() const -> bool;
 
     [[nodiscard]] auto GetMaxLength() const -> std::optional<std::size_t>;

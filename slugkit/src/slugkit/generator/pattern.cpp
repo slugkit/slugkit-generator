@@ -739,6 +739,12 @@ struct PatternParser {
         Selector result;
         result.kind = kind.value;
         ParseSelectorModifiers(result);
+        if (auto mutex_tags = result.MutuallyExclusiveTags(); !mutex_tags.empty()) {
+            auto mutex_tags_str = utils::text::Join(mutex_tags.begin(), mutex_tags.end(), ", ");
+            throw PatternSyntaxError(fmt::format(
+                "Pattern parse error: mutually exclusive tags at column {}: {}", kind.position, mutex_tags_str
+            ));
+        }
         return result;
     }
 

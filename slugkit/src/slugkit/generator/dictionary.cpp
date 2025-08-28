@@ -1,22 +1,21 @@
 #include <slugkit/generator/dictionary.hpp>
 
 #include <slugkit/generator/constants.hpp>
+#include <slugkit/generator/detail/indexes.hpp>
 #include <slugkit/utils/text.hpp>
-// #include <iostream>
 
 namespace slugkit::generator {
 
-FilteredDictionary::FilteredDictionary(FilteredDictionary::WordContainerPtr words, const Selector& selector)
+FilteredDictionary::FilteredDictionary(
+    WordContainerPtr words,
+    const Selector& selector,
+    StorageType&& storage,
+    std::size_t max_length
+)
     : dictionary_{std::move(words)}
     , selector_{selector}
-    , words_{}
-    , max_length_{0} {
-    for (auto it = dictionary_->begin(); it != dictionary_->end(); ++it) {
-        if (Matches(selector, *it)) {
-            words_.push_back(it);
-            max_length_ = std::max(max_length_, it->word.size());
-        }
-    }
+    , words_{std::move(storage)}
+    , max_length_{max_length} {
 }
 
 std::string FilteredDictionary::operator[](std::size_t index) const {
@@ -40,18 +39,80 @@ std::string FilteredDictionary::operator[](std::size_t index) const {
     }
 }
 
-FilteredDictionaryConstPtr Dictionary::Filter(const Selector& selector) const {
-    auto kind = utils::text::ToLower(selector.kind, utils::text::kEnUsLocale);
-    if (kind != kind_) {
-        return {};
-    }
-    if (selector.language.has_value() && selector.language.value() != language_) {
-        return {};
+//-----------------------------------------------------------------------------
+// Dictionary
+//-----------------------------------------------------------------------------
+struct Dictionary::Impl {
+    using Iterator = FilteredDictionary::Iterator;
+
+    std::string kind_;
+    std::string language_;
+    WordContainerPtr words_;
+    detail::CombinedIndex combined_index_;
+
+    Impl(std::string_view kind, std::string_view language, std::vector<Word>&& words)
+        : kind_{kind}
+        , language_{language}
+        , words_{std::make_shared<WordContainer>(std::move(words))}
+        , combined_index_{*words_} {
     }
 
-    return std::make_shared<const FilteredDictionary>(words_, selector);
+    auto Filter(const Selector& selector) const -> FilteredDictionaryConstPtr {
+        auto result = combined_index_.Query(selector);
+        return std::make_shared<const FilteredDictionary>(words_, selector, std::move(result.words), result.max_length);
+    }
+};
+
+Dictionary::Dictionary(std::string_view kind, std::string_view language, std::vector<Word> words)
+    : pimpl_{kind, language, std::move(words)} {
 }
 
+Dictionary::Dictionary(const Dictionary& other) noexcept = default;
+Dictionary::Dictionary(Dictionary&& other) noexcept = default;
+Dictionary& Dictionary::operator=(const Dictionary& other) noexcept = default;
+Dictionary& Dictionary::operator=(Dictionary&& other) noexcept = default;
+
+Dictionary::~Dictionary() = default;
+
+auto Dictionary::GetKind() const -> const std::string& {
+    return pimpl_->kind_;
+}
+
+auto Dictionary::GetLanguage() const -> const std::string& {
+    return pimpl_->language_;
+}
+
+auto Dictionary::GetWord(std::size_t index) const -> const Word& {
+    return (*pimpl_->words_)[index];
+}
+
+auto Dictionary::operator[](std::size_t index) const -> const std::string& {
+    return (*pimpl_->words_)[index].word;
+}
+
+auto Dictionary::size() const -> std::size_t {
+    return pimpl_->words_->size();
+}
+
+auto Dictionary::empty() const -> bool {
+    return pimpl_->words_->empty();
+}
+
+auto Dictionary::Filter(const Selector& selector) const -> FilteredDictionaryConstPtr {
+    auto kind = utils::text::ToLower(selector.kind, utils::text::kEnUsLocale);
+    if (kind != pimpl_->kind_) {
+        return {};
+    }
+    if (selector.language.has_value() && selector.language.value() != pimpl_->language_) {
+        return {};
+    }
+
+    return pimpl_->Filter(selector);
+}
+
+//-----------------------------------------------------------------------------
+// DictionarySet
+//-----------------------------------------------------------------------------
 DictionarySet::DictionarySet(std::vector<Dictionary> dictionaries)
     : dictionaries_{} {
     for (auto& dictionary : dictionaries) {

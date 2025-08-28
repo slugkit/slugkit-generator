@@ -4,6 +4,7 @@ set(${PROJECT_NAME}_TEST_SRC
     ${TEST_SRC_ROOT}/roman_test.cpp
     ${TEST_SRC_ROOT}/pattern_test.cpp
     ${TEST_SRC_ROOT}/permutation_test.cpp
+    ${TEST_SRC_ROOT}/index_test.cpp
     ${TEST_SRC_ROOT}/dictionary_test.cpp
     ${TEST_SRC_ROOT}/generator_test.cpp
     ${TEST_SRC_ROOT}/mix_case_test.cpp

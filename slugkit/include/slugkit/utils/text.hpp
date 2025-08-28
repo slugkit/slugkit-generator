@@ -56,7 +56,7 @@ template <typename InputIterator>
 auto Join(InputIterator first, InputIterator last, std::string_view delimiter) -> std::string {
     std::string result;
     while (first != last) {
-        result += *first;
+        result += std::string(*first);
         ++first;
         if (first != last) {
             result += delimiter;
