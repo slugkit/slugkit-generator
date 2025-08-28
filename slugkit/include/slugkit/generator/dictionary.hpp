@@ -74,7 +74,7 @@ class Dictionary {
     using WordContainerPtr = FilteredDictionary::WordContainerPtr;
 
 public:
-    Dictionary(std::string_view kind, std::string_view language, std::vector<Word> words);
+    Dictionary(std::string_view kind, std::string_view language, std::vector<Word> words, bool use_cache = true);
 
     Dictionary(const Dictionary& other) noexcept;
     Dictionary(Dictionary&& other) noexcept;
@@ -101,7 +101,7 @@ public:
     FilteredDictionaryConstPtr Filter(const Selector& selector) const;
 
 private:
-    static constexpr auto kPimplSize = 200UL;
+    static constexpr auto kPimplSize = 216UL;
     static constexpr auto kPimplAlignment = 8UL;
 
     struct Impl;

@@ -28,7 +28,8 @@ const auto kWords = GenerateWords(
      .max_length = 20}
 );
 
-const auto kDictionary = Dictionary{"word", "en", std::move(kWords)};
+const auto kDictionaryNoCache = Dictionary{"word", "en", std::move(kWords), false};
+const auto kDictionaryWithCache = Dictionary{"word", "en", std::move(kWords), true};
 
 // clang-format off
 const std::vector<Selector> kSelectors = {
@@ -67,16 +68,23 @@ const std::vector<Selector> kSelectors = {
 
 }  // namespace
 
-void BuildDictionary(benchmark::State& state) {
+void BuildDictionaryNoCache(benchmark::State& state) {
     for (auto _ : state) {
-        auto dictionary = Dictionary{"word", "en", kWords};
+        auto dictionary = Dictionary{"word", "en", kWords, false};
         benchmark::DoNotOptimize(dictionary);
     }
 }
 
-void FilterDictionary(benchmark::State& state) {
+void BuildDictionaryWithCache(benchmark::State& state) {
+    for (auto _ : state) {
+        auto dictionary = Dictionary{"word", "en", kWords, true};
+        benchmark::DoNotOptimize(dictionary);
+    }
+}
+
+void FilterDictionaryNoCache(benchmark::State& state) {
     userver::engine::RunStandalone([&] {
-        const auto& dictionary = kDictionary;
+        const auto& dictionary = kDictionaryNoCache;
         const auto& selector = kSelectors[state.range(0)];
         state.SetLabel(selector.ToString());
         for ([[maybe_unused]] auto _ : state) {
@@ -86,7 +94,21 @@ void FilterDictionary(benchmark::State& state) {
     });
 }
 
-BENCHMARK(BuildDictionary);
+void FilterDictionary(benchmark::State& state) {
+    userver::engine::RunStandalone([&] {
+        const auto& dictionary = kDictionaryWithCache;
+        const auto& selector = kSelectors[state.range(0)];
+        state.SetLabel(selector.ToString());
+        for ([[maybe_unused]] auto _ : state) {
+            auto filtered_dictionary = dictionary.Filter(selector);
+            benchmark::DoNotOptimize(filtered_dictionary);
+        }
+    });
+}
+
+BENCHMARK(BuildDictionaryNoCache);
+BENCHMARK(BuildDictionaryWithCache);
+BENCHMARK(FilterDictionaryNoCache)->DenseRange(0, kSelectors.size() - 1);
 BENCHMARK(FilterDictionary)->DenseRange(0, kSelectors.size() - 1);
 
 }  // namespace slugkit::generator::benchmarks

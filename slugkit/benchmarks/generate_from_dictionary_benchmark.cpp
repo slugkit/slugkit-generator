@@ -19,6 +19,7 @@ void GenerateFromDictionary(benchmark::State& state) {
         Dictionary dictionary = FillDictionary(
             {.name = "word", .language = "en", .size = dict_size, .tags = {}, .min_length = 0, .max_length = 0}
         );
+        state.SetLabel(fmt::format("{} words", dict_size));
         auto filtered_dictionary = dictionary.Filter("word"_selector);
         SelectorSubstitutionGenerator generator{filtered_dictionary, {dict_size, dict_size}};
         auto seed_hash = PatternGenerator::SeedHash("test");
@@ -36,6 +37,7 @@ void GenerateFromDictionaryUppercase(benchmark::State& state) {
         Dictionary dictionary = FillDictionary(
             {.name = "word", .language = "en", .size = dict_size, .tags = {}, .min_length = 0, .max_length = 0}
         );
+        state.SetLabel(fmt::format("{} words", dict_size));
         auto filtered_dictionary = dictionary.Filter("WORD"_selector);
         SelectorSubstitutionGenerator generator{filtered_dictionary, {dict_size, dict_size}};
         auto seed_hash = PatternGenerator::SeedHash("test");
@@ -53,6 +55,7 @@ void GenerateFromDictionaryTitleCase(benchmark::State& state) {
         Dictionary dictionary = FillDictionary(
             {.name = "word", .language = "en", .size = dict_size, .tags = {}, .min_length = 0, .max_length = 0}
         );
+        state.SetLabel(fmt::format("{} words", dict_size));
         auto filtered_dictionary = dictionary.Filter("Word"_selector);
         SelectorSubstitutionGenerator generator{filtered_dictionary, {dict_size, dict_size}};
         auto seed_hash = PatternGenerator::SeedHash("test");
@@ -70,6 +73,7 @@ void GenerateFromDictionaryMixedCase(benchmark::State& state) {
         Dictionary dictionary = FillDictionary(
             {.name = "word", .language = "en", .size = dict_size, .tags = {}, .min_length = 0, .max_length = 0}
         );
+        state.SetLabel(fmt::format("{} words", dict_size));
         auto filtered_dictionary = dictionary.Filter("wOrD"_selector);
         SelectorSubstitutionGenerator generator{filtered_dictionary, {dict_size, dict_size}};
         auto seed_hash = PatternGenerator::SeedHash("test");

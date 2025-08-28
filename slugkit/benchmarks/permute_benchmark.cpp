@@ -29,6 +29,7 @@ auto PowerOf10(std::int64_t power) -> std::uint64_t {
 
 void FNV1aHash(benchmark::State& state) {
     auto str = FillString(state.range(0));
+    state.SetLabel(fmt::format("{} chars", state.range(0)));
     for ([[maybe_unused]] auto _ : state) {
         benchmark::DoNotOptimize(generator::FNV1aHash(str));
     }
@@ -52,7 +53,7 @@ void Permute(benchmark::State& state) {
     }
 }
 
-BENCHMARK(FNV1aHash)->RangeMultiplier(2)->Range(1, 64);
+BENCHMARK(FNV1aHash)->RangeMultiplier(2)->Range(1, 128);
 BENCHMARK(PermutePowerOf2)->RangeMultiplier(2)->Range(1, 18);
 BENCHMARK(Permute)->RangeMultiplier(2)->Range(1, 18);
 
