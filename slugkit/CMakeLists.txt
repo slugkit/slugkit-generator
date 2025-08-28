@@ -73,6 +73,21 @@ target_link_libraries(
         ${PROJECT_NAME}
 )
 
-add_subdirectory(tests)
-add_subdirectory(benchmarks)
-add_subdirectory(examples)
+
+if(SLUGKIT_GENERATOR_BUILD_TESTS)
+    add_subdirectory(tests)
+else()
+    message(STATUS "Skipping tests, set SLUGKIT_GENERATOR_BUILD_TESTS to ON to build them")
+endif()
+
+if(SLUGKIT_GENERATOR_BUILD_BENCHMARKS)
+    add_subdirectory(benchmarks)
+else()
+    message(STATUS "Skipping benchmarks, set SLUGKIT_GENERATOR_BUILD_BENCHMARKS to ON to build them")
+endif()
+
+if(SLUGKIT_GENERATOR_BUILD_EXAMPLES)
+    add_subdirectory(examples)
+else()
+    message(STATUS "Skipping examples, set SLUGKIT_GENERATOR_BUILD_EXAMPLES to ON to build them")
+endif()
