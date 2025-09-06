@@ -364,4 +364,17 @@ UTEST(Generator, GenerateIDRoman) {
     EXPECT_EQ(generator.Generate(settings, pattern, kTestSeed, 5), "-adjective5-adverb7-noun1-XL-");
 }
 
+UTEST(Generator, GenerateWithEmoji) {
+    Generator generator(kDictionariesSet);
+    auto pattern = "-{emoji:+face}-{adjective}-{adverb}-{noun}-{number:2d}-"_pattern_ptr;
+    auto settings = generator.GetCapacity(pattern);
+
+    EXPECT_EQ(generator.Generate(settings, pattern, kTestSeed, 0), "-😇-adjective3-adverb3-noun4-36-");
+    EXPECT_EQ(generator.Generate(settings, pattern, kTestSeed, 1), "-😜-adjective5-adverb4-noun2-73-");
+    EXPECT_EQ(generator.Generate(settings, pattern, kTestSeed, 2), "-😏-adjective7-adverb5-noun5-10-");
+    EXPECT_EQ(generator.Generate(settings, pattern, kTestSeed, 3), "-😫-adjective2-adverb6-noun3-47-");
+    EXPECT_EQ(generator.Generate(settings, pattern, kTestSeed, 4), "-🤕-adjective4-adverb7-noun1-84-");
+    EXPECT_EQ(generator.Generate(settings, pattern, kTestSeed, 5), "-😮-adjective6-adverb8-noun4-21-");
+}
+
 }  // namespace slugkit::generator

@@ -8,8 +8,6 @@
 #include <userver/formats/serialize/common_containers.hpp>
 #include <userver/formats/serialize/to.hpp>
 
-#include <userver/storages/postgres/io/enum_types.hpp>
-#include <userver/storages/postgres/io/uuid.hpp>
 #include <userver/utils/trivial_map.hpp>
 
 namespace slugkit::generator {

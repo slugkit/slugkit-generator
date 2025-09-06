@@ -100,4 +100,12 @@ auto Serialize(const Pattern& pattern, userver::formats::serialize::To<Format>) 
     return builder.ExtractValue();
 }
 
+template <typename Format>
+auto Serialize(const EmojiGen& emoji_gen, userver::formats::serialize::To<Format>) -> Format {
+    typename Format::Builder builder;
+    builder["min_count"] = emoji_gen.min_count;
+    builder["max_count"] = emoji_gen.max_count;
+    return builder.ExtractValue();
+}
+
 }  // namespace slugkit::generator

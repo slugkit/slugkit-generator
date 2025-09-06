@@ -9,13 +9,14 @@ set(${PROJECT_NAME}_TEST_SRC
     ${TEST_SRC_ROOT}/generator_test.cpp
     ${TEST_SRC_ROOT}/mix_case_test.cpp
     ${TEST_SRC_ROOT}/sructrured_loading_test.cpp
+    ${TEST_SRC_ROOT}/emoji_generator_test.cpp
 )
 
 add_executable(test_${PROJECT_NAME} ${${PROJECT_NAME}_TEST_SRC})
 target_link_libraries(
     test_${PROJECT_NAME}
     PRIVATE 
-        ${PROJECT_NAME} 
+        ${PROJECT_NAME}
         userver::utest
 )
 target_include_directories(

@@ -117,6 +117,37 @@ private:
     std::vector<std::size_t> cumulative_caps_;
 };
 
+/// @brief Substitution generator that uses an emoji generator to generate a string
+/// @note Can be used only for emoji
+/// @param emoji_gen The emoji generator to use
+/// @param seed The seed to use
+class EmojiSubstitutionGenerator : public SubstitutionGenerator {
+public:
+    static const std::string_view kEmojiDictionaryText;
+    EmojiSubstitutionGenerator(const EmojiGen& emoji_gen);
+    ~EmojiSubstitutionGenerator() override = default;
+
+    std::string Generate(std::uint32_t seed, std::size_t sequence_number) const override;
+
+    numeric::BigInt GetCapacity() const override;
+    /// @return The maximum length of the generated string
+    /// @note This is not the max number if chars, but the max number of emoji
+    std::size_t GetMaxLength() const override {
+        return static_cast<std::size_t>(max_count_);
+    }
+
+private:
+    std::size_t SelectCount(std::uint32_t seed, std::size_t sequence_number) const;
+
+    FilteredDictionaryConstPtr dictionary_;
+    std::size_t min_count_;
+    std::size_t max_count_;
+    bool unique_;
+    std::string_view tone_;
+    std::string_view gender_;
+    std::vector<std::size_t> cumulative_caps_;
+};
+
 //-------------------------------------------------------------
 // PatternGenerator
 //-------------------------------------------------------------

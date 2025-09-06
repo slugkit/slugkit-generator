@@ -3,14 +3,20 @@
 #include <slugkit/generator/constants.hpp>
 #include <slugkit/generator/exceptions.hpp>
 #include <slugkit/generator/permutations.hpp>
+#include <slugkit/generator/structured_loader.hpp>
 #include <slugkit/utils/primes.hpp>
 #include <slugkit/utils/roman.hpp>
 #include <slugkit/utils/text.hpp>
+
+#include <generated/emoji.yaml.hpp>
 
 #include <cstdint>
 #include <stdexcept>
 
 namespace slugkit::generator {
+
+const std::string_view EmojiSubstitutionGenerator::kEmojiDictionaryText =
+    std::string_view{emoji_dict_begin, static_cast<size_t>(emoji_dict_size)};
 
 namespace {
 
@@ -61,7 +67,16 @@ struct RomanDictionary {
 
 const RomanDictionary kRomanDictionary;
 
+Dictionary LoadEmojiDictionary() {
+    auto yaml = userver::formats::yaml::FromString(std::string{EmojiSubstitutionGenerator::kEmojiDictionaryText});
+    auto data = yaml["emoji"].As<data::Dictionary<std::unordered_set<std::string>>>();
+    return Dictionary("emoji", "", std::move(data.words));
+}
+
 }  // namespace
+
+// this one is from dictionary.hpp
+const Dictionary kEmojiDictionary = LoadEmojiDictionary();
 
 //-------------------------------------------------------------
 // SelectorSubstitutionGenerator
@@ -229,6 +244,66 @@ numeric::BigInt SpecialSubstitutionGenerator::GetCapacity() const {
 }
 
 //-------------------------------------------------------------
+// EmojiSubstitutionGenerator
+//-------------------------------------------------------------
+
+EmojiSubstitutionGenerator::EmojiSubstitutionGenerator(const EmojiGen& emoji_gen)
+    : dictionary_{kEmojiDictionary.Filter(emoji_gen.include_tags, emoji_gen.exclude_tags)}
+    , min_count_{static_cast<std::size_t>(emoji_gen.min_count)}
+    , max_count_{static_cast<std::size_t>(emoji_gen.max_count)}
+    , unique_{emoji_gen.unique}
+    , tone_{emoji_gen.tone}
+    , gender_{emoji_gen.gender}
+    , cumulative_caps_{} {
+    cumulative_caps_.resize(max_count_ - min_count_ + 1);
+    if (max_count_ > constants::kMaxEmojiCount) {
+        throw DictionaryError("Max count for emoji generator cannot be greater than 16");
+    }
+    if (unique_) {
+        if (dictionary_->size() < min_count_) {
+            throw DictionaryError("Not enough emoji to generate a unique string");
+        }
+        if (dictionary_->size() < max_count_) {
+            // Adjust max_count_ to the size of the dictionary
+            max_count_ = dictionary_->size();
+        }
+        for (std::size_t i = 0; i < cumulative_caps_.size(); ++i) {
+            cumulative_caps_[i] = UniquePermutationCount(dictionary_->size(), i + min_count_);
+        }
+    } else {
+        for (std::size_t i = 0; i < cumulative_caps_.size(); ++i) {
+            cumulative_caps_[i] = PermutationCount(dictionary_->size(), i + min_count_);
+        }
+    }
+}
+
+std::size_t EmojiSubstitutionGenerator::SelectCount(std::uint32_t seed, std::size_t sequence_number) const {
+    if (min_count_ == max_count_) {
+        return min_count_;
+    }
+    auto p = Permute(cumulative_caps_.back(), seed, sequence_number);
+    auto it = std::upper_bound(cumulative_caps_.begin(), cumulative_caps_.end(), p);
+    auto idx = std::distance(cumulative_caps_.begin(), it);
+    return min_count_ + idx;
+}
+
+std::string EmojiSubstitutionGenerator::Generate(std::uint32_t seed, std::size_t sequence_number) const {
+    auto count = SelectCount(seed, sequence_number);
+    auto permutation = unique_ ? UniquePermutation(seed, dictionary_->size(), count, sequence_number)
+                               : NonUniquePermutation(seed, dictionary_->size(), count, sequence_number);
+    std::string result;
+    result.reserve(constants::kEmojiMaxCharLength * count);
+    for (const auto& item : permutation) {
+        result += (*dictionary_)[item];
+    }
+    return result;
+}
+
+numeric::BigInt EmojiSubstitutionGenerator::GetCapacity() const {
+    return std::accumulate(cumulative_caps_.begin(), cumulative_caps_.end(), numeric::BigInt{0});
+}
+
+//-------------------------------------------------------------
 // PatternGenerator::Impl
 //-------------------------------------------------------------
 struct PatternGenerator::Impl {
@@ -301,6 +376,9 @@ struct PatternGenerator::Impl {
             } else if (std::holds_alternative<SpecialCharGen>(element)) {
                 const auto& special_gen = std::get<SpecialCharGen>(element);
                 generators.push_back(std::make_unique<SpecialSubstitutionGenerator>(special_gen));
+            } else if (std::holds_alternative<EmojiGen>(element)) {
+                const auto& emoji_gen = std::get<EmojiGen>(element);
+                generators.push_back(std::make_unique<EmojiSubstitutionGenerator>(emoji_gen));
             }
             capacity = lcm(capacity, generators.back()->GetCapacity());
             max_pattern_length += generators.back()->GetMaxLength();
@@ -335,6 +413,9 @@ struct PatternGenerator::Impl {
             } else if (std::holds_alternative<SpecialCharGen>(element)) {
                 const auto& special_gen = std::get<SpecialCharGen>(element);
                 generators.push_back(std::make_unique<SpecialSubstitutionGenerator>(special_gen));
+            } else if (std::holds_alternative<EmojiGen>(element)) {
+                const auto& emoji_gen = std::get<EmojiGen>(element);
+                generators.push_back(std::make_unique<EmojiSubstitutionGenerator>(emoji_gen));
             }
             capacity = lcm(capacity, generators.back()->GetCapacity());
             max_pattern_length += generators.back()->GetMaxLength();

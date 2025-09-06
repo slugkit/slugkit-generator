@@ -77,6 +77,7 @@ auto Parse(const Value& value, userver::formats::parse::To<Dictionary<TagsType>>
     if (!value["words"].IsObject()) {
         throw std::runtime_error("Expected a 'words' field to be an object");
     }
+    dictionary.words.reserve(value["words"].GetSize());
     for (auto item = value["words"].begin(); item != value["words"].end(); ++item) {
         auto tags = item->template As<TagsType>();
         dictionary.words.emplace_back(item.GetName(), std::move(tags));

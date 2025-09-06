@@ -27,7 +27,7 @@ namespace slugkit::generator {
 /// The pattern captures the pattern source and child selectors are string views
 /// into the source.
 struct Pattern {
-    using PatternElement = std::variant<Selector, NumberGen, SpecialCharGen>;
+    using PatternElement = std::variant<Selector, NumberGen, SpecialCharGen, EmojiGen>;
     using Placeholders = std::vector<PatternElement>;
     using TextChunks = std::vector<std::string_view>;
     using Substitutions = std::vector<std::string>;
@@ -110,6 +110,7 @@ namespace literals {
 auto operator""_selector(const char* str, std::size_t size) -> Selector;
 auto operator""_number_gen(const char* str, std::size_t size) -> NumberGen;
 auto operator""_special_gen(const char* str, std::size_t size) -> SpecialCharGen;
+auto operator""_emoji_gen(const char* str, std::size_t size) -> EmojiGen;
 
 auto operator""_pattern(const char* str, std::size_t size) -> Pattern;
 auto operator""_pattern_ptr(const char* str, std::size_t size) -> PatternPtr;

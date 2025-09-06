@@ -12,6 +12,10 @@ class PatternSyntaxError : public GeneratorError {
     using GeneratorError::GeneratorError;
 };
 
+class DictionaryError : public GeneratorError {
+    using GeneratorError::GeneratorError;
+};
+
 class SlugFormatError : public GeneratorError {
     using GeneratorError::GeneratorError;
 };

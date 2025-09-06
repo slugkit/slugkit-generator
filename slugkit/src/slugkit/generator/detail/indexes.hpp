@@ -1,5 +1,6 @@
 #pragma once
 
+#include <slugkit/generator/dictionary_types.hpp>
 #include <slugkit/generator/pattern.hpp>
 #include <slugkit/generator/types.hpp>
 
@@ -197,7 +198,11 @@ public:
     void Add(Iterator it);
 
     [[nodiscard]] auto Query(const Selector& selector) const -> FilteredWords;
+    [[nodiscard]] auto Query(const EmojiGen::TagsType& include_tags, const EmojiGen::TagsType& exclude_tags) const
+        -> FilteredWords;
     [[nodiscard]] auto MaxWordCount(const Selector& selector) const -> std::size_t;
+
+    [[nodiscard]] auto GetTagDefinitions(std::string_view kind) const -> std::vector<TagDefinition>;
 };
 
 struct CombinedIndex {
@@ -219,6 +224,10 @@ struct CombinedIndex {
     void Add(Iterator it);
 
     [[nodiscard]] auto Query(const Selector& selector) const -> QueryResult;
+    [[nodiscard]] auto Query(const EmojiGen::TagsType& include_tags, const EmojiGen::TagsType& exclude_tags) const
+        -> QueryResult;
+
+    [[nodiscard]] auto GetTagDefinitions(std::string_view kind) const -> std::vector<TagDefinition>;
 };
 
 }  // namespace slugkit::generator::detail

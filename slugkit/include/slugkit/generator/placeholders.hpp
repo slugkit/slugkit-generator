@@ -4,9 +4,9 @@
 #include <slugkit/generator/types.hpp>
 
 #include <cstdint>
+#include <map>
 #include <optional>
 #include <string_view>
-#include <unordered_map>
 #include <unordered_set>
 
 namespace slugkit::generator {
@@ -35,15 +35,15 @@ struct SizeLimit {
 /// @note The selector is immutable.
 /// @note The selector is only valid as long as the pattern is alive.
 struct Selector {
-    using tag_list_t = std::unordered_set<std::string_view>;
-    using option_map_t = std::unordered_map<std::string_view, std::string_view>;
+    using TagsType = std::unordered_set<std::string_view>;
+    using OptionsType = std::map<std::string_view, std::string_view>;
 
     std::string_view kind;
-    tag_list_t include_tags;
-    tag_list_t exclude_tags;
+    TagsType include_tags;
+    TagsType exclude_tags;
     std::optional<std::string_view> language;
     std::optional<SizeLimit> size_limit;
-    option_map_t options;
+    OptionsType options;
 
     auto operator==(const Selector& other) const -> bool {
         return kind == other.kind && include_tags == other.include_tags && exclude_tags == other.exclude_tags &&
@@ -91,6 +91,8 @@ struct Selector {
 
     [[nodiscard]] auto IsNSFW() const -> bool;
 
+    void ApplyOptions(std::string_view original_pattern, OptionsType&& options);
+
 private:
     mutable CaseType case_type_{CaseType::kNone};
 };
@@ -135,6 +137,35 @@ struct SpecialCharGen {
     [[nodiscard]] auto ToString() const -> std::string;
 
     [[nodiscard]] auto Complexity() const -> std::int32_t;
+};
+
+struct EmojiGen {
+    using TagsType = Selector::TagsType;
+    using OptionsType = Selector::OptionsType;
+
+    constexpr static std::string_view kCountOption = "count";
+    constexpr static std::string_view kUniqueOption = "unique";
+    constexpr static std::string_view kToneOption = "tone";
+    constexpr static std::string_view kGenderOption = "gender";
+
+    TagsType include_tags{};
+    TagsType exclude_tags{};
+    std::uint8_t min_count = 1;
+    std::uint8_t max_count = 1;
+    bool unique = false;
+    std::string_view tone;
+    std::string_view gender;
+
+    [[nodiscard]] auto GetHash() const -> std::int64_t;
+
+    [[nodiscard]] auto ToString() const -> std::string;
+
+    [[nodiscard]] auto Complexity() const -> std::int32_t;
+
+    void ApplyOptions(std::string_view original_pattern, OptionsType&& options);
+
+private:
+    bool has_options_ = false;
 };
 
 }  // namespace slugkit::generator

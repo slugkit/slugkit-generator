@@ -120,17 +120,22 @@ void TagIndex::Add(Iterator it) {
 }
 
 auto TagIndex::Query(const Selector& selector) const -> FilteredWords {
-    if (selector.NoFilter()) {
+    return Query(selector.include_tags, selector.exclude_tags);
+}
+
+auto TagIndex::Query(const EmojiGen::TagsType& include_tags, const EmojiGen::TagsType& exclude_tags) const
+    -> FilteredWords {
+    if (include_tags.empty() && exclude_tags.empty()) {
         return all_words;
     }
     // exclude tags apparently will result in a bigger set,
     // so we filter by include tags first
     FilteredWords result;
-    if (selector.include_tags.empty()) {
+    if (include_tags.empty()) {
         result = all_words;
     } else {
         std::vector<TagMap::const_iterator> matched_tags;
-        for (const auto& tag : selector.include_tags) {
+        for (const auto& tag : include_tags) {
             auto it = tags.find(std::string(tag));
             if (it == tags.end()) {
                 continue;
@@ -160,9 +165,9 @@ auto TagIndex::Query(const Selector& selector) const -> FilteredWords {
     }
 
     // exclude tags
-    if (!selector.exclude_tags.empty()) {
+    if (!exclude_tags.empty()) {
         std::vector<TagMap::const_iterator> matched_tags;
-        for (const auto& tag : selector.exclude_tags) {
+        for (const auto& tag : exclude_tags) {
             auto it = tags.find(std::string(tag));
             if (it == tags.end()) {
                 continue;
@@ -235,6 +240,15 @@ auto TagIndex::MaxWordCount(const Selector& selector) const -> std::size_t {
     return max_word_count;
 }
 
+auto TagIndex::GetTagDefinitions(std::string_view kind) const -> std::vector<TagDefinition> {
+    std::vector<TagDefinition> result;
+    for (const auto& [tag, words] : tags) {
+        result.push_back({std::string(kind), std::string(tag), {}, false, static_cast<std::int32_t>(words.size())});
+    }
+    return result;
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
 CombinedIndex::CombinedIndex(const WordContainer& words)
     : tag_index{}
     , length_index{} {
@@ -274,6 +288,20 @@ auto CombinedIndex::Query(const Selector& selector) const -> QueryResult {
         return !size_limit.Matches(it->word.size());
     });
     return {result, max_length};
+}
+
+auto CombinedIndex::Query(const EmojiGen::TagsType& include_tags, const EmojiGen::TagsType& exclude_tags) const
+    -> QueryResult {
+    auto result = tag_index.Query(include_tags, exclude_tags);
+    std::size_t max_length = 0;
+    for (const auto& it : result) {
+        max_length = std::max(max_length, it->word.size());
+    }
+    return {result, max_length};
+}
+
+auto CombinedIndex::GetTagDefinitions(std::string_view kind) const -> std::vector<TagDefinition> {
+    return tag_index.GetTagDefinitions(kind);
 }
 
 }  // namespace slugkit::generator::detail
