@@ -3,6 +3,7 @@ project(slugkit-generator CXX)
 
 set(${PROJECT_NAME}_INCLUDE_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/include)
 set(${PROJECT_NAME}_SRC_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/src)
+set(${PROJECT_NAME}_EMBEDDED_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../data)
 
 # Utils library
 set(${PROJECT_NAME}_UTILS_SRC
@@ -24,13 +25,19 @@ target_include_directories(${PROJECT_NAME}-utils
         ${${PROJECT_NAME}_INCLUDE_ROOT}
 )
 
+# Emoji library
+# maybe optional?
+userver_embed_file(${PROJECT_NAME}-emoji NAME emoji_dict FILEPATH ${${PROJECT_NAME}_EMBEDDED_ROOT}/emoji.yaml)
+
 # Generator library
 set(${PROJECT_NAME}_SRC
     ${${PROJECT_NAME}_SRC_ROOT}/slugkit/generator/permutations.cpp
     ${${PROJECT_NAME}_SRC_ROOT}/slugkit/generator/dictionary.cpp
     ${${PROJECT_NAME}_SRC_ROOT}/slugkit/generator/pattern.cpp
+    ${${PROJECT_NAME}_SRC_ROOT}/slugkit/generator/placeholders.cpp
     ${${PROJECT_NAME}_SRC_ROOT}/slugkit/generator/pattern_generator.cpp
     ${${PROJECT_NAME}_SRC_ROOT}/slugkit/generator/generator.cpp
+    ${${PROJECT_NAME}_SRC_ROOT}/slugkit/generator/detail/pattern_parser.cpp
     ${${PROJECT_NAME}_SRC_ROOT}/slugkit/generator/detail/indexes.cpp
 )
 
@@ -41,6 +48,7 @@ target_link_libraries(
     ${PROJECT_NAME}
     PUBLIC
         ${PROJECT_NAME}-utils
+        ${PROJECT_NAME}-emoji
 )
 target_include_directories(
     ${PROJECT_NAME} 

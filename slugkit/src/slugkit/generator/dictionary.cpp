@@ -9,12 +9,12 @@ namespace slugkit::generator {
 
 FilteredDictionary::FilteredDictionary(
     WordContainerPtr words,
-    const Selector& selector,
+    CaseType case_type,
     StorageType&& storage,
     std::size_t max_length
 )
     : dictionary_{std::move(words)}
-    , case_type_{selector.GetCase()}
+    , case_type_{case_type}
     , words_{std::move(storage)}
     , max_length_{max_length} {
 }
@@ -67,6 +67,19 @@ struct Dictionary::Impl {
     auto Filter(const Selector& selector) const -> FilteredDictionaryConstPtr {
         return cache_->Get(selector);
     }
+
+    auto Filter(const EmojiGen::TagsType& include_tags, const EmojiGen::TagsType& exclude_tags) const
+        -> FilteredDictionaryConstPtr {
+        return cache_->Get(include_tags, exclude_tags);
+    }
+
+    auto GetStats() const -> DictionaryStats {
+        return DictionaryStats{kind_, language_, static_cast<std::int64_t>(words_->size())};
+    }
+
+    auto GetTagDefinitions() const -> std::vector<TagDefinition> {
+        return cache_->GetTagDefinitions(kind_);
+    }
 };
 
 Dictionary::Dictionary(std::string_view kind, std::string_view language, std::vector<Word> words, bool use_cache)
@@ -114,6 +127,19 @@ auto Dictionary::Filter(const Selector& selector) const -> FilteredDictionaryCon
     }
 
     return pimpl_->Filter(selector);
+}
+
+auto Dictionary::Filter(const EmojiGen::TagsType& include_tags, const EmojiGen::TagsType& exclude_tags) const
+    -> FilteredDictionaryConstPtr {
+    return pimpl_->Filter(include_tags, exclude_tags);
+}
+
+auto Dictionary::GetStats() const -> DictionaryStats {
+    return pimpl_->GetStats();
+}
+
+auto Dictionary::GetTagDefinitions() const -> std::vector<TagDefinition> {
+    return pimpl_->GetTagDefinitions();
 }
 
 //-----------------------------------------------------------------------------

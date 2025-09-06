@@ -9,6 +9,7 @@ constexpr auto kMaxHexLength = 16U;       // 16 hex digits (8 bytes)
 constexpr auto kMaxSpecialLength = 12U;   // 12 special symbols ~ 5 bits per symbol, 60 bits total
 constexpr auto kCpuRelaxIterations = 10;  // number of iterations for CPU relaxation while generating slugs,
                                           // 10 is a good default for most cases
+constexpr auto kMaxEmojiCount = 6U;
 
 // base cost for a dictionary generator
 constexpr auto kDictionaryBaseCost = 5;
@@ -32,5 +33,17 @@ constexpr auto kSpecialCharBaseCost = 4;
 constexpr auto kSpecialCharLengthCost = 1;
 // cost for variable length of a special character generator
 constexpr auto kSpecialCharVariableLengthCost = 2;
+
+// base cost for an emoji generator
+constexpr auto kEmojiBaseCost = 5;
+// cost for the limiting count of an emoji generator
+constexpr auto kEmojiCountCost = 1;
+// cost for the include/exclude tag of an emoji generator
+constexpr auto kEmojiTagsCost = 2;
+// cost for the unique flag of an emoji generator
+constexpr auto kEmojiUniqueCost = 5;
+
+// maximum number of chars in an emoji (known to be 20)
+constexpr auto kEmojiMaxCharLength = 20;
 
 }  // namespace slugkit::generator::constants

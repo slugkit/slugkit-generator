@@ -111,7 +111,7 @@ UTEST(Dictionary, FilterByIncludeTags) {
     EXPECT_EQ(dictionary.GetLanguage(), "en");
 
     auto selector = "noun:+tag1"_selector;
-    ASSERT_EQ(selector.include_tags, (Selector::tag_list_t{"tag1"}));
+    ASSERT_EQ(selector.include_tags, (Selector::TagsType{"tag1"}));
 
     ASSERT_EQ(dictionary.Filter(selector)->size(), 2);
     EXPECT_EQ(dictionary.Filter(selector)->empty(), false);
@@ -119,7 +119,7 @@ UTEST(Dictionary, FilterByIncludeTags) {
     EXPECT_EQ((*dictionary.Filter(selector))[1], kNouns[4].word);
 
     selector = "noun:+tag2"_selector;
-    ASSERT_EQ(selector.include_tags, (Selector::tag_list_t{"tag2"}));
+    ASSERT_EQ(selector.include_tags, (Selector::TagsType{"tag2"}));
 
     ASSERT_EQ(dictionary.Filter(selector)->size(), 2);
     EXPECT_EQ(dictionary.Filter(selector)->empty(), false);
@@ -134,7 +134,7 @@ UTEST(Dictionary, FilterByExcludeTags) {
     EXPECT_EQ(dictionary.GetKind(), "noun");
 
     auto selector = "noun:-tag1"_selector;
-    ASSERT_EQ(selector.exclude_tags, (Selector::tag_list_t{"tag1"}));
+    ASSERT_EQ(selector.exclude_tags, (Selector::TagsType{"tag1"}));
 
     // Filtering with a selector should return a dictionary with the same size and kind
     ASSERT_EQ(dictionary.Filter(selector)->size(), 3);
@@ -144,7 +144,7 @@ UTEST(Dictionary, FilterByExcludeTags) {
     EXPECT_EQ((*dictionary.Filter(selector))[2], kNouns[3].word);
 
     selector = "noun:-tag2"_selector;
-    ASSERT_EQ(selector.exclude_tags, (Selector::tag_list_t{"tag2"}));
+    ASSERT_EQ(selector.exclude_tags, (Selector::TagsType{"tag2"}));
 
     ASSERT_EQ(dictionary.Filter(selector)->size(), 3);
     EXPECT_EQ(dictionary.Filter(selector)->empty(), false);
@@ -193,8 +193,8 @@ UTEST(Dictionary, FilterBySizeLimit) {
     ASSERT_EQ(selector.size_limit, (SizeLimit{CompareOperator::kNe, 5}));
 
     ASSERT_NE(dictionary.Filter(selector), kEmptyFilter);
-    EXPECT_EQ(dictionary.Filter(selector)->size(), 0);
-    EXPECT_EQ(dictionary.Filter(selector)->empty(), true);
+    EXPECT_EQ(dictionary.Filter(selector)->size(), 5);
+    EXPECT_EQ(dictionary.Filter(selector)->empty(), false);
 }
 
 UTEST(Dictionary, FilterWithCaseModifier) {

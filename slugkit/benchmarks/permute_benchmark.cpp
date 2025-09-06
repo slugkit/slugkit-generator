@@ -53,8 +53,65 @@ void Permute(benchmark::State& state) {
     }
 }
 
+void UniquePermutationArgs(benchmark::internal::Benchmark* bench) {
+    for (std::int64_t sequence_length = 2; sequence_length <= 8; sequence_length *= 2) {
+        for (std::int64_t alphabet_size = 32; alphabet_size <= 2048; alphabet_size *= 2) {
+            bench->Args({alphabet_size, sequence_length});
+        }
+    }
+    for (std::int64_t sequence_length = 2; sequence_length <= 8; ++sequence_length) {
+        bench->Args({1200, sequence_length});
+    }
+}
+
+void UniquePermutation(benchmark::State& state) {
+    auto alphabet_size = state.range(0);
+    auto sequence_length = state.range(1);
+    state.SetLabel(fmt::format("sequence length {} alphabet size {}", sequence_length, alphabet_size));
+    auto i = 0ULL;
+    for ([[maybe_unused]] auto _ : state) {
+        benchmark::DoNotOptimize(generator::UniquePermutation(alphabet_size, sequence_length, i++));
+    }
+}
+
+void UniquePermutationSeedHash(benchmark::State& state) {
+    auto alphabet_size = state.range(0);
+    auto sequence_length = state.range(1);
+    auto seed_hash = generator::FNV1aHash("test");
+    state.SetLabel(fmt::format("sequence length {} alphabet size {}", sequence_length, alphabet_size));
+    auto i = 0ULL;
+    for ([[maybe_unused]] auto _ : state) {
+        benchmark::DoNotOptimize(generator::UniquePermutation(seed_hash, alphabet_size, sequence_length, i++));
+    }
+}
+
+void NonUniquePermutation(benchmark::State& state) {
+    auto alphabet_size = state.range(0);
+    auto sequence_length = state.range(1);
+    state.SetLabel(fmt::format("sequence length {} alphabet size {}", sequence_length, alphabet_size));
+    auto i = 0ULL;
+    for ([[maybe_unused]] auto _ : state) {
+        benchmark::DoNotOptimize(generator::NonUniquePermutation(alphabet_size, sequence_length, i++));
+    }
+}
+
+void NonUniquePermutationSeedHash(benchmark::State& state) {
+    auto alphabet_size = state.range(0);
+    auto sequence_length = state.range(1);
+    auto seed_hash = generator::FNV1aHash("test");
+    state.SetLabel(fmt::format("sequence length {} alphabet size {}", sequence_length, alphabet_size));
+    auto i = 0ULL;
+    for ([[maybe_unused]] auto _ : state) {
+        benchmark::DoNotOptimize(generator::NonUniquePermutation(seed_hash, alphabet_size, sequence_length, i++));
+    }
+}
+
 BENCHMARK(FNV1aHash)->RangeMultiplier(2)->Range(1, 128);
 BENCHMARK(PermutePowerOf2)->RangeMultiplier(2)->Range(1, 18);
 BENCHMARK(Permute)->RangeMultiplier(2)->Range(1, 18);
+BENCHMARK(UniquePermutation)->Apply(UniquePermutationArgs);
+BENCHMARK(UniquePermutationSeedHash)->Apply(UniquePermutationArgs);
+BENCHMARK(NonUniquePermutation)->Apply(UniquePermutationArgs);
+BENCHMARK(NonUniquePermutationSeedHash)->Apply(UniquePermutationArgs);
 
 }  // namespace slugkit::generator::benchmarks

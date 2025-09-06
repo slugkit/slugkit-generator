@@ -1,5 +1,6 @@
 #pragma once
 
+#include <slugkit/generator/dictionary_types.hpp>
 #include <slugkit/generator/pattern.hpp>
 #include <slugkit/generator/types.hpp>
 
@@ -26,7 +27,7 @@ public:
     using StorageType = std::vector<Iterator>;
 
 public:
-    FilteredDictionary(WordContainerPtr words, const Selector& selector, StorageType&& storage, std::size_t max_length);
+    FilteredDictionary(WordContainerPtr words, CaseType case_type, StorageType&& storage, std::size_t max_length);
 
     std::string operator[](std::size_t index) const;
 
@@ -95,6 +96,11 @@ public:
     /// @param selector The selector to use for filtering.
     /// @return The filtered dictionary.
     FilteredDictionaryConstPtr Filter(const Selector& selector) const;
+    FilteredDictionaryConstPtr Filter(const EmojiGen::TagsType& include_tags, const EmojiGen::TagsType& exclude_tags)
+        const;
+
+    DictionaryStats GetStats() const;
+    std::vector<TagDefinition> GetTagDefinitions() const;
 
 private:
     static constexpr auto kPimplSize = 216UL;
@@ -143,5 +149,7 @@ private:
     std::set<std::string> language_agnostic_kinds_;
     // TODO LRU cache for filtered dictionaries
 };
+
+extern const Dictionary kEmojiDictionary;
 
 }  // namespace slugkit::generator

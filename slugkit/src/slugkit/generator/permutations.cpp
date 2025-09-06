@@ -149,4 +149,146 @@ auto Permute(std::uint64_t max_value, std::uint32_t hash, std::uint64_t sequence
     }
     return LCGPermute(max_value, hash, sequence);
 }
+
+//-------------------------------------------------------------
+// Number of permutations
+//-------------------------------------------------------------
+auto PermutationCount(std::uint64_t alphabet_size, std::uint64_t sequence_length) -> std::uint64_t {
+    if (alphabet_size == 0) {
+        return 0;
+    }
+    if (sequence_length == 0) {
+        return 1;
+    }
+    auto result = alphabet_size;
+    for (std::uint64_t i = 1; i < sequence_length; ++i) {
+        result *= alphabet_size;
+    }
+    return result;
+}
+
+// N!/(N-K)!
+auto UniquePermutationCount(std::uint64_t alphabet_size, std::uint64_t sequence_length) -> std::uint64_t {
+    if (alphabet_size == 0) {
+        return 0;
+    }
+    if (sequence_length == 0) {
+        return 1;
+    }
+    auto result = alphabet_size;
+    for (std::uint64_t i = 1; i < sequence_length; ++i) {
+        result *= (alphabet_size - i);
+    }
+    return result;
+}
+
+//-------------------------------------------------------------
+// Unique permutation
+//-------------------------------------------------------------
+namespace {
+
+std::uint64_t CalculateActualIndex(std::uint64_t available_index, const std::vector<std::uint64_t>& sorted_used) {
+    auto actual_index = available_index;
+
+    while (true) {
+        auto upper_it = std::upper_bound(sorted_used.begin(), sorted_used.end(), actual_index);
+        auto count_smaller_or_equal = upper_it - sorted_used.begin();
+        auto new_actual_index = available_index + count_smaller_or_equal;
+
+        if (new_actual_index == actual_index) {
+            return actual_index;
+        }
+        actual_index = new_actual_index;
+    }
+}
+
+}  // namespace
+auto UniquePermutation(std::uint64_t alphabet_size, std::uint64_t sequence_length, std::size_t index)
+    -> std::vector<std::uint64_t> {
+    if (alphabet_size == 0 || sequence_length == 0 || sequence_length > alphabet_size) {
+        return {};
+    }
+
+    auto total_permutations = UniquePermutationCount(alphabet_size, sequence_length);
+    if (index >= total_permutations) {
+        // Adjust index to the range [0, total_permutations)
+        index = index % total_permutations;
+    }
+
+    std::vector<std::uint64_t> result;
+    result.reserve(sequence_length);
+    std::vector<std::uint64_t> sorted_used;
+    sorted_used.reserve(sequence_length);
+
+    auto remaining_index = static_cast<std::uint64_t>(index);
+    auto factorial = total_permutations;
+
+    for (std::uint64_t i = 0; i < sequence_length; ++i) {
+        factorial = factorial / (alphabet_size - i);
+
+        auto available_index = remaining_index / factorial;
+        remaining_index = remaining_index % factorial;
+
+        auto actual_index = CalculateActualIndex(available_index, sorted_used);
+        result.push_back(actual_index);
+
+        auto insert_pos = std::upper_bound(sorted_used.begin(), sorted_used.end(), actual_index);
+        sorted_used.insert(insert_pos, actual_index);
+    }
+
+    return result;
+}
+
+auto UniquePermutation(
+    std::uint32_t seed_hash,
+    std::uint64_t alphabet_size,
+    std::uint64_t sequence_length,
+    std::size_t index
+) -> std::vector<std::uint64_t> {
+    auto total_permutations = UniquePermutationCount(alphabet_size, sequence_length);
+    if (index >= total_permutations) {
+        index = index % total_permutations;
+    }
+
+    auto permuted_index = Permute(total_permutations, seed_hash, index);
+
+    return UniquePermutation(alphabet_size, sequence_length, permuted_index);
+}
+
+//-------------------------------------------------------------
+// Non-unique permutation
+//-------------------------------------------------------------
+auto NonUniquePermutation(std::uint64_t alphabet_size, std::uint64_t sequence_length, std::size_t index)
+    -> std::vector<std::uint64_t> {
+    if (alphabet_size == 0 || sequence_length == 0) {
+        return {};
+    }
+    auto total_permutations = PermutationCount(alphabet_size, sequence_length);
+    if (index >= total_permutations) {
+        index = index % total_permutations;
+    }
+
+    std::vector<std::uint64_t> result;
+    result.reserve(sequence_length);
+    for (std::uint64_t i = 0; i < sequence_length; ++i) {
+        result.push_back(index % alphabet_size);
+        index = index / alphabet_size;
+    }
+    return result;
+}
+
+auto NonUniquePermutation(
+    std::uint32_t seed_hash,
+    std::uint64_t alphabet_size,
+    std::uint64_t sequence_length,
+    std::size_t index
+) -> std::vector<std::uint64_t> {
+    auto total_permutations = PermutationCount(alphabet_size, sequence_length);
+    if (index >= total_permutations) {
+        index = index % total_permutations;
+    }
+    auto permuted_index = Permute(total_permutations, seed_hash, index);
+    return NonUniquePermutation(alphabet_size, sequence_length, permuted_index);
+}
+
 }  // namespace slugkit::generator

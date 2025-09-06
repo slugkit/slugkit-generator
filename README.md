@@ -136,15 +136,24 @@ SlugKit uses a powerful pattern language that supports multiple element types:
 - `{special:2}` - Exactly 2 special characters
 - `{spec:1-4}` - 1 to 4 special characters
 
+### Emoji Generators
+- `{emoji}` - Single random emoji from built-in collection (~1200 emoji)
+- `{emoji:+face}` - Face emoji only (tag filtering)
+- `{emoji:+animals-nsfw}` - Animal emoji, excluding NSFW content
+- `{emoji:count=3}` - Exactly 3 emoji (repetition allowed)
+- `{emoji:count=2-4}` - Variable count between 2-4 emoji
+- `{emoji:+face count=2 unique=true}` - 2 unique face emoji
+
 ### Pattern Grammar (EBNF)
 
 ```ebnf
 pattern           := ARBITRARY, { placeholder, ARBITRARY }, [ global_settings ];
-placeholder       := '{', (selector | number_gen | special_char_gen), '}';
+placeholder       := '{', (selector | number_gen | special_char_gen | emoji_gen), '}';
 selector          := kind ['@' lang], [':', [tags], [length_constraint], [options]];
 global_settings   := '[' ['@' lang], [tags], [length_constraint], [options] ']';
 number_gen        := 'number', ':', length, [(',', number_base) | number_base_short ];
 special_char_gen  := 'special', [':', number, ['-', length]];
+emoji_gen         := 'emoji', [':', [tags], [options]]
 kind              := identifier;
 lang              := identifier;
 tags              := (include_tag | exclude_tag)*;
@@ -152,7 +161,7 @@ include_tag       := '+', tag;
 exclude_tag       := '-', tag;
 length_constraint := comparison_op, length;
 comparison_op     := eq | ne | lt | le | gt | ge;
-options           := option (',' option)*;
+options           := option (' ' option)*;
 option            := identifier '=' option_value;
 tag               := (ALNUM | '_')+;
 identifier        := (ALPHA | '_'), (ALNUM | '_')*;
@@ -331,13 +340,33 @@ The repository includes a complete [example application](slugkit/examples/yaml-d
 
 ```bash
 ./yaml-dict -f dictionary.yaml -p '{Adjective} {Noun} {number:4R}' -c 1000
+./yaml-dict -f dictionary.yaml -p '{emoji:+face}-{adjective}-{noun}' -c 100 -s "emoji-test"
 ```
 
 ## Performance
 
-- **Single slug generation**: 3-20μs depending on pattern complexity
+- **Single slug generation**: 25ns - 3μs depending on pattern complexity
 - **Bulk operations**: Improved per-slug performance at scale
 - **Memory efficient**: Optimised dictionary loading and caching
+- **Advanced permutation algorithms**: Feistel networks for power-of-2 spaces, LCG for arbitrary ranges
+
+> **Performance Disclaimer**: These performance figures are measured in uncongested environments with dedicated CPU resources. Performance may be significantly worse in CPU-constrained or high-contention scenarios.
+
+### Permutation Engine
+
+SlugKit uses sophisticated permutation algorithms to ensure deterministic, collision-free generation:
+
+- **Feistel Networks**: For power-of-2 dictionary sizes, providing cryptographically strong permutations
+- **Linear Congruential Generators (LCG)**: For arbitrary dictionary sizes with guaranteed full-period coverage
+- **FNV-1a Hashing**: Fast, collision-resistant seed hashing for deterministic behaviour
+- **Unique/Non-unique Permutations**: Efficient algorithms for both repeating and non-repeating element selection
+- **Mathematical Precision**: P(N,K) calculations for exact capacity planning
+
+The permutation system supports:
+- Arbitrary sequence lengths up to 2^64
+- Both unique permutations (P(N,K) = N!/(N-K)!) and repetition-allowed permutations (N^K)
+- Deterministic mapping from sequence numbers to permuted indices
+- Optimised algorithms avoiding expensive factorial calculations
 
 * [Benchmark results August 28, 2025 (after implementing caches)](https://dev.slugkit.dev/articles/smitten-mileage-mdx)
 * [Benchmark results August 28, 2025 (after adding indexes)](https://dev.slugkit.dev/articles/axiomatic-tutor-mcx)

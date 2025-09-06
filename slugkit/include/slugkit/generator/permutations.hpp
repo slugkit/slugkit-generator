@@ -9,12 +9,11 @@ namespace slugkit::generator {
 
 using Permutation = std::vector<std::size_t>;
 
-std::uint32_t FNV1aHash(std::string_view str);
-
-Permutation GeneratePermutation(std::uint32_t seed, std::size_t size, std::size_t limit = 0);
-Permutation GeneratePermutation(std::string_view seed, std::size_t size, std::size_t limit = 0);
-
-using PermutationGenerator = std::function<Permutation(std::string_view seed, std::size_t size, std::size_t limit)>;
+/// @brief FNV-1a hash function.
+/// @param str The string to hash.
+/// @return The hash of the string.
+/// TODO 64-bit version
+auto FNV1aHash(std::string_view str) -> std::uint32_t;
 
 constexpr std::uint32_t kDefaultRounds = 4;
 
@@ -70,4 +69,56 @@ auto PermutePowerOf2(std::string_view seed, std::uint64_t sequence, std::uint32_
     -> std::uint64_t;
 auto PermutePowerOf2(std::uint32_t seed_hash, std::uint64_t sequence, std::uint32_t rounds = kDefaultRounds)
     -> std::uint64_t;
+
+auto PermutationCount(std::uint64_t alphabet_size, std::uint64_t sequence_length) -> std::uint64_t;
+/// @brief Unique permutation count of a given length.
+/// P(N, K) = N!/(N-K)!
+/// time complexity: O(K)
+/// @param alphabet_size The size of the alphabet.
+/// @param sequence_length The length of the permutation.
+/// @return The number of unique permutations.
+auto UniquePermutationCount(std::uint64_t alphabet_size, std::uint64_t sequence_length) -> std::uint64_t;
+
+/// @brief Unique permutation of a given length and index.
+/// @param alphabet_size The size of the alphabet.
+/// @param sequence_length The length of the permutation.
+/// @param index The index of the permutation.
+/// @return The permutation.
+auto UniquePermutation(std::uint64_t alphabet_size, std::uint64_t sequence_length, std::size_t index)
+    -> std::vector<std::uint64_t>;
+
+/// @brief Unique permutation of a given length and index.
+/// @param seed_hash The hash of the seed.
+/// @param alphabet_size The size of the alphabet.
+/// @param sequence_length The length of the permutation.
+/// @param index The index of the permutation.
+/// @return The permutation.
+auto UniquePermutation(
+    std::uint32_t seed_hash,
+    std::uint64_t alphabet_size,
+    std::uint64_t sequence_length,
+    std::size_t index
+) -> std::vector<std::uint64_t>;
+
+/// @brief Non-unique permutation of a given length and index.
+/// @param alphabet_size The size of the alphabet.
+/// @param sequence_length The length of the permutation.
+/// @param index The index of the permutation.
+/// @return The permutation.
+auto NonUniquePermutation(std::uint64_t alphabet_size, std::uint64_t sequence_length, std::size_t index)
+    -> std::vector<std::uint64_t>;
+
+/// @brief Non-unique permutation of a given length and index.
+/// @param seed_hash The hash of the seed.
+/// @param alphabet_size The size of the alphabet.
+/// @param sequence_length The length of the permutation.
+/// @param index The index of the permutation.
+/// @return The permutation.
+auto NonUniquePermutation(
+    std::uint32_t seed_hash,
+    std::uint64_t alphabet_size,
+    std::uint64_t sequence_length,
+    std::size_t index
+) -> std::vector<std::uint64_t>;
+
 }  // namespace slugkit::generator
