@@ -27,7 +27,8 @@ std::string FilteredDictionary::operator[](std::size_t index) const {
         case CaseType::kNone:
             return word.word;
         case CaseType::kLower:
-            return utils::text::ToLower(word.word, locale);
+            // no need to convert to lower case as the dictionary is expected to be in lower case
+            return word.word;
         case CaseType::kUpper:
             return utils::text::ToUpper(word.word, locale);
         case CaseType::kTitle:
