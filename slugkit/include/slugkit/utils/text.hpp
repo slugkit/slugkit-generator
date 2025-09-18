@@ -21,6 +21,8 @@ auto ToUpper(std::string_view str, const std::string& locale) -> std::string;
 
 auto Capitalize(std::string_view str, const std::string& locale) -> std::string;
 
+auto FirstUpper(std::string_view str, const std::string& locale) -> std::string;
+
 /// @brief Change case of the string using the permutation mask
 /// @param str The string to change
 /// @param locale The locale to use
@@ -38,11 +40,19 @@ template <typename OutputIterator>
 auto Split(std::string_view str, std::string_view delimiter, OutputIterator out) -> OutputIterator {
     auto pos = str.find(delimiter);
     while (pos != std::string_view::npos) {
-        *out++ = str.substr(0, pos);
+        if constexpr (std::is_same_v<std::decay_t<typename OutputIterator::container_type::value_type>, std::string>) {
+            *out++ = std::string(str.substr(0, pos));
+        } else {
+            *out++ = str.substr(0, pos);
+        }
         str = str.substr(pos + delimiter.size());
         pos = str.find(delimiter);
     }
-    *out++ = str;
+    if constexpr (std::is_same_v<std::decay_t<typename OutputIterator::container_type::value_type>, std::string>) {
+        *out++ = std::string(str);
+    } else {
+        *out++ = str;
+    }
     return out;
 }
 
