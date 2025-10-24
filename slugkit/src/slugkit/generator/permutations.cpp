@@ -23,6 +23,7 @@ auto FeistelRound(std::uint32_t value, std::uint32_t key, std::uint32_t half_bit
     return static_cast<std::uint32_t>(x);
 }
 
+// basic LCG formula: (multiplier * sequence + increment) % max_value
 auto LCGPermute(std::uint64_t max_value, std::uint32_t hash, std::uint64_t sequence) -> std::uint64_t {
     sequence = sequence % max_value;
     std::uint64_t multiplier = hash | 1;  // ensure multiplier is odd
