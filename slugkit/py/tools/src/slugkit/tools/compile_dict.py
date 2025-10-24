@@ -12,11 +12,13 @@ from slugkit.tools.binary_format import BinaryDictionary
 logging.basicConfig(level=logging.DEBUG)
 LOGGER = logging.getLogger(__name__)
 
+
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("input_file", type=str, help="Input file")
     parser.add_argument("output_file", type=str, help="Output file")
     return parser.parse_args()
+
 
 def main():
     args = parse_args()
@@ -29,5 +31,7 @@ def main():
             binary_dictionary.write(f)
         end_time = datetime.datetime.now()
         LOGGER.info(f"Compiled {kind} dictionary in {end_time - start_time}")
+
+
 if __name__ == "__main__":
     main()
