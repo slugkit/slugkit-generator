@@ -1,0 +1,51 @@
+noun:
+  version: 1.0.0
+  words:
+    en:
+      apple: [fruit, food]
+      banana: [fruit, food, tropical]
+      orange: [fruit, food]
+      mango: [fruit, food, tropical]
+      carrot: [vegetable, food]
+      broccoli: [vegetable, food]
+      potato: [vegetable, food]
+      
+    fr:
+      pomme: [fruit, food]
+      banane: [fruit, food, tropical]
+      orange: [fruit, food]
+      mangue: [fruit, food, tropical]
+      carotte: [vegetable, food]
+      brocoli: [vegetable, food]
+      pomme de terre: [vegetable, food]
+      
+    es:
+      manzana: [fruit, food]
+      plátano: [fruit, food, tropical]
+      naranja: [fruit, food]
+      mango: [fruit, food, tropical]
+      zanahoria: [vegetable, food]
+      brócoli: [vegetable, food]
+      patata: [vegetable, food]
+
+  tags:
+    fruit:
+      name: Fruit
+      description: A sweet edible plant structure containing seeds
+      opt_in: false
+      
+    vegetable:
+      name: Vegetable
+      description: A savory or less sweet edible plant or part of a plant
+      opt_in: false
+      
+    food:
+      name: Food
+      description: Any nutritious substance that people or animals eat
+      opt_in: false
+      
+    tropical:
+      name: Tropical
+      description: Foods that grow in tropical climates
+      opt_in: true
+

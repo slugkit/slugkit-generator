@@ -11,6 +11,7 @@ set(${PROJECT_NAME}_UTILS_SRC
     ${${PROJECT_NAME}_SRC_ROOT}/slugkit/utils/roman.cpp
     ${${PROJECT_NAME}_SRC_ROOT}/slugkit/utils/text.cpp
     ${${PROJECT_NAME}_SRC_ROOT}/slugkit/utils/primes.cpp
+    ${${PROJECT_NAME}_SRC_ROOT}/slugkit/utils/memory_mapped_file.cpp
 )
 
 add_library(${PROJECT_NAME}-utils STATIC
@@ -33,6 +34,7 @@ userver_embed_file(${PROJECT_NAME}-emoji NAME emoji_dict FILEPATH ${${PROJECT_NA
 set(${PROJECT_NAME}_SRC
     ${${PROJECT_NAME}_SRC_ROOT}/slugkit/generator/permutations.cpp
     ${${PROJECT_NAME}_SRC_ROOT}/slugkit/generator/dictionary.cpp
+    ${${PROJECT_NAME}_SRC_ROOT}/slugkit/generator/binary_dictionary.cpp
     ${${PROJECT_NAME}_SRC_ROOT}/slugkit/generator/pattern.cpp
     ${${PROJECT_NAME}_SRC_ROOT}/slugkit/generator/placeholders.cpp
     ${${PROJECT_NAME}_SRC_ROOT}/slugkit/generator/pattern_generator.cpp
@@ -61,25 +63,44 @@ target_include_directories(
         ${${PROJECT_NAME}_SRC_ROOT}
 )
 
-set(${PROJECT_NAME}_TEST_UTILS_SRC
-    ${${PROJECT_NAME}_SRC_ROOT}/slugkit/test_utils/helpers.cpp
-    ${${PROJECT_NAME}_SRC_ROOT}/slugkit/test_utils/helpers.hpp
-)
 
-add_library(${PROJECT_NAME}-test-utils STATIC
-    ${${PROJECT_NAME}_TEST_UTILS_SRC}
-)
-target_include_directories(
-    ${PROJECT_NAME}-test-utils
-    PUBLIC
-        ${${PROJECT_NAME}_INCLUDE_ROOT}
-        ${${PROJECT_NAME}_SRC_ROOT}
-)
-target_link_libraries(
-    ${PROJECT_NAME}-test-utils
-    PUBLIC
-        ${PROJECT_NAME}
-)
+if (SLUGKIT_GENERATOR_BUILD_TESTS OR SLUGKIT_GENERATOR_BUILD_BENCHMARKS OR SLUGKIT_GENERATOR_BUILD_EXAMPLES)
+    set(
+        ${PROJECT_NAME}-test-dictionary-data
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/data/test-adv.slugs
+    )
+    userver_embed_file(
+        ${PROJECT_NAME}-dictionary_test_data
+        NAME dictionary_test_data
+        FILEPATH ${${PROJECT_NAME}-test-dictionary-data}
+        )
+    set(DICTIONARY_TEST_FILE "${${PROJECT_NAME}-test-dictionary-data}")
+    configure_file(
+        ${${PROJECT_NAME}_SRC_ROOT}/slugkit/test_utils/data_config.in.hpp
+        ${CMAKE_CURRENT_BINARY_DIR}/slugkit/include/slugkit/test_utils/data_config.hpp
+        @ONLY
+    )
+    set(${PROJECT_NAME}_TEST_UTILS_SRC
+        ${${PROJECT_NAME}_SRC_ROOT}/slugkit/test_utils/helpers.cpp
+        ${${PROJECT_NAME}_SRC_ROOT}/slugkit/test_utils/helpers.hpp
+    )
+
+    add_library(${PROJECT_NAME}-test-utils STATIC
+        ${${PROJECT_NAME}_TEST_UTILS_SRC}
+    )
+    target_include_directories(
+        ${PROJECT_NAME}-test-utils
+        PUBLIC
+            ${${PROJECT_NAME}_INCLUDE_ROOT}
+            ${${PROJECT_NAME}_SRC_ROOT}
+            ${CMAKE_CURRENT_BINARY_DIR}/slugkit/include
+    )
+    target_link_libraries(
+        ${PROJECT_NAME}-test-utils
+        PUBLIC
+            ${PROJECT_NAME}
+    )
+endif()
 
 
 if(SLUGKIT_GENERATOR_BUILD_TESTS)
