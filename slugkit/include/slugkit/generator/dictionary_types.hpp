@@ -1,5 +1,7 @@
 #pragma once
 
+#include <slugkit/generator/types.hpp>
+
 #include <slugkit/utils/numeric.hpp>
 
 namespace slugkit::generator {
@@ -7,7 +9,7 @@ namespace slugkit::generator {
 /// @brief Statistics for a dictionary.
 struct DictionaryStats {
     std::string kind;
-    std::string language;
+    LanguageCode language;
     std::int64_t count;
 };
 
@@ -15,7 +17,7 @@ struct DictionaryStats {
 /// @brief Definition of a tag.
 struct TagDefinition {
     std::string kind;
-    std::string tag;
+    Tag tag;
     std::optional<std::string> description;
     bool opt_in;
     std::int32_t word_count;

@@ -49,13 +49,13 @@ struct Dictionary::Impl {
     using Cache = detail::FilteredDictionaryCache;
 
     std::string kind_;
-    std::string language_;
+    LanguageCode language_;
     WordContainerPtr words_;
     std::shared_ptr<detail::FilteredDictionaryCacheBase> cache_;
 
-    Impl(std::string_view kind, std::string_view language, std::vector<Word>&& words, bool use_cache)
+    Impl(std::string_view kind, LanguageCodeView language, std::vector<Word>&& words, bool use_cache)
         : kind_{kind}
-        , language_{language}
+        , language_{LanguageCode(language.GetUnderlying())}
         , words_{std::make_shared<WordContainer>(std::move(words))}
         , cache_{} {
         if (use_cache) {
@@ -83,7 +83,7 @@ struct Dictionary::Impl {
     }
 };
 
-Dictionary::Dictionary(std::string_view kind, std::string_view language, std::vector<Word> words, bool use_cache)
+Dictionary::Dictionary(std::string_view kind, LanguageCodeView language, std::vector<Word> words, bool use_cache)
     : pimpl_{kind, language, std::move(words), use_cache} {
 }
 
@@ -98,7 +98,7 @@ auto Dictionary::GetKind() const -> const std::string& {
     return pimpl_->kind_;
 }
 
-auto Dictionary::GetLanguage() const -> const std::string& {
+auto Dictionary::GetLanguage() const -> const LanguageCode& {
     return pimpl_->language_;
 }
 
@@ -152,7 +152,7 @@ DictionarySet::DictionarySet(std::vector<Dictionary> dictionaries)
         std::string key = dictionary.GetKind();
         const auto& language = dictionary.GetLanguage();
         if (!language.empty()) {
-            key += "-" + language;
+            key += "-" + std::string(language.GetUnderlying());
         } else {
             language_agnostic_kinds_.insert(key);
         }
@@ -167,8 +167,9 @@ FilteredDictionaryConstPtr DictionarySet::Filter(const Selector& selector) const
         // maybe language-agnostic dictionary
         // check if there are language-specific dictionaries
         if (selector.language.has_value()) {
-            auto lang_key =
-                fmt::format("{}-{}", key, utils::text::ToLower(selector.language.value(), utils::text::kEnUsLocale));
+            auto lang_key = fmt::format(
+                "{}-{}", key, utils::text::ToLower(selector.language.value().GetUnderlying(), utils::text::kEnUsLocale)
+            );
             auto dict = dictionaries_.find(lang_key);
             if (dict != dictionaries_.end()) {
                 return dict->second.Filter(selector);
@@ -177,7 +178,9 @@ FilteredDictionaryConstPtr DictionarySet::Filter(const Selector& selector) const
     } else {
         // language-specific dictionary
         if (selector.language.has_value()) {
-            key += fmt::format("-{}", utils::text::ToLower(selector.language.value(), utils::text::kEnUsLocale));
+            key += fmt::format(
+                "-{}", utils::text::ToLower(selector.language.value().GetUnderlying(), utils::text::kEnUsLocale)
+            );
         } else {
             key += "-en";
         }

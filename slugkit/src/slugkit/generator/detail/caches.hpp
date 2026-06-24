@@ -87,10 +87,10 @@ struct FilteredDictionaryCache : FilteredDictionaryCacheBase {
     std::int64_t GetTagsHash(const EmojiGen::TagsType& include_tags, const EmojiGen::TagsType& exclude_tags) const {
         auto seed = include_tags.size() + exclude_tags.size();
         for (const auto& tag : include_tags) {
-            boost::hash_combine(seed, StrHash(tag.data(), tag.size()));
+            boost::hash_combine(seed, StrHash(tag.GetUnderlying().data(), tag.GetUnderlying().size()));
         }
         for (const auto& tag : exclude_tags) {
-            boost::hash_combine(seed, StrHash(tag.data(), tag.size()));
+            boost::hash_combine(seed, StrHash(tag.GetUnderlying().data(), tag.GetUnderlying().size()));
         }
         return seed;
     }

@@ -3,6 +3,7 @@
 #include <userver/utils/strong_typedef.hpp>
 
 #include <optional>
+#include <set>
 #include <string>
 #include <unordered_set>
 #include <variant>
@@ -11,8 +12,6 @@ namespace slugkit::generator {
 
 using Slug = userver::utils::StrongTypedef<class SlugTag, std::string>;
 using OptionalSlug = std::optional<Slug>;
-
-using WordTags = std::unordered_set<std::string>;
 
 enum class CaseType {
     kNone,
@@ -51,6 +50,132 @@ struct BasicWord {
     [[nodiscard]] auto ToString() const -> std::string;
 };
 
+using LanguageCode = userver::utils::
+    StrongTypedef<class LanguageCodeTag, std::string, userver::utils::StrongTypedefOps::kCompareTransparent>;
+using LanguageCodeView = userver::utils::
+    StrongTypedef<class LanguageCodeTag, std::string_view, userver::utils::StrongTypedefOps::kCompareTransparent>;
+
+using LanguageCodeSet = std::set<LanguageCodeView>;
+
+inline auto operator==(const LanguageCode& lhs, const LanguageCodeView& rhs) noexcept -> bool {
+    return lhs.GetUnderlying() == rhs.GetUnderlying();
+}
+
+inline auto operator==(const LanguageCodeView& lhs, const LanguageCode& rhs) noexcept -> bool {
+    return lhs.GetUnderlying() == rhs.GetUnderlying();
+}
+
+inline auto operator!=(const LanguageCode& lhs, const LanguageCodeView& rhs) noexcept -> bool {
+    return lhs.GetUnderlying() != rhs.GetUnderlying();
+}
+
+inline auto operator!=(const LanguageCodeView& lhs, const LanguageCode& rhs) noexcept -> bool {
+    return lhs.GetUnderlying() != rhs.GetUnderlying();
+}
+
+inline auto operator<(const LanguageCode& lhs, const LanguageCodeView& rhs) noexcept -> bool {
+    return lhs.GetUnderlying() < rhs.GetUnderlying();
+}
+
+inline auto operator<(const LanguageCodeView& lhs, const LanguageCode& rhs) noexcept -> bool {
+    return lhs.GetUnderlying() < rhs.GetUnderlying();
+}
+
+using Tag =
+    userver::utils::StrongTypedef<class TagTag, std::string, userver::utils::StrongTypedefOps::kCompareTransparent>;
+using TagView = userver::utils::
+    StrongTypedef<class TagTag, std::string_view, userver::utils::StrongTypedefOps::kCompareTransparent>;
+
+using TagSet = std::set<TagView>;
+
+inline auto operator==(const Tag& lhs, const TagView& rhs) noexcept -> bool {
+    return lhs.GetUnderlying() == rhs.GetUnderlying();
+}
+
+inline auto operator==(const TagView& lhs, const Tag& rhs) noexcept -> bool {
+    return lhs.GetUnderlying() == rhs.GetUnderlying();
+}
+
+inline auto operator!=(const Tag& lhs, const TagView& rhs) noexcept -> bool {
+    return lhs.GetUnderlying() != rhs.GetUnderlying();
+}
+
+inline auto operator!=(const TagView& lhs, const Tag& rhs) noexcept -> bool {
+    return lhs.GetUnderlying() != rhs.GetUnderlying();
+}
+
+inline auto operator<(const Tag& lhs, const TagView& rhs) noexcept -> bool {
+    return lhs.GetUnderlying() < rhs.GetUnderlying();
+}
+
+inline auto operator<(const TagView& lhs, const Tag& rhs) noexcept -> bool {
+    return lhs.GetUnderlying() < rhs.GetUnderlying();
+}
+
+using WordTags = std::set<Tag>;
 using Word = BasicWord<WordTags>;
+
+using size_type = std::uint32_t;
+
+using IndexType =
+    userver::utils::StrongTypedef<class IndexTypeTag, size_type, userver::utils::StrongTypedefOps::kCompareTransparent>;
+using SizeType =
+    userver::utils::StrongTypedef<class SizeTypeTag, size_type, userver::utils::StrongTypedefOps::kCompareTransparent>;
+
+namespace literals {
+
+inline constexpr auto operator""_lang(const char* str, std::size_t len) noexcept -> LanguageCode {
+    return LanguageCode{str, len};
+}
+
+inline constexpr auto operator""_lang_view(const char* str, std::size_t len) noexcept -> LanguageCodeView {
+    return LanguageCodeView{str, len};
+}
+
+inline constexpr auto operator""_tag(const char* str, std::size_t len) noexcept -> Tag {
+    return Tag{str, len};
+}
+
+inline constexpr auto operator""_tag_view(const char* str, std::size_t len) noexcept -> TagView {
+    return TagView{str, len};
+}
+
+inline constexpr auto operator""_idx(unsigned long long value) noexcept -> IndexType {
+    return IndexType(static_cast<IndexType::UnderlyingType>(value));
+}
+
+inline constexpr auto operator""_size(unsigned long long value) noexcept -> SizeType {
+    return SizeType(static_cast<SizeType::UnderlyingType>(value));
+}
+
+}  // namespace literals
+
+inline constexpr auto operator+(IndexType lhs, IndexType rhs) noexcept -> IndexType {
+    return IndexType(lhs.GetUnderlying() + rhs.GetUnderlying());
+}
+inline constexpr auto operator+(IndexType lhs, IndexType::UnderlyingType rhs) noexcept -> IndexType {
+    return IndexType(lhs.GetUnderlying() + rhs);
+}
+inline constexpr auto operator-(IndexType lhs, IndexType rhs) noexcept -> IndexType {
+    return IndexType(lhs.GetUnderlying() - rhs.GetUnderlying());
+}
+inline constexpr auto operator-(IndexType lhs, IndexType::UnderlyingType rhs) noexcept -> IndexType {
+    return IndexType(lhs.GetUnderlying() - rhs);
+}
+inline constexpr auto operator*(IndexType lhs, IndexType rhs) noexcept -> IndexType {
+    return IndexType(lhs.GetUnderlying() * rhs.GetUnderlying());
+}
+inline constexpr auto operator/(IndexType lhs, IndexType rhs) noexcept -> IndexType {
+    return IndexType(lhs.GetUnderlying() / rhs.GetUnderlying());
+}
+inline constexpr auto operator/(IndexType lhs, IndexType::UnderlyingType rhs) noexcept -> IndexType {
+    return IndexType(lhs.GetUnderlying() / rhs);
+}
+inline constexpr auto operator%(IndexType lhs, IndexType rhs) noexcept -> IndexType {
+    return IndexType(lhs.GetUnderlying() % rhs.GetUnderlying());
+}
+inline constexpr auto operator%(IndexType lhs, IndexType::UnderlyingType rhs) noexcept -> IndexType {
+    return IndexType(lhs.GetUnderlying() % rhs);
+}
 
 }  // namespace slugkit::generator

@@ -17,7 +17,7 @@ void GenerateFromDictionary(benchmark::State& state) {
     userver::engine::RunStandalone([&] {
         const auto dict_size = state.range(0);
         Dictionary dictionary = FillDictionary(
-            {.name = "word", .language = "en", .size = dict_size, .tags = {}, .min_length = 0, .max_length = 0}
+            {.name = "word", .language = "en"_lang, .size = dict_size, .tags = {}, .min_length = 0, .max_length = 0}
         );
         state.SetLabel(fmt::format("{} words", dict_size));
         auto filtered_dictionary = dictionary.Filter("word"_selector);
@@ -35,7 +35,7 @@ void GenerateFromDictionaryUppercase(benchmark::State& state) {
     userver::engine::RunStandalone([&] {
         const auto dict_size = state.range(0);
         Dictionary dictionary = FillDictionary(
-            {.name = "word", .language = "en", .size = dict_size, .tags = {}, .min_length = 0, .max_length = 0}
+            {.name = "word", .language = "en"_lang, .size = dict_size, .tags = {}, .min_length = 0, .max_length = 0}
         );
         state.SetLabel(fmt::format("{} words", dict_size));
         auto filtered_dictionary = dictionary.Filter("WORD"_selector);
@@ -53,7 +53,7 @@ void GenerateFromDictionaryTitleCase(benchmark::State& state) {
     userver::engine::RunStandalone([&] {
         const auto dict_size = state.range(0);
         Dictionary dictionary = FillDictionary(
-            {.name = "word", .language = "en", .size = dict_size, .tags = {}, .min_length = 0, .max_length = 0}
+            {.name = "word", .language = "en"_lang, .size = dict_size, .tags = {}, .min_length = 0, .max_length = 0}
         );
         state.SetLabel(fmt::format("{} words", dict_size));
         auto filtered_dictionary = dictionary.Filter("Word"_selector);
@@ -71,7 +71,7 @@ void GenerateFromDictionaryMixedCase(benchmark::State& state) {
     userver::engine::RunStandalone([&] {
         const auto dict_size = state.range(0);
         Dictionary dictionary = FillDictionary(
-            {.name = "word", .language = "en", .size = dict_size, .tags = {}, .min_length = 0, .max_length = 0}
+            {.name = "word", .language = "en"_lang, .size = dict_size, .tags = {}, .min_length = 0, .max_length = 0}
         );
         state.SetLabel(fmt::format("{} words", dict_size));
         auto filtered_dictionary = dictionary.Filter("wOrD"_selector);

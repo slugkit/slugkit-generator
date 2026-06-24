@@ -9,8 +9,14 @@ namespace slugkit::utils {
 template <typename ContainerT, typename ContainerU>
 auto IsSubset(const ContainerT& subset, const ContainerU& superset) -> bool {
     for (const auto& item : subset) {
-        if (!std::count(superset.begin(), superset.end(), item)) {
-            return false;
+        if constexpr (userver::utils::IsStrongTypedef<typename ContainerU::value_type>::value) {
+            if (!std::count(superset.begin(), superset.end(), item.GetUnderlying())) {
+                return false;
+            }
+        } else {
+            if (!std::count(superset.begin(), superset.end(), item)) {
+                return false;
+            }
         }
     }
     return true;
@@ -25,8 +31,14 @@ auto Intersects(const ContainerT& lhs, const ContainerU& rhs) -> bool {
         return Intersects(rhs, lhs);
     }
     for (const auto& item : lhs) {
-        if (std::count(rhs.begin(), rhs.end(), item)) {
-            return true;
+        if constexpr (userver::utils::IsStrongTypedef<typename ContainerU::value_type>::value) {
+            if (std::count(rhs.begin(), rhs.end(), item.GetUnderlying())) {
+                return true;
+            }
+        } else {
+            if (std::count(rhs.begin(), rhs.end(), item)) {
+                return true;
+            }
         }
     }
     return false;

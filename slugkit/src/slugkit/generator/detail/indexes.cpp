@@ -123,8 +123,7 @@ auto TagIndex::Query(const Selector& selector) const -> FilteredWords {
     return Query(selector.include_tags, selector.exclude_tags);
 }
 
-auto TagIndex::Query(const EmojiGen::TagsType& include_tags, const EmojiGen::TagsType& exclude_tags) const
-    -> FilteredWords {
+auto TagIndex::Query(const TagSet& include_tags, const TagSet& exclude_tags) const -> FilteredWords {
     if (include_tags.empty() && exclude_tags.empty()) {
         return all_words;
     }
@@ -136,7 +135,7 @@ auto TagIndex::Query(const EmojiGen::TagsType& include_tags, const EmojiGen::Tag
     } else {
         std::vector<TagMap::const_iterator> matched_tags;
         for (const auto& tag : include_tags) {
-            auto it = tags.find(std::string(tag));
+            auto it = tags.find(Tag(tag.GetUnderlying()));
             if (it == tags.end()) {
                 continue;
             }
@@ -168,7 +167,7 @@ auto TagIndex::Query(const EmojiGen::TagsType& include_tags, const EmojiGen::Tag
     if (!exclude_tags.empty()) {
         std::vector<TagMap::const_iterator> matched_tags;
         for (const auto& tag : exclude_tags) {
-            auto it = tags.find(std::string(tag));
+            auto it = tags.find(Tag(tag.GetUnderlying()));
             if (it == tags.end()) {
                 continue;
             }
@@ -204,7 +203,7 @@ auto TagIndex::MaxWordCount(const Selector& selector) const -> std::size_t {
     if (!selector.include_tags.empty()) {
         std::vector<TagMap::const_iterator> matched_tags;
         for (const auto& tag : selector.include_tags) {
-            auto it = tags.find(std::string(tag));
+            auto it = tags.find(Tag(tag.GetUnderlying()));
             if (it == tags.end()) {
                 continue;
             }
@@ -223,7 +222,7 @@ auto TagIndex::MaxWordCount(const Selector& selector) const -> std::size_t {
     if (!selector.exclude_tags.empty()) {
         std::vector<TagMap::const_iterator> matched_tags;
         for (const auto& tag : selector.exclude_tags) {
-            auto it = tags.find(std::string(tag));
+            auto it = tags.find(Tag(tag.GetUnderlying()));
             if (it == tags.end()) {
                 continue;
             }
@@ -243,7 +242,7 @@ auto TagIndex::MaxWordCount(const Selector& selector) const -> std::size_t {
 auto TagIndex::GetTagDefinitions(std::string_view kind) const -> std::vector<TagDefinition> {
     std::vector<TagDefinition> result;
     for (const auto& [tag, words] : tags) {
-        result.push_back({std::string(kind), std::string(tag), {}, false, static_cast<std::int32_t>(words.size())});
+        result.push_back({std::string(kind), tag, {}, false, static_cast<std::int32_t>(words.size())});
     }
     return result;
 }

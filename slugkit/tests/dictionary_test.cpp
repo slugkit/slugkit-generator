@@ -11,51 +11,51 @@ namespace {
 const std::vector<Word> kNouns = {
     {"noun1", {}},
     {"noun2", {}},
-    {"noun3", {"tag1"}},
-    {"noun4", {"tag2", "obscene"}},
-    {"noun5", {"tag1", "tag2"}},
+    {"noun3", {"tag1"_tag}},
+    {"noun4", {"tag2"_tag, "obscene"_tag}},
+    {"noun5", {"tag1"_tag, "tag2"_tag}},
 };
 
 const std::vector<Word> kAdjectives = {
     {"adjective1", {}},
     {"adjective2", {}},
-    {"adjective3", {"tag1"}},
-    {"adjective4", {"tag2", "obscene"}},
-    {"adjective5", {"tag1", "tag2"}},
-    {"adjective6", {"tag1", "tag2", "obscene"}},
-    {"adjective7", {"tag1", "tag2", "obscene"}},
+    {"adjective3", {"tag1"_tag}},
+    {"adjective4", {"tag2"_tag, "obscene"_tag}},
+    {"adjective5", {"tag1"_tag, "tag2"_tag}},
+    {"adjective6", {"tag1"_tag, "tag2"_tag, "obscene"_tag}},
+    {"adjective7", {"tag1"_tag, "tag2"_tag, "obscene"_tag}},
 };
 
 const std::vector<Word> kVerbs = {
     {"verb1", {}},
     {"verb2", {}},
-    {"verb3", {"tag1"}},
-    {"verb4", {"tag2", "obscene"}},
-    {"verb5", {"tag1", "tag2"}},
-    {"verb6", {"tag1", "tag2", "obscene"}},
-    {"verb7", {"tag1", "tag2", "obscene"}},
-    {"verb8", {"tag1", "tag2", "obscene"}},
-    {"verb9", {"tag1", "tag2", "obscene"}},
-    {"verb10", {"tag1", "tag2", "obscene"}},
+    {"verb3", {"tag1"_tag}},
+    {"verb4", {"tag2"_tag, "obscene"_tag}},
+    {"verb5", {"tag1"_tag, "tag2"_tag}},
+    {"verb6", {"tag1"_tag, "tag2"_tag, "obscene"_tag}},
+    {"verb7", {"tag1"_tag, "tag2"_tag, "obscene"_tag}},
+    {"verb8", {"tag1"_tag, "tag2"_tag, "obscene"_tag}},
+    {"verb9", {"tag1"_tag, "tag2"_tag, "obscene"_tag}},
+    {"verb10", {"tag1"_tag, "tag2"_tag, "obscene"_tag}},
 };
 
 const std::vector<Word> kAdverbs = {
     {"adverb1", {}},
     {"adverb2", {}},
-    {"adverb3", {"tag1"}},
-    {"adverb4", {"tag2", "obscene"}},
-    {"adverb5", {"tag1", "tag2"}},
-    {"adverb6", {"tag1", "tag2", "obscene"}},
-    {"adverb7", {"tag1", "tag2", "obscene"}},
-    {"adverb8", {"tag1", "tag2", "obscene"}},
-    {"adverb9", {"tag1", "tag2", "obscene"}},
+    {"adverb3", {"tag1"_tag}},
+    {"adverb4", {"tag2"_tag, "obscene"_tag}},
+    {"adverb5", {"tag1"_tag, "tag2"_tag}},
+    {"adverb6", {"tag1"_tag, "tag2"_tag, "obscene"_tag}},
+    {"adverb7", {"tag1"_tag, "tag2"_tag, "obscene"_tag}},
+    {"adverb8", {"tag1"_tag, "tag2"_tag, "obscene"_tag}},
+    {"adverb9", {"tag1"_tag, "tag2"_tag, "obscene"_tag}},
 };
 
 const std::map<std::string, Dictionary> kDictionaries = {
-    {"noun", Dictionary("noun", "en", kNouns)},
-    {"adjective", Dictionary("adjective", "en", kAdjectives)},
-    {"verb", Dictionary("verb", "en", kVerbs)},
-    {"adverb", Dictionary("adverb", "en", kAdverbs)},
+    {"noun", Dictionary("noun", "en"_lang_view, kNouns)},
+    {"adjective", Dictionary("adjective", "en"_lang_view, kAdjectives)},
+    {"verb", Dictionary("verb", "en"_lang_view, kVerbs)},
+    {"adverb", Dictionary("adverb", "en"_lang_view, kAdverbs)},
 };
 
 void CheckDictionary(const Dictionary& dictionary, const std::vector<Word>& expected_words) {
@@ -75,14 +75,14 @@ const FilteredDictionaryPtr kEmptyFilter = FilteredDictionaryPtr{nullptr};
 }  // namespace
 
 UTEST(Dictionary, Empty) {
-    Dictionary dictionary("test", "en", {});
+    Dictionary dictionary("test", "en"_lang_view, {});
     EXPECT_EQ(dictionary.size(), 0);
     EXPECT_EQ(dictionary.empty(), true);
     EXPECT_EQ(dictionary.Filter({}), kEmptyFilter);
 }
 
 UTEST(Dictionary, Filter) {
-    Dictionary dictionary("noun", "en", kNouns);
+    Dictionary dictionary("noun", "en"_lang_view, kNouns);
 
     CheckDictionary(dictionary, kNouns);
 
@@ -103,7 +103,7 @@ UTEST(Dictionary, Filter) {
 }
 
 UTEST(Dictionary, FilterByIncludeTags) {
-    Dictionary dictionary("noun", "en", kNouns);
+    Dictionary dictionary("noun", "en"_lang_view, kNouns);
 
     CheckDictionary(dictionary, kNouns);
 
@@ -111,7 +111,7 @@ UTEST(Dictionary, FilterByIncludeTags) {
     EXPECT_EQ(dictionary.GetLanguage(), "en");
 
     auto selector = "noun:+tag1"_selector;
-    ASSERT_EQ(selector.include_tags, (Selector::TagsType{"tag1"}));
+    ASSERT_EQ(selector.include_tags, (Selector::TagsType{"tag1"_tag_view}));
 
     ASSERT_EQ(dictionary.Filter(selector)->size(), 2);
     EXPECT_EQ(dictionary.Filter(selector)->empty(), false);
@@ -119,7 +119,7 @@ UTEST(Dictionary, FilterByIncludeTags) {
     EXPECT_EQ((*dictionary.Filter(selector))[1], kNouns[4].word);
 
     selector = "noun:+tag2"_selector;
-    ASSERT_EQ(selector.include_tags, (Selector::TagsType{"tag2"}));
+    ASSERT_EQ(selector.include_tags, (Selector::TagsType{"tag2"_tag_view}));
 
     ASSERT_EQ(dictionary.Filter(selector)->size(), 2);
     EXPECT_EQ(dictionary.Filter(selector)->empty(), false);
@@ -128,13 +128,13 @@ UTEST(Dictionary, FilterByIncludeTags) {
 }
 
 UTEST(Dictionary, FilterByExcludeTags) {
-    Dictionary dictionary("noun", "en", kNouns);
+    Dictionary dictionary("noun", "en"_lang_view, kNouns);
     EXPECT_EQ(dictionary.size(), 5);
     EXPECT_EQ(dictionary.empty(), false);
     EXPECT_EQ(dictionary.GetKind(), "noun");
 
     auto selector = "noun:-tag1"_selector;
-    ASSERT_EQ(selector.exclude_tags, (Selector::TagsType{"tag1"}));
+    ASSERT_EQ(selector.exclude_tags, (Selector::TagsType{"tag1"_tag_view}));
 
     // Filtering with a selector should return a dictionary with the same size and kind
     ASSERT_EQ(dictionary.Filter(selector)->size(), 3);
@@ -144,7 +144,7 @@ UTEST(Dictionary, FilterByExcludeTags) {
     EXPECT_EQ((*dictionary.Filter(selector))[2], kNouns[3].word);
 
     selector = "noun:-tag2"_selector;
-    ASSERT_EQ(selector.exclude_tags, (Selector::TagsType{"tag2"}));
+    ASSERT_EQ(selector.exclude_tags, (Selector::TagsType{"tag2"_tag_view}));
 
     ASSERT_EQ(dictionary.Filter(selector)->size(), 3);
     EXPECT_EQ(dictionary.Filter(selector)->empty(), false);
@@ -154,7 +154,7 @@ UTEST(Dictionary, FilterByExcludeTags) {
 }
 
 UTEST(Dictionary, FilterBySizeLimit) {
-    Dictionary dictionary("noun", "en", kNouns);
+    Dictionary dictionary("noun", "en"_lang_view, kNouns);
     CheckDictionary(dictionary, kNouns);
 
     auto selector = "noun:<3"_selector;
@@ -198,7 +198,7 @@ UTEST(Dictionary, FilterBySizeLimit) {
 }
 
 UTEST(Dictionary, FilterWithCaseModifier) {
-    Dictionary dictionary("noun", "en", kNouns);
+    Dictionary dictionary("noun", "en"_lang_view, kNouns);
     EXPECT_EQ(dictionary.size(), 5);
     EXPECT_EQ(dictionary.empty(), false);
     EXPECT_EQ(dictionary.GetKind(), "noun");

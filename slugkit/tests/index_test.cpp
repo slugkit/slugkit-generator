@@ -7,20 +7,20 @@ namespace slugkit::generator::detail {
 using namespace literals;
 
 const std::vector<Word> kWords = {
-    {"1234567890", {"a", "b"}},  // length = 10, tag = a, b
-    {"1234", {"a"}},             // length = 4, tag = a
-    {"12", {}},                  // length = 2, no tags
-    {"12345678901", {"b"}},      // length = 11, tag = b
-    {"ab", {"c"}},               // length = 2, tag = c
-    {"123456789", {"d"}},        // length = 9, tag = d
-    {"12345678", {"e"}},         // length = 8, tag = e
-    {"123", {"f"}},              // length = 3, tag = f
-    {"123456", {"g", "h"}},      // length = 6, tag = g, h
-    {"1234", {"h"}},             // length = 4, tag = h
-    {"123456789012", {"i"}},     // length = 12, tag = i
-    {"12345", {"j", "k"}},       // length = 5, tag = j, k
-    {"1234567", {"k"}},          // length = 7, tag = k
-    {"abcdefghi", {"l"}},        // length = 9, tag = l
+    {"1234567890", {Tag("a"), Tag("b")}},  // length = 10, tag = a, b
+    {"1234", {Tag("a")}},                  // length = 4, tag = a
+    {"12", {}},                            // length = 2, no tags
+    {"12345678901", {Tag("b")}},           // length = 11, tag = b
+    {"ab", {Tag("c")}},                    // length = 2, tag = c
+    {"123456789", {Tag("d")}},             // length = 9, tag = d
+    {"12345678", {Tag("e")}},              // length = 8, tag = e
+    {"123", {Tag("f")}},                   // length = 3, tag = f
+    {"123456", {Tag("g"), Tag("h")}},      // length = 6, tag = g, h
+    {"1234", {Tag("h")}},                  // length = 4, tag = h
+    {"123456789012", {Tag("i")}},          // length = 12, tag = i
+    {"12345", {Tag("j"), Tag("k")}},       // length = 5, tag = j, k
+    {"1234567", {Tag("k")}},               // length = 7, tag = k
+    {"abcdefghi", {Tag("l")}},             // length = 9, tag = l
 };
 
 UTEST(LengthIndex, Empty) {

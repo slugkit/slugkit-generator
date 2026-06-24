@@ -10,6 +10,8 @@
 
 namespace slugkit::generator::benchmarks {
 
+using namespace literals;
+
 namespace {
 const std::vector<std::string> kPatterns = {
     "{verb}-{adverb}",
@@ -20,10 +22,10 @@ const std::vector<std::string> kPatterns = {
 };
 
 const auto kDictionaries = GenerateSet({
-    {.name = "adjective", .language = "en", .size = 30'000, .tags = {}, .min_length = 0, .max_length = 0},
-    {.name = "adverb", .language = "en", .size = 10'000, .tags = {}, .min_length = 0, .max_length = 0},
-    {.name = "noun", .language = "en", .size = 100'000, .tags = {}, .min_length = 0, .max_length = 0},
-    {.name = "verb", .language = "en", .size = 20'000, .tags = {}, .min_length = 0, .max_length = 0},
+    {.name = "adjective", .language = "en"_lang, .size = 30'000, .tags = {}, .min_length = 0, .max_length = 0},
+    {.name = "adverb", .language = "en"_lang, .size = 10'000, .tags = {}, .min_length = 0, .max_length = 0},
+    {.name = "noun", .language = "en"_lang, .size = 100'000, .tags = {}, .min_length = 0, .max_length = 0},
+    {.name = "verb", .language = "en"_lang, .size = 20'000, .tags = {}, .min_length = 0, .max_length = 0},
 });
 
 constexpr auto kSeed = "test";

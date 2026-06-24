@@ -15,14 +15,14 @@ namespace {
 
 const auto kWords = GenerateWords(
     {.name = "word",
-     .language = "en",
+     .language = "en"_lang,
      .size = 100'000,
      .tags =
          {
-             {.tag = "tag1", .probability = 100},
-             {.tag = "tag2", .probability = 50},
-             {.tag = "tag3", .probability = 25},
-             {.tag = "tag4", .probability = 10},
+             {.tag = "tag1"_tag, .probability = 100},
+             {.tag = "tag2"_tag, .probability = 50},
+             {.tag = "tag3"_tag, .probability = 25},
+             {.tag = "tag4"_tag, .probability = 10},
          },
      .min_length = 3,
      .max_length = 20}

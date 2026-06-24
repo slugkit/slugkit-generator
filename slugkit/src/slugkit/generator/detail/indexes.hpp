@@ -186,7 +186,7 @@ public:
     using Iterator = WordContainer::const_iterator;
     using FilteredWords = std::vector<Iterator>;
     using LengthMap = std::multimap<std::size_t, Iterator>;
-    using TagMap = std::map<std::string, FilteredWords>;
+    using TagMap = std::map<Tag, FilteredWords>;
 
     TagMap tags;
     FilteredWords all_words;

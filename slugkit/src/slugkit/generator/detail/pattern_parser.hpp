@@ -59,10 +59,10 @@ struct PatternParser {
     };
 
     struct SetSelectorLanguage {
-        std::string_view language;
+        LanguageCodeView language;
         void operator()(Selector& selector) const {
             if (!selector.language.has_value()) {
-                selector.language = std::string_view(language);
+                selector.language = language;
             }
         }
         void operator()(auto&&) const {
@@ -70,7 +70,7 @@ struct PatternParser {
     };
 
     struct AddSelectorIncludeTag {
-        std::string_view tag;
+        TagView tag;
         void operator()(Selector& selector) const {
             if (!selector.exclude_tags.contains(tag)) {
                 selector.include_tags.insert(tag);
@@ -81,7 +81,7 @@ struct PatternParser {
     };
 
     struct AddSelectorExcludeTag {
-        std::string_view tag;
+        TagView tag;
         void operator()(Selector& selector) const {
             if (!selector.include_tags.contains(tag)) {
                 selector.exclude_tags.insert(tag);
@@ -224,7 +224,7 @@ struct PatternParser {
         };
     }
 
-    std::string_view ParseTag() {
+    TagView ParseTag() {
         auto start = pos_;
         if (IsEof()) {
             throw PatternSyntaxError(
@@ -237,7 +237,7 @@ struct PatternParser {
         if (start == pos_) {
             throw PatternSyntaxError(fmt::format("Pattern parse error: expected tag at column {}", GetCurrentColumn()));
         }
-        return std::string_view(start, pos_);
+        return TagView(start, pos_);
     }
 
     std::uint64_t ParseInteger() {
@@ -453,7 +453,7 @@ struct PatternParser {
         if (Match('@')) {
             Next();
             auto language = ParseIdentifier();
-            selector.language = std::string_view(language.value);
+            selector.language = LanguageCodeView(language.value);
         }
         SkipWhitespace();
         if (Match(':')) {
@@ -523,7 +523,7 @@ struct PatternParser {
             Next();
             auto language = ParseIdentifier();
             for (auto& placeholder : placeholders) {
-                std::visit(SetSelectorLanguage{language.value}, placeholder);
+                std::visit(SetSelectorLanguage{LanguageCodeView(language.value)}, placeholder);
             }
         }
         SkipWhitespace();

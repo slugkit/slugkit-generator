@@ -35,13 +35,13 @@ struct SizeLimit {
 /// @note The selector is immutable.
 /// @note The selector is only valid as long as the pattern is alive.
 struct Selector {
-    using TagsType = std::unordered_set<std::string_view>;
+    using TagsType = TagSet;
     using OptionsType = std::map<std::string_view, std::string_view>;
 
     std::string_view kind;
     TagsType include_tags;
     TagsType exclude_tags;
-    std::optional<std::string_view> language;
+    std::optional<LanguageCodeView> language;
     std::optional<SizeLimit> size_limit;
     OptionsType options;
 
@@ -68,13 +68,17 @@ struct Selector {
     /// @brief Check if the selector has mutually exclusive tags.
     /// If there is a tag in the exclude list that is also in the include list,
     /// the tags are mutually exclusive and the selector is invalid.
-    [[nodiscard]] auto MutuallyExclusiveTags() const -> std::vector<std::string_view> {
-        std::vector<std::string_view> result;
-        for (const auto& tag : exclude_tags) {
-            if (include_tags.contains(tag)) {
-                result.push_back(tag);
-            }
-        }
+    [[nodiscard]] auto MutuallyExclusiveTags() const -> std::vector<TagView> {
+        // TODO use set_intersection
+        std::vector<TagView> result;
+        result.reserve(exclude_tags.size());
+        std::set_intersection(
+            exclude_tags.begin(),
+            exclude_tags.end(),
+            include_tags.begin(),
+            include_tags.end(),
+            std::back_inserter(result)
+        );
         return result;
     }
 

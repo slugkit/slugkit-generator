@@ -36,7 +36,7 @@ auto Parse(const Value& value, userver::formats::parse::To<BasicWord<TagsType>>)
         word.kind = value["kind"].template As<std::string>();
     }
     if (value.HasMember("language")) {
-        word.language = value["language"].template As<std::string>();
+        word.language = value["language"].template As<LanguageCode>();
     }
     if (value.HasMember("tags")) {
         word.tags = value["tags"].template As<TagsType>();
