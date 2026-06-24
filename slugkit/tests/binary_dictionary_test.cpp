@@ -51,9 +51,29 @@ constexpr char kWordEntryRawData[] =
 const std::span<const std::byte> kWordEntryData =
     std::span<const std::byte>(reinterpret_cast<const std::byte*>(kWordEntryRawData), sizeof(kWordEntryRawData));
 
+// A complete word data section: magic + size + count + one 24-byte word entry. (Unlike
+// kWordEntryRawData above, this includes the WordData header fields so WordData::At works.)
+constexpr char kWordDataRawData[] =
+    "WORDS==="
+    "\x18\0\0\0"  // size: 24-byte word-data region (little-endian 4 bytes)
+    "\x01\0\0\0"  // count: 1 word (little-endian 4 bytes)
+    "\0\0"        // lowercase markup, start 0 (little-endian 2 bytes)
+    "\x04\0"      // lowercase markup, length 4 (little-endian 2 bytes)
+    "\x04\0"      // uppercase markup, start 4 (little-endian 2 bytes)
+    "\x04\0"      // uppercase markup, length 4 (little-endian 2 bytes)
+    "\x08\0"      // titlecase markup, start 8 (little-endian 2 bytes)
+    "\x04\0"      // titlecase markup, length 4 (little-endian 2 bytes)
+    "noun"        // lowercase
+    "NOUN"        // uppercase
+    "Noun"        // titlecase
+    ;
+
+const std::span<const std::byte> kWordDataData =
+    std::span<const std::byte>(reinterpret_cast<const std::byte*>(kWordDataRawData), sizeof(kWordDataRawData));
+
 }  // namespace
 
-UTEST(BinaryDictionary, DISABLED_Header) {
+UTEST(BinaryDictionary, Header) {
     const auto* header = detail::Header::GetHeader(kHeaderData);
     EXPECT_TRUE(header->IsValid());
     EXPECT_EQ(header->MagicNum(), "SLUGDICT");
@@ -71,8 +91,8 @@ UTEST(BinaryDictionary, WordEntry) {
     EXPECT_EQ(word_entry->Size(), 24);
 }
 
-UTEST(BinaryDictionary, DISABLED_WordData) {
-    const auto* word_data = detail::WordData::GetWordData(kWordEntryData);
+UTEST(BinaryDictionary, WordData) {
+    const auto* word_data = detail::WordData::GetWordData(kWordDataData);
     const auto offset = 0_off;
     EXPECT_EQ(word_data->At(offset).Lowercase(), "noun");
     EXPECT_EQ(word_data->At(offset).Uppercase(), "NOUN");
