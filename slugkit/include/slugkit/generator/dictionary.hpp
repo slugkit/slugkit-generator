@@ -71,7 +71,7 @@ class Dictionary {
     using WordContainerPtr = FilteredDictionary::WordContainerPtr;
 
 public:
-    Dictionary(std::string_view kind, std::string_view language, std::vector<Word> words, bool use_cache = true);
+    Dictionary(std::string_view kind, LanguageCodeView language, std::vector<Word> words, bool use_cache = true);
 
     Dictionary(const Dictionary& other) noexcept;
     Dictionary(Dictionary&& other) noexcept;
@@ -81,7 +81,7 @@ public:
     ~Dictionary();
 
     const std::string& GetKind() const;
-    const std::string& GetLanguage() const;
+    const LanguageCode& GetLanguage() const;
     const Word& GetWord(std::size_t index) const;
 
     const std::string& operator[](std::size_t index) const;

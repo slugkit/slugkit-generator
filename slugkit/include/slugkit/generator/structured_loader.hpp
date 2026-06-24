@@ -95,8 +95,8 @@ auto Parse(const Value& value, userver::formats::parse::To<DictionarySet>) -> Di
     }
     for (auto item = value.begin(); item != value.end(); ++item) {
         auto key = item.GetName();
-        auto dictionary = item->template As<data::Dictionary<std::unordered_set<std::string>>>();
-        dictionaries.emplace_back(key, dictionary.language, std::move(dictionary.words));
+        auto dictionary = item->template As<data::Dictionary<WordTags>>();
+        dictionaries.emplace_back(key, LanguageCodeView(dictionary.language), std::move(dictionary.words));
     }
     return DictionarySet(std::move(dictionaries));
 }

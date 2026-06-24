@@ -1,0 +1,434 @@
+emoticon:
+  description: Text-based emoticons for human-readable slug generation
+  words:
+    # ========================================
+    # CLASSIC HAPPY EMOTICONS
+    # ========================================
+    
+    # Simple Happy
+    ":)": [happy, pos, face, classic, simple, western]
+    ":-)": [happy, pos, face, classic, simple, western, nose]
+    ":]": [happy, pos, face, simple, western, square]
+    "=)": [happy, pos, face, simple, western, equal]
+    "^_^": [happy, pos, face, asian, cute, eyes-closed]
+    "^.^": [happy, pos, face, asian, cute, eyes-closed]
+    "^^": [happy, pos, face, asian, cute, eyes-closed, minimal]
+    ":D": [happy, pos, face, excited, big-smile, western]
+    ":-D": [happy, pos, face, excited, big-smile, western, nose]
+    "=D": [happy, pos, face, excited, big-smile, western, equal]
+    "XD": [happy, pos, face, laughing, eyes-closed, western]
+    "xD": [happy, pos, face, laughing, eyes-closed, western]
+    
+    # Cute and Kawaii
+    ":3": [happy, pos, face, cute, cat-like, western]
+    "c:": [happy, pos, face, cute, simple, western, reverse]
+    "n_n": [happy, pos, face, asian, cute, eyes-closed, sleepy]
+    "-_-": [neut, face, asian, tired, bored, sleepy]
+    "o_o": [surprised, neut, face, asian, wide-eyes, confused]
+    "O_O": [surprised, neut, face, asian, wide-eyes, shocked]
+    "@_@": [confused, neut, face, asian, dizzy, overwhelmed]
+    "x_x": [dead, neg, face, asian, knocked-out, tired]
+    
+    # Winking
+    ";)": [happy, pos, face, winking, flirty, western]
+    ";-)": [happy, pos, face, winking, flirty, western, nose]
+    ";]": [happy, pos, face, winking, flirty, western, square]
+    ";D": [happy, pos, face, winking, excited, western]
+    "^_-": [happy, pos, face, asian, winking, cute]
+    "-_^": [happy, pos, face, asian, winking, cute, reverse]
+    
+    # ========================================
+    # SAD AND NEGATIVE EMOTICONS
+    # ========================================
+    
+    # Basic Sad
+    ":(": [sad, neg, face, frown, western]
+    ":-(": [sad, neg, face, frown, western, nose]
+    ":[": [sad, neg, face, frown, western, square]
+    "=(": [sad, neg, face, frown, western, equal]
+    "T_T": [sad, neg, face, asian, crying, tears]
+    "TT": [sad, neg, face, asian, crying, tears, minimal]
+    "ToT": [sad, neg, face, asian, crying, tears, wailing]
+    ";_;": [sad, neg, face, asian, crying, tears]
+    ";-;": [sad, neg, face, asian, crying, tears]
+    "QQ": [sad, neg, face, asian, crying, tears, cute]
+    
+    # Disappointed and Upset
+    ":/": [disappointed, neg, face, unsure, western, skeptical]
+    ":-/": [disappointed, neg, face, unsure, western, skeptical, nose]
+    ":\\": [disappointed, neg, face, unsure, western, skeptical, backslash]
+    ":-\\": [disappointed, neg, face, unsure, western, skeptical, backslash, nose]
+    ":|": [disappointed, neut, face, straight, blank, western]
+    ":-|": [disappointed, neut, face, straight, blank, western, nose]
+    "=|": [disappointed, neut, face, straight, blank, western, equal]
+    ">:(": [angry, neg, face, mad, western, furious]
+    ">:-(": [angry, neg, face, mad, western, furious, nose]
+    
+    # ========================================
+    # SURPRISED AND SHOCKED EMOTICONS
+    # ========================================
+    
+    # Basic Surprise
+    ":O": [surprised, neut, face, open-mouth, western, shocked]
+    ":-O": [surprised, neut, face, open-mouth, western, shocked, nose]
+    "=O": [surprised, neut, face, open-mouth, western, shocked, equal]
+    "O:": [surprised, neut, face, open-mouth, western, reverse]
+    "0_0": [surprised, neut, face, asian, wide-eyes, shocked]
+    "o.o": [surprised, neut, face, asian, wide-eyes, cute]
+    "O.O": [surprised, neut, face, asian, wide-eyes, shocked, big]
+    ":o": [surprised, neut, face, open-mouth, western, small]
+    
+    # Confused and Questioning
+    ":?": [confused, neut, face, questioning, western]
+    ":-?": [confused, neut, face, questioning, western, nose]
+    "?_?": [confused, neut, face, asian, questioning, puzzled]
+    ">_<": [frustrated, neg, face, asian, annoyed, squinting]
+    "<_<": [suspicious, neut, face, asian, side-eye, skeptical]
+    ">_>": [suspicious, neut, face, asian, side-eye, skeptical, reverse]
+    
+    # ========================================
+    # LOVE AND AFFECTION EMOTICONS
+    # ========================================
+    
+    # Hearts and Love
+    "<3": [love, pos, heart, romantic, western, simple]
+    "</3": [heartbreak, neg, broken-heart, sad, western, breakup]
+    "<33": [love, pos, heart, romantic, western, multiple]
+    "<333": [love, pos, heart, romantic, western, lots]
+    "♥": [love, pos, heart, romantic, symbol]
+    "♡": [love, pos, heart, romantic, symbol, outline]
+    
+    # Kiss Emoticons
+    ":*": [kiss, pos, face, romantic, western, affection]
+    ":-*": [kiss, pos, face, romantic, western, affection, nose]
+    ":x": [kiss, pos, face, romantic, western, affection]
+    ":-x": [kiss, pos, face, romantic, western, affection, nose]
+    "*3*": [kiss, pos, face, asian, cute, affection]
+    
+    # ========================================
+    # SPECIAL CHARACTERS AND SYMBOLS
+    # ========================================
+    
+    # Tongue Out
+    ":P": [silly, pos, face, tongue, western, playful]
+    ":-P": [silly, pos, face, tongue, western, playful, nose]
+    ":p": [silly, pos, face, tongue, western, playful, small]
+    ":-p": [silly, pos, face, tongue, western, playful, small, nose]
+    "=P": [silly, pos, face, tongue, western, playful, equal]
+    "XP": [silly, pos, face, tongue, western, playful, eyes-closed]
+    
+    # Special Expressions  
+    "B)": [cool, pos, face, sunglasses, western, confident]
+    "B-)": [cool, pos, face, sunglasses, western, confident, nose]
+    "8)": [cool, pos, face, sunglasses, western, confident, eight]
+    "8-)": [cool, pos, face, sunglasses, western, confident, eight, nose]
+    "O:)": [innocent, pos, face, halo, western, angelic]
+    "O:-)": [innocent, pos, face, halo, western, angelic, nose]
+    
+    # ========================================
+    # COMPLEX KAOMOJI (JAPANESE EMOTICONS)
+    # ========================================
+    
+    # Happy Kaomoji
+    "(^_^)": [happy, pos, face, asian, cute, parentheses]
+    "(^.^)": [happy, pos, face, asian, cute, parentheses]
+    "(^o^)": [happy, pos, face, asian, excited, open-mouth, parentheses]
+    "(^▽^)": [happy, pos, face, asian, cute, triangle-mouth, parentheses]
+    "(*^_^*)": [happy, pos, face, asian, cute, blushing, asterisk]
+    "(*^.^*)": [happy, pos, face, asian, cute, blushing, asterisk]
+    "(≧∇≦)": [happy, pos, face, asian, excited, big-smile]
+    "(＾◡＾)": [happy, pos, face, asian, cute, circle-mouth]
+    "ヽ(^o^)ノ": [happy, pos, face, asian, celebrating, arms-up]
+    "\\(^o^)/": [happy, pos, face, asian, celebrating, arms-up, backslash]
+    "┌(^o^)┐": [happy, pos, face, asian, celebrating, arms-up, box-drawing]
+    
+    # Cute and Shy Kaomoji
+    "(>_<)": [embarrassed, emo, face, asian, shy, squinting, parentheses]
+    "(˘▾˘)": [content, pos, face, asian, peaceful, sleepy]
+    "(´∀｀)": [happy, pos, face, asian, content, relaxed]
+    "(｡◕‿◕｡)": [happy, pos, face, asian, cute, dots, circle-eyes]
+    "(◡ ‿ ◡)": [happy, pos, face, asian, sweet, gentle]
+    "(⌒‿⌒)": [happy, pos, face, asian, content, curved-eyes]
+    "(*´∀｀*)": [happy, pos, face, asian, blushing, content, asterisk]
+    "(´･ω･`)": [sad, neg, face, asian, dejected, tired]
+    
+    # Excited and Energetic Kaomoji
+    "\\(≧∇≦)/": [excited, pos, face, asian, energetic, arms-up]
+    "ヾ(≧▽≦)ﾉ": [excited, pos, face, asian, energetic, celebrating]
+    "(ﾉ◕ヮ◕)ﾉ*:･ﾟ✧": [excited, pos, face, asian, magical, sparkles, celebrating]
+    "└(^o^)┘": [dancing, pos, face, asian, happy, celebration, box-drawing]
+    "ヽ(´▽`)ﾉ": [happy, pos, face, asian, cheerful, arms-up]
+    
+    # Love and Affection Kaomoji
+    "(´∀｀)♡": [love, pos, face, asian, heart, romantic]
+    "( ˘ ³˘)♥": [love, pos, face, asian, kiss, heart]
+    "(｡♥‿♥｡)": [love, pos, face, asian, heart-eyes, cute]
+    "♥(ˆ⌣ˆ)♥": [love, pos, face, asian, hearts, happy]
+    "( ◡‿◡ ♡)": [love, pos, face, asian, sweet, heart]
+    
+    # Sad and Crying Kaomoji
+    "(╥﹏╥)": [sad, neg, face, asian, crying, tears]
+    "(ಥ﹏ಥ)": [sad, neg, face, asian, crying, tears, kannada]
+    "(´；ω；`)": [sad, neg, face, asian, crying, dejected]
+    "(｡•́︿•̀｡)": [sad, neg, face, asian, pouting, upset]
+    "(◕︵◕)": [sad, neg, face, asian, upset, frown]
+    
+    # Angry and Frustrated Kaomoji
+    "(╯°□°）╯︵ ┻━┻": [angry, neg, face, asian, table-flip, rage, dramatic]
+    "┻━┻ ︵ ヽ(°□°ヽ)": [angry, neg, face, asian, table-flip, rage, dramatic, reverse]
+    "(ಠ_ಠ)": [disapproval, neg, face, asian, judgmental, kannada]
+    "(¬_¬)": [annoyed, neg, face, asian, eye-roll, skeptical]
+    "(`皿´)": [angry, neg, face, asian, mad, dish-character]
+    "(>_<)": [frustrated, neg, face, asian, annoyed, squinting]
+    
+    # Surprised and Shocked Kaomoji
+    "(゜o゜)": [surprised, neut, face, asian, shocked, wide-eyes]
+    "Σ(゜ロ゜;)": [shocked, neut, face, asian, sweating, dramatic, sigma]
+    "(⊙_⊙)": [surprised, neut, face, asian, wide-eyes, circles]
+    "(@_@)": [dizzy, neut, face, asian, overwhelmed, at-symbols]
+    
+    # Confused and Thinking Kaomoji
+    "(・_・;)": [confused, neut, face, asian, sweat, unsure]
+    "(・・?)": [confused, neut, face, asian, questioning, dots]
+    "(ー_ー;)": [troubled, neut, face, asian, sweat, tired]
+    "(￣▽￣;)": [nervous, neut, face, asian, sweat, smile]
+    
+    # ========================================
+    # ANIMALS AND CREATURES
+    # ========================================
+    
+    # Cat Emoticons
+    ":3": [cat, pos, face, cute, animal, feline]
+    "=^.^=": [cat, pos, face, cute, animal, feline, whiskers]
+    "=^_^=": [cat, pos, face, cute, animal, feline, whiskers]
+    "(=^‥^=)": [cat, pos, face, cute, animal, feline, parentheses]
+    "ฅ(^•ﻌ•^)ฅ": [cat, pos, face, cute, animal, feline, paws, thai]
+    "(=ↀωↀ=)": [cat, pos, face, cute, animal, feline, fancy]
+    "~(^◡^)~": [cat, pos, face, cute, animal, feline, tilde]
+    
+    # Bear Emoticons
+    "ʕ•ᴥ•ʔ": [bear, pos, face, cute, animal, mammal]
+    "ʕ◉ᴥ◉ʔ": [bear, pos, face, cute, animal, mammal, wide-eyes]
+    "ʕ•̀ω•́ʔ✧": [bear, pos, face, cute, animal, mammal, sparkles]
+    "ʕ ͡° ᴥ ͡°ʔ": [bear, pos, face, cute, animal, mammal, lenny-style]
+    
+    # Dog Emoticons
+    "U・x・U": [dog, pos, face, cute, animal, canine]
+    "∪･ω･∪": [dog, pos, face, cute, animal, canine]
+    "▽･ｗ･▽": [dog, pos, face, cute, animal, canine, triangle]
+    
+    # Bird Emoticons
+    "◡ ﻌ ◡": [bird, pos, face, cute, animal, simple]
+    "(・８・)": [bird, pos, face, cute, animal, eight]
+    
+    # Other Animals
+    "ᵔᴥᵔ": [animal, pos, face, cute, generic, small-eyes]
+    "◕‿◕": [animal, pos, face, cute, generic, circle-eyes]
+    "●‿●": [animal, pos, face, cute, generic, filled-circles]
+    
+    # ========================================
+    # FOOD AND OBJECTS
+    # ========================================
+    
+    # Coffee and Drinks
+    "c[_]": [coffee, neut, object, drink, cup, simple]
+    "c(_)": [coffee, neut, object, drink, cup, parentheses]
+    "☕": [coffee, neut, object, drink, hot, symbol]
+    
+    # Music
+    "♪": [music, pos, object, note, symbol, single]
+    "♫": [music, pos, object, note, symbol, double]
+    "♬": [music, pos, object, note, symbol, beamed]
+    "♭": [music, neut, object, note, symbol, flat]
+    "♯": [music, neut, object, note, symbol, sharp]
+    
+    # Stars and Sparkles
+    "☆": [star, pos, object, symbol, outline]
+    "★": [star, pos, object, symbol, filled]
+    "✦": [star, pos, object, symbol, four-pointed]
+    "✧": [star, pos, object, symbol, sparkle]
+    "✨": [sparkles, pos, object, symbol, magic]
+    "✪": [star, pos, object, symbol, circled]
+    
+    # ========================================
+    # GAMING AND INTERNET CULTURE
+    # ========================================
+    
+    # Gaming
+    "gg": [gaming, pos, internet, victory, good-game, competitive]
+    "GG": [gaming, pos, internet, victory, good-game, competitive, caps]
+    "ez": [gaming, pos, internet, easy, simple, competitive]
+    "EZ": [gaming, pos, internet, easy, simple, competitive, caps]
+    "pwned": [gaming, pos, internet, victory, owned, competitive, nsfw]
+    "rekt": [gaming, pos, internet, victory, destroyed, competitive, nsfw]
+    "noob": [gaming, neg, internet, beginner, inexperienced, competitive]
+    "n00b": [gaming, neg, internet, beginner, inexperienced, competitive, leetspeak]
+    
+    # Internet Slang
+    "lol": [laughing, pos, internet, funny, humor, acronym]
+    "LOL": [laughing, pos, internet, funny, humor, acronym, caps]
+    "lmao": [laughing, pos, internet, funny, humor, acronym, nsfw]
+    "LMAO": [laughing, pos, internet, funny, humor, acronym, caps, nsfw]
+    "rofl": [laughing, pos, internet, funny, humor, acronym]
+    "ROFL": [laughing, pos, internet, funny, humor, acronym, caps]
+    "omg": [surprised, neut, internet, shock, acronym]
+    "OMG": [surprised, neut, internet, shock, acronym, caps]
+    "wtf": [confused, neg, internet, shock, acronym, nsfw]
+    "WTF": [confused, neg, internet, shock, acronym, caps, nsfw]
+    "brb": [neutral, neut, internet, leaving, acronym]
+    "BRB": [neutral, neut, internet, leaving, acronym, caps]
+    "afk": [neutral, neut, internet, away, acronym]
+    "AFK": [neutral, neut, internet, away, acronym, caps]
+    
+    # Meme Culture
+    "kek": [laughing, pos, internet, meme, funny, alternative-lol]
+    "KEK": [laughing, pos, internet, meme, funny, alternative-lol, caps]
+    "uwu": [cute, pos, internet, meme, kawaii, furry]
+    "UwU": [cute, pos, internet, meme, kawaii, furry, caps]
+    "owo": [cute, pos, internet, meme, kawaii, furry]
+    "OwO": [cute, pos, internet, meme, kawaii, furry, caps]
+    ">w<": [cute, pos, internet, meme, kawaii, face]
+    "rawr": [cute, pos, internet, meme, dinosaur, playful, furry]
+    "RAWR": [cute, pos, internet, meme, dinosaur, playful, furry, caps]
+    
+    # ========================================
+    # PUNCTUATION AND SYMBOLS AS EMOTICONS
+    # ========================================
+    
+    # Question and Exclamation
+    "??": [confused, neut, punctuation, questioning, double]
+    "???": [confused, neut, punctuation, questioning, multiple]
+    "?!": [surprised, neut, punctuation, shocked, interrobang]
+    "!?": [surprised, neut, punctuation, shocked, interrobang, reverse]
+    "!!": [excited, pos, punctuation, emphatic, double]
+    "!!!": [excited, pos, punctuation, emphatic, multiple]
+    
+    # Dots and Ellipses
+    "...": [thinking, neut, punctuation, pause, ellipsis]
+    "....": [thinking, neut, punctuation, pause, extended]
+    ".....": [thinking, neut, punctuation, pause, very-long]
+    
+    # Dashes and Lines
+    "---": [neutral, neut, punctuation, line, separator]
+    "___": [neutral, neut, punctuation, line, underscore]
+    "~~~": [wavy, neut, punctuation, line, tilde, decorative]
+    
+    # ========================================
+    # CULTURAL AND REGIONAL EMOTICONS
+    # ========================================
+    
+    # Western Style
+    ":-D": [happy, pos, face, western, traditional, nose]
+    ";-P": [silly, pos, face, western, traditional, nose, winking]
+    "8-D": [cool, pos, face, western, traditional, sunglasses, nose]
+    
+    # Asian Style (Extended)
+    "(｡◕‿◕｡)": [happy, pos, face, asian, kawaii, circles]
+    "(◉‿◉)": [happy, pos, face, asian, cute, big-eyes]
+    "(◐‿◑)": [mysterious, neut, face, asian, different-eyes]
+    "( ͡° ͜ʖ ͡°)": [mischievous, neut, face, meme, lenny, suggestive]
+    "( ͡~ ͜ʖ ͡°)": [mischievous, neut, face, meme, lenny, winking]
+    "(☉‿☉)": [surprised, neut, face, asian, sun-eyes, bright]
+    
+    # European Style
+    ":]": [happy, pos, face, european, square-bracket]
+    ":[": [sad, neg, face, european, square-bracket]
+    
+    # Text-based Faces
+    "happy": [happy, pos, word, english, emotion]
+    "sad": [sad, neg, word, english, emotion]
+    "angry": [angry, neg, word, english, emotion]
+    "love": [love, pos, word, english, emotion]
+    "cool": [cool, pos, word, english, attitude]
+    "cute": [cute, pos, word, english, appearance]
+    "funny": [funny, pos, word, english, humor]
+    
+    # ========================================
+    # MATHEMATICAL AND TECHNICAL
+    # ========================================
+    
+    # Mathematical Symbols as Faces
+    "∪‿∪": [happy, pos, face, math, cup-union]
+    "∩‿∩": [happy, pos, face, math, cap-intersection]
+    "⊂◉‿◉⊃": [happy, pos, face, math, subset, big-eyes]
+    "Ф‿Ф": [mysterious, neut, face, math, phi, cyrillic]
+    "θ‿θ": [happy, pos, face, math, theta, greek]
+    "δ‿δ": [happy, pos, face, math, delta, greek]
+    
+    # Technical Symbols
+    "404": [error, neg, tech, not-found, http]
+    "200": [success, pos, tech, ok, http]
+    "500": [error, neg, tech, server-error, http]
+    "null": [empty, neut, tech, programming, void]
+    "undefined": [confused, neut, tech, programming, javascript]
+    "NaN": [confused, neut, tech, programming, not-a-number]
+    
+    # ========================================
+    # RARE AND UNIQUE EMOTICONS
+    # ========================================
+    
+    # Flipped and Rotated
+    "(-:": [happy, pos, face, flipped, reverse, mirror]
+    ")-:": [sad, neg, face, flipped, reverse, mirror]
+    "d-:": [happy, pos, face, cap-style, rotated]
+    "q-:": [sad, neg, face, cap-style, rotated]
+    
+    # Multi-character Complex
+    "¯\\_(ツ)_/¯": [shrug, neut, gesture, japanese, uncertain, indifferent]
+    "┐(´∀`)┌": [shrug, neut, gesture, asian, happy-shrug, box-drawing]
+    "┐(￣ヘ￣)┌": [shrug, neut, gesture, asian, annoyed-shrug, box-drawing]
+    
+    # Uncommon Variations
+    "c:": [happy, pos, face, reverse-smile, unusual]
+    "Ɛ:": [happy, pos, face, reverse-three, unusual]
+    "ε:": [happy, pos, face, epsilon, greek, unusual]
+    "):": [sad, neg, face, reverse-frown, unusual]
+    
+    # ========================================
+    # SEASONAL AND HOLIDAY
+    # ========================================
+    
+    # Winter/Christmas
+    "☃": [snowman, pos, winter, holiday, christmas, symbol]
+    "⛄": [snowman, pos, winter, holiday, christmas, symbol]
+    "❄": [snowflake, neut, winter, cold, symbol]
+    "❅": [snowflake, neut, winter, cold, symbol, outline]
+    "*o*": [snow, pos, winter, sparkle, excited]
+    
+    # Summer/Sun
+    "☀": [sun, pos, summer, bright, symbol]
+    "☼": [sun, pos, summer, bright, symbol, rays]
+    "8-)": [sunglasses, pos, summer, cool, sunny]
+    
+    # Halloween
+    ">:)": [mischievous, pos, halloween, devil, evil-grin]
+    ">:D": [mischievous, pos, halloween, devil, evil-laugh]
+    "3:)": [devil, pos, halloween, horns, mischievous]
+    "3:D": [devil, pos, halloween, horns, excited]
+    
+    # Valentine's/Love
+    "<3<3": [love, pos, valentine, hearts, multiple]
+    "♥♥": [love, pos, valentine, hearts, double]
+    "xoxo": [love, pos, valentine, kisses-hugs, affection]
+    "XOXO": [love, pos, valentine, kisses-hugs, affection, caps]
+    
+    # ========================================
+    # ACCESSIBILITY AND INCLUSIVITY
+    # ========================================
+    
+    # Gender Neutral
+    "neutral": [neutral, neut, word, inclusive, identity]
+    "person": [person, neut, word, inclusive, human]
+    "human": [human, neut, word, inclusive, being]
+    
+    # Skin Tone Neutral (conceptual)
+    "smile": [smile, pos, word, inclusive, expression]
+    "frown": [frown, neg, word, inclusive, expression]
+    "wink": [wink, pos, word, inclusive, expression]
+    
+    # Emotion Words (Universal)
+    "joy": [joy, pos, word, emotion, universal]
+    "peace": [peace, pos, word, emotion, universal]
+    "hope": [hope, pos, word, emotion, universal]
+    "calm": [calm, pos, word, emotion, universal]
+    "zen": [zen, pos, word, emotion, universal, buddhist]

@@ -45,13 +45,13 @@ bool SizeLimit::Matches(std::size_t lhs) const {
 std::int64_t Selector::GetHash() const {
     auto seed = StrHash(kind.data(), kind.size());
     if (language.has_value()) {
-        boost::hash_combine(seed, StrHash(language->data(), language->size()));
+        boost::hash_combine(seed, StrHash(language->GetUnderlying().data(), language->GetUnderlying().size()));
     }
     for (const auto& tag : include_tags) {
-        boost::hash_combine(seed, StrHash(tag.data(), tag.size()));
+        boost::hash_combine(seed, StrHash(tag.GetUnderlying().data(), tag.GetUnderlying().size()));
     }
     for (const auto& exclude_tag : exclude_tags) {
-        boost::hash_combine(seed, StrHash(exclude_tag.data(), exclude_tag.size()));
+        boost::hash_combine(seed, StrHash(exclude_tag.GetUnderlying().data(), exclude_tag.GetUnderlying().size()));
     }
     if (size_limit.has_value()) {
         boost::hash_combine(seed, size_limit->GetHash());
@@ -117,23 +117,19 @@ bool Selector::LimitsMaxLength() const {
 std::string Selector::ToString() const {
     auto result = std::string(kind);
     if (language.has_value()) {
-        result += "@" + std::string(*language);
+        result += "@" + std::string(language->GetUnderlying());
     }
     if (!include_tags.empty() || !exclude_tags.empty() || size_limit.has_value() || !options.empty()) {
         result += ":";
     }
     if (!include_tags.empty()) {
-        std::vector<std::string> sorted_tags(include_tags.begin(), include_tags.end());
-        std::sort(sorted_tags.begin(), sorted_tags.end());
-        for (const auto& tag : sorted_tags) {
-            result += "+" + std::string(tag);
+        for (const auto& tag : include_tags) {
+            result += "+" + std::string(tag.GetUnderlying());
         }
     }
     if (!exclude_tags.empty()) {
-        std::vector<std::string> sorted_tags(exclude_tags.begin(), exclude_tags.end());
-        std::sort(sorted_tags.begin(), sorted_tags.end());
-        for (const auto& tag : sorted_tags) {
-            result += "-" + std::string(tag);
+        for (const auto& tag : exclude_tags) {
+            result += "-" + std::string(tag.GetUnderlying());
         }
     }
     if (size_limit.has_value()) {
@@ -177,7 +173,8 @@ std::string Selector::ToString() const {
 }
 
 bool Selector::IsNSFW() const {
-    return include_tags.contains("nsfw") || !exclude_tags.contains("nsfw");
+    using namespace literals;
+    return include_tags.contains("nsfw"_tag_view) || !exclude_tags.contains("nsfw"_tag_view);
 }
 
 void Selector::ApplyOptions(
@@ -292,10 +289,10 @@ std::int32_t SpecialCharGen::Complexity() const {
 std::int64_t EmojiGen::GetHash() const {
     auto seed = StrHash(detail::PatternParser::kEmojiKeyword.data(), detail::PatternParser::kEmojiKeyword.size());
     for (const auto& tag : include_tags) {
-        boost::hash_combine(seed, StrHash(tag.data(), tag.size()));
+        boost::hash_combine(seed, StrHash(tag.GetUnderlying().data(), tag.GetUnderlying().size()));
     }
     for (const auto& tag : exclude_tags) {
-        boost::hash_combine(seed, StrHash(tag.data(), tag.size()));
+        boost::hash_combine(seed, StrHash(tag.GetUnderlying().data(), tag.GetUnderlying().size()));
     }
     boost::hash_combine(seed, min_count);
     boost::hash_combine(seed, max_count);
@@ -312,10 +309,10 @@ std::string EmojiGen::ToString() const {
         result += ":";
     }
     for (const auto& tag : include_tags) {
-        result += "+" + std::string(tag);
+        result += "+" + std::string(tag.GetUnderlying());
     }
     for (const auto& tag : exclude_tags) {
-        result += "-" + std::string(tag);
+        result += "-" + std::string(tag.GetUnderlying());
     }
     if (min_count != 1 || max_count != 1) {
         if (result.back() != ':') {

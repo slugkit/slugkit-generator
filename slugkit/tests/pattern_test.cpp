@@ -6,6 +6,8 @@
 
 namespace slugkit::generator {
 
+using namespace literals;
+
 UTEST(PlaceholdersParser, NoPlaceholders) {
     auto placeholders = ParsePlaceholders("test");
     EXPECT_EQ(placeholders.size(), 0);
@@ -31,6 +33,17 @@ UTEST(PlaceholdersParser, InvalidPlaceholder) {
     EXPECT_THROW(ParsePlaceholders("{special:0}"), PatternSyntaxError);
     EXPECT_THROW(ParsePlaceholders("{special:1-0}"), PatternSyntaxError);
     EXPECT_THROW(ParsePlaceholders("{special:1-1000}"), PatternSyntaxError);
+}
+
+UTEST(PlaceholdersParser, MutuallyExclusiveTags) {
+    // A tag that is both included and excluded makes the selector invalid
+    // (Selector::MutuallyExclusiveTags -> set_intersection of the two sorted tag sets).
+    EXPECT_THROW(ParsePlaceholders("{selector:+formal-formal}"), PatternSyntaxError);
+    EXPECT_THROW(ParsePlaceholders("{selector:+formal+casual-casual}"), PatternSyntaxError);
+    EXPECT_THROW(ParsePlaceholders("{selector:+a+b+c-b}"), PatternSyntaxError);
+    // Distinct include/exclude tags are fine.
+    EXPECT_NO_THROW(ParsePlaceholders("{selector:+formal-casual}"));
+    EXPECT_NO_THROW(ParsePlaceholders("{selector:+formal+casual-slang}"));
 }
 
 UTEST(PlaceholdersParser, NumberPlaceholder) {
@@ -149,9 +162,9 @@ UTEST(PlaceholdersParser, EmojiPlaceholderIncludeTags) {
     auto placeholders = ParsePlaceholders("test{emoji:+face+happy}");
     ASSERT_EQ(placeholders.size(), 1);
     const auto& emoji_gen = std::get<EmojiGen>(placeholders[0]);
-    EXPECT_EQ(emoji_gen.include_tags, (EmojiGen::TagsType{"face", "happy"}));
+    EXPECT_EQ(emoji_gen.include_tags, (EmojiGen::TagsType{"face"_tag_view, "happy"_tag_view}));
     EXPECT_EQ(emoji_gen.exclude_tags, EmojiGen::TagsType{});
-    EXPECT_EQ(emoji_gen.ToString(), "emoji:+happy+face");
+    EXPECT_EQ(emoji_gen.ToString(), "emoji:+face+happy");
 }
 
 UTEST(PlaceholdersParser, EmojiPlaceholderExcludeTags) {
@@ -159,8 +172,8 @@ UTEST(PlaceholdersParser, EmojiPlaceholderExcludeTags) {
     ASSERT_EQ(placeholders.size(), 1);
     const auto& emoji_gen = std::get<EmojiGen>(placeholders[0]);
     EXPECT_EQ(emoji_gen.include_tags, EmojiGen::TagsType{});
-    EXPECT_EQ(emoji_gen.exclude_tags, (EmojiGen::TagsType{"face", "happy"}));
-    EXPECT_EQ(emoji_gen.ToString(), "emoji:-happy-face");
+    EXPECT_EQ(emoji_gen.exclude_tags, (EmojiGen::TagsType{"face"_tag_view, "happy"_tag_view}));
+    EXPECT_EQ(emoji_gen.ToString(), "emoji:-face-happy");
 }
 
 UTEST(PlaceholdersParser, EmojiPlaceholderCount) {
@@ -227,8 +240,8 @@ UTEST(PlaceholdersParser, EmojiPlaceholderMixedOptions) {
     auto placeholders = ParsePlaceholders("test{emoji:+face -happy count=2 unique=true tone=neutral gender=male}");
     ASSERT_EQ(placeholders.size(), 1);
     const auto& emoji_gen = std::get<EmojiGen>(placeholders[0]);
-    EXPECT_EQ(emoji_gen.include_tags, (EmojiGen::TagsType{"face"}));
-    EXPECT_EQ(emoji_gen.exclude_tags, (EmojiGen::TagsType{"happy"}));
+    EXPECT_EQ(emoji_gen.include_tags, (EmojiGen::TagsType{"face"_tag_view}));
+    EXPECT_EQ(emoji_gen.exclude_tags, (EmojiGen::TagsType{"happy"_tag_view}));
     EXPECT_EQ(emoji_gen.min_count, 2);
     EXPECT_EQ(emoji_gen.max_count, 2);
     EXPECT_EQ(emoji_gen.unique, true);
@@ -272,7 +285,7 @@ UTEST(PlaceholdersParser, SelectorPlaceholderIncludeTags) {
         const auto& selector = std::get<Selector>(placeholders[0]);
         EXPECT_EQ(selector.kind, "selector");
         EXPECT_EQ(selector.language, std::nullopt);
-        EXPECT_EQ(selector.include_tags, (Selector::TagsType{"tag1", "tag2"}));
+        EXPECT_EQ(selector.include_tags, (Selector::TagsType{"tag1"_tag_view, "tag2"_tag_view}));
         EXPECT_EQ(selector.exclude_tags, Selector::TagsType{});
         EXPECT_EQ(selector.size_limit, std::nullopt);
         EXPECT_EQ(selector.ToString(), "selector:+tag1+tag2");
@@ -284,7 +297,7 @@ UTEST(PlaceholdersParser, SelectorPlaceholderIncludeTags) {
         const auto& selector = std::get<Selector>(placeholders[0]);
         EXPECT_EQ(selector.kind, "selector");
         EXPECT_EQ(selector.language, std::nullopt);
-        EXPECT_EQ(selector.include_tags, (Selector::TagsType{"tag1", "tag2"}));
+        EXPECT_EQ(selector.include_tags, (Selector::TagsType{"tag1"_tag_view, "tag2"_tag_view}));
         EXPECT_EQ(selector.exclude_tags, Selector::TagsType{});
         EXPECT_EQ(selector.size_limit, std::nullopt);
         EXPECT_EQ(selector.ToString(), "selector:+tag1+tag2");
@@ -298,7 +311,7 @@ UTEST(PlaceholdersParser, SelectorPlaceholderExcludeTags) {
     EXPECT_EQ(std::get<Selector>(placeholders[0]).kind, "selector");
     EXPECT_EQ(std::get<Selector>(placeholders[0]).language, std::nullopt);
     EXPECT_EQ(std::get<Selector>(placeholders[0]).include_tags, Selector::TagsType{});
-    EXPECT_EQ(std::get<Selector>(placeholders[0]).exclude_tags, (Selector::TagsType{"tag1", "tag2"}));
+    EXPECT_EQ(std::get<Selector>(placeholders[0]).exclude_tags, (Selector::TagsType{"tag1"_tag_view, "tag2"_tag_view}));
     EXPECT_EQ(std::get<Selector>(placeholders[0]).size_limit, std::nullopt);
     EXPECT_EQ(std::get<Selector>(placeholders[0]).ToString(), "selector:-tag1-tag2");
 
@@ -308,7 +321,7 @@ UTEST(PlaceholdersParser, SelectorPlaceholderExcludeTags) {
     EXPECT_EQ(std::get<Selector>(placeholders[0]).kind, "selector");
     EXPECT_EQ(std::get<Selector>(placeholders[0]).language, std::nullopt);
     EXPECT_EQ(std::get<Selector>(placeholders[0]).include_tags, Selector::TagsType{});
-    EXPECT_EQ(std::get<Selector>(placeholders[0]).exclude_tags, (Selector::TagsType{"tag1", "tag2"}));
+    EXPECT_EQ(std::get<Selector>(placeholders[0]).exclude_tags, (Selector::TagsType{"tag1"_tag_view, "tag2"_tag_view}));
     EXPECT_EQ(std::get<Selector>(placeholders[0]).size_limit, std::nullopt);
     EXPECT_EQ(std::get<Selector>(placeholders[0]).ToString(), "selector:-tag1-tag2");
 }
@@ -318,8 +331,8 @@ UTEST(PlaceholdersParser, SelectorPlaceholderMixedTags) {
     EXPECT_EQ(placeholders.size(), 1);
     EXPECT_EQ(std::get<Selector>(placeholders[0]).kind, "selector");
     EXPECT_EQ(std::get<Selector>(placeholders[0]).language, std::nullopt);
-    EXPECT_EQ(std::get<Selector>(placeholders[0]).include_tags, (Selector::TagsType{"tag1", "tag3"}));
-    EXPECT_EQ(std::get<Selector>(placeholders[0]).exclude_tags, (Selector::TagsType{"tag2", "tag4"}));
+    EXPECT_EQ(std::get<Selector>(placeholders[0]).include_tags, (Selector::TagsType{"tag1"_tag_view, "tag3"_tag_view}));
+    EXPECT_EQ(std::get<Selector>(placeholders[0]).exclude_tags, (Selector::TagsType{"tag2"_tag_view, "tag4"_tag_view}));
     EXPECT_EQ(std::get<Selector>(placeholders[0]).ToString(), "selector:+tag1+tag3-tag2-tag4");
 }
 
@@ -421,40 +434,46 @@ UTEST(PlaceholderParser, GlobalIncludeTags) {
     auto placeholders = ParsePlaceholders("test-{selector}-{selector}-{selector}-slug[+tag1+tag2]");
     EXPECT_EQ(placeholders.size(), 3);
     EXPECT_EQ(std::get<Selector>(placeholders[0]).include_tags.size(), 2);
-    EXPECT_EQ(std::get<Selector>(placeholders[0]).include_tags, (Selector::TagsType{"tag1", "tag2"}));
+    EXPECT_EQ(std::get<Selector>(placeholders[0]).include_tags, (Selector::TagsType{"tag1"_tag_view, "tag2"_tag_view}));
     EXPECT_EQ(std::get<Selector>(placeholders[1]).include_tags.size(), 2);
-    EXPECT_EQ(std::get<Selector>(placeholders[1]).include_tags, (Selector::TagsType{"tag1", "tag2"}));
+    EXPECT_EQ(std::get<Selector>(placeholders[1]).include_tags, (Selector::TagsType{"tag1"_tag_view, "tag2"_tag_view}));
     EXPECT_EQ(std::get<Selector>(placeholders[2]).include_tags.size(), 2);
-    EXPECT_EQ(std::get<Selector>(placeholders[2]).include_tags, (Selector::TagsType{"tag1", "tag2"}));
+    EXPECT_EQ(std::get<Selector>(placeholders[2]).include_tags, (Selector::TagsType{"tag1"_tag_view, "tag2"_tag_view}));
 
     placeholders = ParsePlaceholders("test-{selector:+tagN}-{selector}-{selector}-slug[+tag1+tag2]");
     EXPECT_EQ(placeholders.size(), 3);
     EXPECT_EQ(std::get<Selector>(placeholders[0]).include_tags.size(), 3);
-    EXPECT_EQ(std::get<Selector>(placeholders[0]).include_tags, (Selector::TagsType{"tag1", "tag2", "tagN"}));
+    EXPECT_EQ(
+        std::get<Selector>(placeholders[0]).include_tags,
+        (Selector::TagsType{"tag1"_tag_view, "tag2"_tag_view, "tagN"_tag_view})
+    );
     EXPECT_EQ(std::get<Selector>(placeholders[1]).include_tags.size(), 2);
-    EXPECT_EQ(std::get<Selector>(placeholders[1]).include_tags, (Selector::TagsType{"tag1", "tag2"}));
+    EXPECT_EQ(std::get<Selector>(placeholders[1]).include_tags, (Selector::TagsType{"tag1"_tag_view, "tag2"_tag_view}));
     EXPECT_EQ(std::get<Selector>(placeholders[2]).include_tags.size(), 2);
-    EXPECT_EQ(std::get<Selector>(placeholders[2]).include_tags, (Selector::TagsType{"tag1", "tag2"}));
+    EXPECT_EQ(std::get<Selector>(placeholders[2]).include_tags, (Selector::TagsType{"tag1"_tag_view, "tag2"_tag_view}));
 }
 
 UTEST(PlaceholderParser, GlobalExcludeTags) {
     auto placeholders = ParsePlaceholders("test-{selector}-{selector}-{selector}-slug[-tag1-tag2]");
     EXPECT_EQ(placeholders.size(), 3);
     EXPECT_EQ(std::get<Selector>(placeholders[0]).exclude_tags.size(), 2);
-    EXPECT_EQ(std::get<Selector>(placeholders[0]).exclude_tags, (Selector::TagsType{"tag1", "tag2"}));
+    EXPECT_EQ(std::get<Selector>(placeholders[0]).exclude_tags, (Selector::TagsType{"tag1"_tag_view, "tag2"_tag_view}));
     EXPECT_EQ(std::get<Selector>(placeholders[1]).exclude_tags.size(), 2);
-    EXPECT_EQ(std::get<Selector>(placeholders[1]).exclude_tags, (Selector::TagsType{"tag1", "tag2"}));
+    EXPECT_EQ(std::get<Selector>(placeholders[1]).exclude_tags, (Selector::TagsType{"tag1"_tag_view, "tag2"_tag_view}));
     EXPECT_EQ(std::get<Selector>(placeholders[2]).exclude_tags.size(), 2);
-    EXPECT_EQ(std::get<Selector>(placeholders[2]).exclude_tags, (Selector::TagsType{"tag1", "tag2"}));
+    EXPECT_EQ(std::get<Selector>(placeholders[2]).exclude_tags, (Selector::TagsType{"tag1"_tag_view, "tag2"_tag_view}));
 
     placeholders = ParsePlaceholders("test-{selector:-tagN}-{selector}-{selector}-slug[-tag1-tag2]");
     EXPECT_EQ(placeholders.size(), 3);
     EXPECT_EQ(std::get<Selector>(placeholders[0]).exclude_tags.size(), 3);
-    EXPECT_EQ(std::get<Selector>(placeholders[0]).exclude_tags, (Selector::TagsType{"tag1", "tag2", "tagN"}));
+    EXPECT_EQ(
+        std::get<Selector>(placeholders[0]).exclude_tags,
+        (Selector::TagsType{"tag1"_tag_view, "tag2"_tag_view, "tagN"_tag_view})
+    );
     EXPECT_EQ(std::get<Selector>(placeholders[1]).exclude_tags.size(), 2);
-    EXPECT_EQ(std::get<Selector>(placeholders[1]).exclude_tags, (Selector::TagsType{"tag1", "tag2"}));
+    EXPECT_EQ(std::get<Selector>(placeholders[1]).exclude_tags, (Selector::TagsType{"tag1"_tag_view, "tag2"_tag_view}));
     EXPECT_EQ(std::get<Selector>(placeholders[2]).exclude_tags.size(), 2);
-    EXPECT_EQ(std::get<Selector>(placeholders[2]).exclude_tags, (Selector::TagsType{"tag1", "tag2"}));
+    EXPECT_EQ(std::get<Selector>(placeholders[2]).exclude_tags, (Selector::TagsType{"tag1"_tag_view, "tag2"_tag_view}));
 }
 
 UTEST(PlaceholderParser, GlobalSizeLimit) {
@@ -572,8 +591,8 @@ UTEST(PatternLiterals, Selector) {
     auto selector = "selector@en:+tag1-tag2 <=10"_selector;
     EXPECT_EQ(selector.kind, "selector");
     EXPECT_EQ(selector.language, "en");
-    EXPECT_EQ(selector.include_tags, (Selector::TagsType{"tag1"}));
-    EXPECT_EQ(selector.exclude_tags, (Selector::TagsType{"tag2"}));
+    EXPECT_EQ(selector.include_tags, (Selector::TagsType{"tag1"_tag_view}));
+    EXPECT_EQ(selector.exclude_tags, (Selector::TagsType{"tag2"_tag_view}));
     EXPECT_EQ(selector.size_limit, (SizeLimit{CompareOperator::kLe, 10}));
     EXPECT_EQ(selector.ToString(), "selector@en:+tag1-tag2<=10");
 

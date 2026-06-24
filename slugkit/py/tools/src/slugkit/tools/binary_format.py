@@ -321,6 +321,7 @@ class WordsData:
         self.word_entries = []
         self.lang_table = LanguageTable()
         self.tags_table = TagsTable()
+        self._words_size = 0
         self._build_word_entries()
 
     def _build_word_entries(self):
@@ -357,6 +358,7 @@ class WordsData:
             lang_info = LanguageInfo(language_offset, language, lang_start_index, index, length_index_table)
             self.lang_table.language_infos.append(lang_info)
             language_offset += lang_info.size()
+        self._words_size = len(WORDS_MAGIC_NUMBER) + INDEX_TYPE_SIZE * 2 + offset
 
     def write_index(self, buffer: BinaryIO) -> None:
         buffer.write(INDEX_MAGIC_NUMBER)
@@ -367,6 +369,8 @@ class WordsData:
 
     def write_words(self, buffer: BinaryIO) -> None:
         buffer.write(WORDS_MAGIC_NUMBER)
+        buffer.write(self._words_size.to_bytes(INDEX_TYPE_SIZE, "little"))
+        buffer.write(len(self.word_entries).to_bytes(INDEX_TYPE_SIZE, "little"))
         for word_entry in self.word_entries:
             word_entry.write(buffer)
 

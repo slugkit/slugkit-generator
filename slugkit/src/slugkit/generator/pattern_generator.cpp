@@ -68,9 +68,10 @@ struct RomanDictionary {
 const RomanDictionary kRomanDictionary;
 
 Dictionary LoadEmojiDictionary() {
+    using namespace literals;
     auto yaml = userver::formats::yaml::FromString(std::string{EmojiSubstitutionGenerator::kEmojiDictionaryText});
-    auto data = yaml["emoji"].As<data::Dictionary<std::unordered_set<std::string>>>();
-    return Dictionary("emoji", "", std::move(data.words));
+    auto data = yaml["emoji"].As<data::Dictionary<WordTags>>();
+    return Dictionary("emoji", ""_lang_view, std::move(data.words));
 }
 
 }  // namespace

@@ -5,13 +5,13 @@
 namespace slugkit::generator::benchmarks {
 
 struct TagProbability {
-    std::string tag;
+    Tag tag;
     std::uint64_t probability;  // 0-100
 };
 
 struct DictionarySpecs {
     std::string name;
-    std::string language;
+    LanguageCode language;
     std::int64_t size;
     std::vector<TagProbability> tags;
     std::size_t min_length;

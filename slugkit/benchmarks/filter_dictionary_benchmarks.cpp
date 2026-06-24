@@ -1,5 +1,7 @@
 #include <benchmark/benchmark.h>
 
+#include "test_selectors.hpp"
+
 #include <slugkit/test_utils/helpers.hpp>
 
 #include <slugkit/generator/detail/indexes.hpp>
@@ -15,69 +17,34 @@ namespace {
 
 const auto kWords = GenerateWords(
     {.name = "word",
-     .language = "en",
+     .language = "en"_lang,
      .size = 100'000,
      .tags =
          {
-             {.tag = "tag1", .probability = 100},
-             {.tag = "tag2", .probability = 50},
-             {.tag = "tag3", .probability = 25},
-             {.tag = "tag4", .probability = 10},
+             {.tag = "tag1"_tag, .probability = 100},
+             {.tag = "tag2"_tag, .probability = 50},
+             {.tag = "tag3"_tag, .probability = 25},
+             {.tag = "tag4"_tag, .probability = 10},
          },
      .min_length = 3,
      .max_length = 20}
 );
 
-const auto kDictionaryNoCache = Dictionary{"word", "en", std::move(kWords), false};
-const auto kDictionaryWithCache = Dictionary{"word", "en", std::move(kWords), true};
-
-// clang-format off
-const std::vector<Selector> kSelectors = {
-    "word"_selector,
-    "word:==5"_selector,
-    "word:==10"_selector,
-    "word:==15"_selector,
-    "word:==20"_selector,
-    "word:<10"_selector,
-    "word:>10"_selector,
-    "word:<=8"_selector,
-    "word:>=12"_selector,
-    "word:!=10"_selector,
-    "word:!=15"_selector,
-    "word:+tag1"_selector,
-    "word:+tag2"_selector,
-    "word:+tag3"_selector,
-    "word:+tag4"_selector,
-    "word:-tag1"_selector,
-    "word:-tag2"_selector,
-    "word:-tag3"_selector,
-    "word:-tag4"_selector,
-    "word:+tag1-tag2"_selector,
-    "word:+tag1 +tag2"_selector,
-    "word:+tag1 +tag2 +tag3"_selector,
-    "word:+tag1 +tag2 -tag3 +tag4"_selector,
-    "word:+tag1==5"_selector,
-    "word:+tag1 +tag2==10"_selector,
-    "word:+tag1 +tag2!=10"_selector,
-    "word:+tag1 +tag2 +tag3==15"_selector,
-    "word:+tag1 +tag2 -tag3 +tag4==20"_selector,
-    "word:+tag1<8"_selector,
-    "word:+tag1>=8"_selector,
-};
-// clang-format on
+const auto kDictionaryNoCache = Dictionary{"word", "en"_lang_view, kWords, false};
+const auto kDictionaryWithCache = Dictionary{"word", "en"_lang_view, kWords, true};
 
 }  // namespace
 
 void BuildDictionaryNoCache(benchmark::State& state) {
     for (auto _ : state) {
-        auto dictionary = Dictionary{"word", "en", kWords, false};
+        auto dictionary = Dictionary{"word", "en"_lang_view, kWords, false};
         benchmark::DoNotOptimize(dictionary);
     }
 }
 
 void BuildDictionaryWithCache(benchmark::State& state) {
     for (auto _ : state) {
-        auto dictionary = Dictionary{"word", "en", kWords, true};
+        auto dictionary = Dictionary{"word", "en"_lang_view, kWords, true};
         benchmark::DoNotOptimize(dictionary);
     }
 }

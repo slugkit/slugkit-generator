@@ -64,9 +64,16 @@ auto Split(std::string_view str, std::string_view delimiter, OutputIterator out)
 /// @return A single string
 template <typename InputIterator>
 auto Join(InputIterator first, InputIterator last, std::string_view delimiter) -> std::string {
+    using iterator_value_type = typename std::decay_t<typename std::iterator_traits<InputIterator>::value_type>;
     std::string result;
     while (first != last) {
-        result += std::string(*first);
+        if constexpr (std::is_same_v<iterator_value_type, std::string>) {
+            result += *first;
+        } else if constexpr (userver::utils::IsStrongTypedef<iterator_value_type>::value) {
+            result += std::string(first->GetUnderlying());
+        } else {
+            result += std::string(*first);
+        }
         ++first;
         if (first != last) {
             result += delimiter;

@@ -1,6 +1,5 @@
 set(TEST_SRC_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 set(${PROJECT_NAME}_TEST_SRC
-    ${TEST_SRC_ROOT}/test_dictionary.cpp
     ${TEST_SRC_ROOT}/numerics_test.cpp
     ${TEST_SRC_ROOT}/roman_test.cpp
     ${TEST_SRC_ROOT}/pattern_test.cpp
@@ -12,6 +11,7 @@ set(${PROJECT_NAME}_TEST_SRC
     ${TEST_SRC_ROOT}/sructrured_loading_test.cpp
     ${TEST_SRC_ROOT}/emoji_generator_test.cpp
     ${TEST_SRC_ROOT}/binary_dictionary_test.cpp
+    ${TEST_SRC_ROOT}/filtered_ids_test.cpp
 )
 
 add_executable(test_${PROJECT_NAME} ${${PROJECT_NAME}_TEST_SRC})

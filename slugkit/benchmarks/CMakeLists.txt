@@ -8,6 +8,7 @@ set(${PROJECT_NAME}_BENCH_SRC
     ${BENCH_SRC_ROOT}/index_benchmarks.cpp
     ${BENCH_SRC_ROOT}/filter_dictionary_benchmarks.cpp
     ${BENCH_SRC_ROOT}/generate_slugs_benchmarks.cpp
+    ${BENCH_SRC_ROOT}/binary_dict_benchmarks.cpp
 )
 add_executable(slugkit-benchmark ${${PROJECT_NAME}_BENCH_SRC} main.cpp)
 target_include_directories(

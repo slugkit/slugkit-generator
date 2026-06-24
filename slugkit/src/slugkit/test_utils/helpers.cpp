@@ -30,7 +30,7 @@ auto GenerateWords(const DictionarySpecs& specs) -> std::vector<Word> {
 
 auto FillDictionary(const DictionarySpecs& specs) -> Dictionary {
     auto words = GenerateWords(specs);
-    return Dictionary{specs.name, specs.language, std::move(words)};
+    return Dictionary{specs.name, LanguageCodeView(specs.language.GetUnderlying()), std::move(words)};
 }
 
 auto GenerateSet(const std::vector<DictionarySpecs>& specs) -> DictionarySet {

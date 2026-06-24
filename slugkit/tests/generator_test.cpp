@@ -16,68 +16,68 @@ namespace {
 const std::vector<Word> kNouns = {
     {"noun1", {}},
     {"noun2", {}},
-    {"noun3", {"tag1"}},
-    {"noun4", {"tag2", "nsfw"}},
-    {"noun5", {"tag1", "tag2"}},
+    {"noun3", {"tag1"_tag}},
+    {"noun4", {"tag2"_tag, "nsfw"_tag}},
+    {"noun5", {"tag1"_tag, "tag2"_tag}},
 };
 
 const std::vector<Word> kAdjectives = {
     {"adjective1", {}},
     {"adjective2", {}},
-    {"adjective3", {"tag1"}},
-    {"adjective4", {"tag2", "nsfw"}},
-    {"adjective5", {"tag1", "tag2"}},
-    {"adjective6", {"tag1", "tag2", "nsfw"}},
-    {"adjective7", {"tag1", "tag2", "nsfw"}},
+    {"adjective3", {"tag1"_tag}},
+    {"adjective4", {"tag2"_tag, "nsfw"_tag}},
+    {"adjective5", {"tag1"_tag, "tag2"_tag}},
+    {"adjective6", {"tag1"_tag, "tag2"_tag, "nsfw"_tag}},
+    {"adjective7", {"tag1"_tag, "tag2"_tag, "nsfw"_tag}},
 };
 
 const std::vector<Word> kVerbs = {
     {"verb1", {}},
     {"verb2", {}},
-    {"verb3", {"tag1"}},
-    {"verb4", {"tag2", "nsfw"}},
-    {"verb5", {"tag1", "tag2"}},
-    {"verb6", {"tag1", "tag2", "nsfw"}},
-    {"verb7", {"tag1", "tag2", "nsfw"}},
-    {"verb8", {"tag1", "tag2", "nsfw"}},
-    {"verb9", {"tag1", "tag2", "nsfw"}},
-    {"verb10", {"tag1", "tag2", "nsfw"}},
+    {"verb3", {"tag1"_tag}},
+    {"verb4", {"tag2"_tag, "nsfw"_tag}},
+    {"verb5", {"tag1"_tag, "tag2"_tag}},
+    {"verb6", {"tag1"_tag, "tag2"_tag, "nsfw"_tag}},
+    {"verb7", {"tag1"_tag, "tag2"_tag, "nsfw"_tag}},
+    {"verb8", {"tag1"_tag, "tag2"_tag, "nsfw"_tag}},
+    {"verb9", {"tag1"_tag, "tag2"_tag, "nsfw"_tag}},
+    {"verb10", {"tag1"_tag, "tag2"_tag, "nsfw"_tag}},
 };
 
 const std::vector<Word> kAdverbs = {
     {"adverb1", {}},
     {"adverb2", {}},
-    {"adverb3", {"tag1"}},
-    {"adverb4", {"tag2", "nsfw"}},
-    {"adverb5", {"tag1", "tag2"}},
-    {"adverb6", {"tag1", "tag2", "nsfw"}},
-    {"adverb7", {"tag1", "tag2", "nsfw"}},
-    {"adverb8", {"tag1", "tag2", "nsfw"}},
-    {"adverb9", {"tag1", "tag2", "nsfw"}},
+    {"adverb3", {"tag1"_tag}},
+    {"adverb4", {"tag2"_tag, "nsfw"_tag}},
+    {"adverb5", {"tag1"_tag, "tag2"_tag}},
+    {"adverb6", {"tag1"_tag, "tag2"_tag, "nsfw"_tag}},
+    {"adverb7", {"tag1"_tag, "tag2"_tag, "nsfw"_tag}},
+    {"adverb8", {"tag1"_tag, "tag2"_tag, "nsfw"_tag}},
+    {"adverb9", {"tag1"_tag, "tag2"_tag, "nsfw"_tag}},
 };
 
 const std::vector<Word> kLanguageAgnosticNouns = {
     {"noun1", {}},
     {"noun2", {}},
-    {"noun3", {"tag1"}},
-    {"noun4", {"tag2", "nsfw"}},
-    {"noun5", {"tag1", "tag2"}},
+    {"noun3", {"tag1"_tag}},
+    {"noun4", {"tag2"_tag, "nsfw"_tag}},
+    {"noun5", {"tag1"_tag, "tag2"_tag}},
 };
 
 const std::map<std::string, Dictionary> kDictionaries = {
-    {"noun", Dictionary("noun", "en", kNouns)},
-    {"adjective", Dictionary("adjective", "en", kAdjectives)},
-    {"verb", Dictionary("verb", "en", kVerbs)},
-    {"adverb", Dictionary("adverb", "en", kAdverbs)},
+    {"noun", Dictionary("noun", "en"_lang_view, kNouns)},
+    {"adjective", Dictionary("adjective", "en"_lang_view, kAdjectives)},
+    {"verb", Dictionary("verb", "en"_lang_view, kVerbs)},
+    {"adverb", Dictionary("adverb", "en"_lang_view, kAdverbs)},
 };
 
 const DictionarySet kDictionariesSet{
     {
-        Dictionary("noun", "en", kNouns),
-        Dictionary("adjective", "en", kAdjectives),
-        Dictionary("verb", "en", kVerbs),
-        Dictionary("adverb", "en", kAdverbs),
-        Dictionary("noun", "", kLanguageAgnosticNouns),
+        Dictionary("noun", "en"_lang_view, kNouns),
+        Dictionary("adjective", "en"_lang_view, kAdjectives),
+        Dictionary("verb", "en"_lang_view, kVerbs),
+        Dictionary("adverb", "en"_lang_view, kAdverbs),
+        Dictionary("noun", ""_lang_view, kLanguageAgnosticNouns),
     },
 };
 
@@ -88,7 +88,7 @@ constexpr auto kTestSeed = "foobar";
 }  // namespace
 
 UTEST(SubstitutionGenerator, LowerCaseWords) {
-    Dictionary dictionary("noun", "en", kNouns);
+    Dictionary dictionary("noun", "en"_lang_view, kNouns);
     auto filtered_dictionary = dictionary.Filter(kNounSelector);
     SelectorSubstitutionGenerator generator{filtered_dictionary, {5, 5}};
     auto seed_hash = PatternGenerator::SeedHash(kTestSeed);
@@ -102,7 +102,7 @@ UTEST(SubstitutionGenerator, LowerCaseWords) {
 }
 
 UTEST(SubstitutionGenerator, UpperCaseWords) {
-    Dictionary dictionary("noun", "en", kNouns);
+    Dictionary dictionary("noun", "en"_lang_view, kNouns);
 
     auto filtered_dictionary = dictionary.Filter("NOUN"_selector);
     SelectorSubstitutionGenerator generator{filtered_dictionary, {5, 5}};
@@ -117,7 +117,7 @@ UTEST(SubstitutionGenerator, UpperCaseWords) {
 }
 
 UTEST(SubstitutionGenerator, TitleCaseWords) {
-    Dictionary dictionary("noun", "en", kNouns);
+    Dictionary dictionary("noun", "en"_lang_view, kNouns);
 
     auto filtered_dictionary = dictionary.Filter("Noun"_selector);
     SelectorSubstitutionGenerator generator{filtered_dictionary, {5, 5}};
@@ -132,7 +132,7 @@ UTEST(SubstitutionGenerator, TitleCaseWords) {
 }
 
 UTEST(SubstitutionGenerator, MixedCaseWords) {
-    Dictionary dictionary("noun", "en", kNouns);
+    Dictionary dictionary("noun", "en"_lang_view, kNouns);
 
     auto filtered_dictionary = dictionary.Filter("nOun"_selector);
     SelectorSubstitutionGenerator generator{filtered_dictionary, {5, 5}};

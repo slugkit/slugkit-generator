@@ -41,6 +41,7 @@ set(${PROJECT_NAME}_SRC
     ${${PROJECT_NAME}_SRC_ROOT}/slugkit/generator/generator.cpp
     ${${PROJECT_NAME}_SRC_ROOT}/slugkit/generator/detail/pattern_parser.cpp
     ${${PROJECT_NAME}_SRC_ROOT}/slugkit/generator/detail/indexes.cpp
+    ${${PROJECT_NAME}_SRC_ROOT}/slugkit/generator/filter/filtered_ids.cpp
 )
 
 add_library(${PROJECT_NAME} STATIC
@@ -83,6 +84,8 @@ if (SLUGKIT_GENERATOR_BUILD_TESTS OR SLUGKIT_GENERATOR_BUILD_BENCHMARKS OR SLUGK
     set(${PROJECT_NAME}_TEST_UTILS_SRC
         ${${PROJECT_NAME}_SRC_ROOT}/slugkit/test_utils/helpers.cpp
         ${${PROJECT_NAME}_SRC_ROOT}/slugkit/test_utils/helpers.hpp
+        ${${PROJECT_NAME}_SRC_ROOT}/slugkit/test_utils/test_dictionary.cpp
+        ${${PROJECT_NAME}_SRC_ROOT}/slugkit/test_utils/test_dictionary.hpp
     )
 
     add_library(${PROJECT_NAME}-test-utils STATIC
