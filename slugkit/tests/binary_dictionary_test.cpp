@@ -6,7 +6,11 @@
 
 #include <slugkit/utils/memory_mapped_file.hpp>
 
+#include <slugkit/generator/exceptions.hpp>
+
 #include <userver/utest/utest.hpp>
+
+#include <vector>
 
 namespace slugkit::generator::binary {
 
@@ -71,6 +75,20 @@ constexpr char kWordDataRawData[] =
 const std::span<const std::byte> kWordDataData =
     std::span<const std::byte>(reinterpret_cast<const std::byte*>(kWordDataRawData), sizeof(kWordDataRawData));
 
+// Copy a dictionary blob into a mutable buffer so individual bytes can be corrupted.
+auto Mutate(std::span<const std::byte> src) -> std::vector<std::byte> {
+    return std::vector<std::byte>(src.begin(), src.end());
+}
+
+// Byte offset of the language table within a (valid) dictionary blob.
+auto LanguageTableOffset(std::span<const std::byte> data) -> std::size_t {
+    const auto* header = detail::Header::GetHeader(data);
+    auto consumed = detail::Align(header->Size()).GetUnderlying();
+    const auto* index_table = detail::IndexTable::GetIndexTable(data.subspan(consumed));
+    consumed += detail::Align(index_table->Size()).GetUnderlying();
+    return consumed;
+}
+
 }  // namespace
 
 UTEST(BinaryDictionary, Header) {
@@ -98,6 +116,47 @@ UTEST(BinaryDictionary, WordData) {
     EXPECT_EQ(word_data->At(offset).Uppercase(), "NOUN");
     EXPECT_EQ(word_data->At(offset).Titlecase(), "Noun");
     EXPECT_EQ(word_data->At(offset).Size(), 24);
+}
+
+// Constructing a dictionary from corrupt bytes must be rejected with DictionaryDataError
+// rather than read out of bounds. Each case starts from a valid dictionary and corrupts a
+// single field to trip a specific guard.
+UTEST(BinaryDictionary, RejectsCorruptData) {
+    const auto valid = test::kDictionaryTestData;
+    // Baseline: the unmodified dictionary constructs (and fully validates) without throwing.
+    ASSERT_NO_THROW((BinaryDictionary{RawData{valid}}));
+
+    // 1. Bad header magic -> magic check in the header factory.
+    {
+        auto buf = Mutate(valid);
+        buf[0] = std::byte{'X'};
+        EXPECT_THROW((BinaryDictionary{RawData{buf}}), DictionaryDataError);
+    }
+
+    // 2. Truncated data -> bounds check in the header factory.
+    EXPECT_THROW((BinaryDictionary{valid.subspan(0, detail::Header::kMagicNum.size())}), DictionaryDataError);
+
+    // 3. A language offset-table entry pointing out of bounds -> ValidateOffsetTable.
+    {
+        auto buf = Mutate(valid);
+        const auto lang = LanguageTableOffset(buf);
+        const auto offset_table = lang + detail::LanguageTable::kMagicNum.size() + sizeof(SizeType) + sizeof(IndexType);
+        for (std::size_t i = 0; i < sizeof(detail::OffsetType); ++i) {
+            buf[offset_table + i] = std::byte{0xFF};
+        }
+        EXPECT_THROW((BinaryDictionary{RawData{buf}}), DictionaryDataError);
+    }
+
+    // 4. A corrupt language count, so the offset table no longer fits -> ValidateOffsetTable.
+    {
+        auto buf = Mutate(valid);
+        const auto lang = LanguageTableOffset(buf);
+        const auto count_offset = lang + detail::LanguageTable::kMagicNum.size() + sizeof(SizeType);
+        for (std::size_t i = 0; i < sizeof(IndexType); ++i) {
+            buf[count_offset + i] = std::byte{0xFF};
+        }
+        EXPECT_THROW((BinaryDictionary{RawData{buf}}), DictionaryDataError);
+    }
 }
 
 void TestData(std::span<const std::byte> data) {
