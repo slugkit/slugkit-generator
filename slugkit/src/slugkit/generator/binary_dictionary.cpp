@@ -15,6 +15,48 @@ auto CheckPointer(const std::byte* base, std::string_view name, std::int64_t ali
         throw DictionaryDataError(fmt::format("Invalid {}: base is not aligned to {}", name, alignment));
     }
 }
+
+// Validate an offset table up-front: every entry must point within @c data, relative to
+// @c payload_base, with at least @c min_payload bytes available (the fixed header of the
+// struct the offset addresses). After this passes, the offsets are trusted, so later
+// pointer arithmetic + reinterpret_cast over them (including the section's iterators) can
+// never read outside the mapped region. Also bounds-checks the offset table itself, so a
+// corrupt @c count cannot walk off the buffer.
+auto ValidateOffsetTable(
+    RawData data,
+    const detail::OffsetType* offset_table,
+    IndexType count,
+    const std::byte* payload_base,
+    std::size_t min_payload,
+    std::string_view section
+) -> void {
+    const auto* data_begin = data.data();
+    const auto* data_end = data_begin + data.size();
+    const auto* offset_table_begin = reinterpret_cast<const std::byte*>(offset_table);
+    const auto* offset_table_end = reinterpret_cast<const std::byte*>(offset_table + count.GetUnderlying());
+    if (offset_table_begin < data_begin || offset_table_end > data_end) {
+        throw DictionaryDataError(
+            fmt::format("Invalid {}: offset table of {} entries exceeds data bounds", section, count.GetUnderlying())
+        );
+    }
+    if (payload_base < data_begin || payload_base > data_end) {
+        throw DictionaryDataError(fmt::format("Invalid {}: payload base out of bounds", section));
+    }
+    const auto available = static_cast<std::size_t>(data_end - payload_base);
+    for (IndexType::UnderlyingType i = 0; i < count.GetUnderlying(); ++i) {
+        const auto offset = offset_table[i].GetUnderlying();
+        if (offset > available || available - offset < min_payload) {
+            throw DictionaryDataError(fmt::format(
+                "Invalid {}: entry {} offset {} out of bounds (available {}, need >= {})",
+                section,
+                i,
+                offset,
+                available,
+                min_payload
+            ));
+        }
+    }
+}
 }  // namespace
 
 namespace detail {
@@ -202,6 +244,14 @@ auto LanguageTable::GetLanguageTable(RawData data) -> const LanguageTable* {
             language_table->Size().GetUnderlying() + sizeof(OffsetType)
         ));
     }
+    ValidateOffsetTable(
+        data,
+        language_table->GetOffsetTableBase(),
+        language_table->Count(),
+        language_table->GetLanguageInfoTableBase(),
+        sizeof(LanguageInfo),
+        "language table"
+    );
     return language_table;
 }
 
@@ -295,7 +345,14 @@ auto TagsTable::GetTagsTable(RawData data) -> const TagsTable* {
         ));
     }
     const auto* tags_table = GetTagsTable(data.data());
-
+    ValidateOffsetTable(
+        data,
+        tags_table->GetOffsetTableBase(),
+        tags_table->Count(),
+        tags_table->GetTagDataBase(),
+        sizeof(TagEntry),
+        "tags table"
+    );
     return tags_table;
 }
 
