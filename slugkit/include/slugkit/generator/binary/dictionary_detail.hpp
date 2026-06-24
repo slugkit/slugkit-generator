@@ -133,6 +133,10 @@ public:
         return {indexes_, indexes_ + count_.GetUnderlying()};
     }
 
+    /// @brief Bounds-check the index array against @c data and verify every word index is
+    /// within [0, word_count). Throws DictionaryDataError on violation.
+    auto Validate(RawData data, IndexType word_count) const -> void;
+
     static auto GetSparseIndex(RawData data) -> const SparseIndex*;
     static auto GetSparseIndex(const std::byte* base) -> const SparseIndex*;
 
@@ -179,6 +183,10 @@ public:
     }
 
     [[nodiscard]] auto Filter(SizeLimit size_limit) const -> filter::IndexRangeSequence;
+
+    /// @brief Validate the magic, bound the length-index array against @c data, and verify
+    /// every range stays within [0, word_count). Throws DictionaryDataError on violation.
+    auto Validate(RawData data, IndexType word_count) const -> void;
 
     auto begin() const noexcept -> const_iterator {
         return length_indexes_;
@@ -357,6 +365,10 @@ public:
         return FullRange();
     }
 
+    /// @brief Recursively validate this language info (code, range, length-index table)
+    /// against @c data and @c word_count. Throws DictionaryDataError on violation.
+    auto Validate(RawData data, IndexType word_count) const -> void;
+
     static auto GetLanguageInfo(RawData data) -> const LanguageInfo*;
     static auto GetLanguageInfo(const std::byte* base) -> const LanguageInfo*;
 
@@ -491,6 +503,10 @@ public:
 
     auto operator[](LanguageCodeView language) const -> const LanguageInfo&;
 
+    /// @brief Recursively validate every language info against @c data and @c word_count.
+    /// Offsets must already be checked by ValidateOffsetTable. Throws on violation.
+    auto Validate(RawData data, IndexType word_count) const -> void;
+
     static auto GetLanguageTable(RawData data) -> const LanguageTable*;
     static auto GetLanguageTable(const std::byte* base) -> const LanguageTable*;
 
@@ -576,6 +592,10 @@ public:
     [[nodiscard]] auto operator[](IndexType index) const -> IndexType {
         return Index()[index];
     }
+
+    /// @brief Recursively validate this tag entry (magic, name/description strings, sparse
+    /// index) against @c data and @c word_count. Throws DictionaryDataError on violation.
+    auto Validate(RawData data, IndexType word_count) const -> void;
 
     static auto GetTagEntry(RawData data) -> const TagEntry*;
     static auto GetTagEntry(const std::byte* base) -> const TagEntry*;
@@ -783,6 +803,10 @@ public:
         return TagEntryIterator(GetOffsetTableBase() + count_.GetUnderlying(), GetTagDataBase());
     }
 
+    /// @brief Recursively validate every tag entry against @c data and @c word_count.
+    /// Offsets must already be checked by ValidateOffsetTable. Throws on violation.
+    auto Validate(RawData data, IndexType word_count) const -> void;
+
     static auto GetTagsTable(RawData data) -> const TagsTable*;
     static auto GetTagsTable(const std::byte* base) -> const TagsTable*;
 
@@ -847,6 +871,10 @@ public:
     [[nodiscard]] auto Size() const noexcept -> SizeType {
         return GetSize();
     }
+
+    /// @brief Bound the fixed fields and the three case-variant strings against @c data.
+    /// Throws DictionaryDataError on violation.
+    auto Validate(RawData data) const -> void;
 
 private:
     constexpr static std::size_t kFieldsSize = sizeof(detail::StringMarkup) * 3;

@@ -57,6 +57,20 @@ auto ValidateOffsetTable(
         }
     }
 }
+
+// Throw unless the region [ptr, ptr + size) lies fully within @c data. Used by the
+// recursive validation to bound every variable-length sub-structure (strings, sparse
+// indexes, length-index tables) against the backing buffer.
+auto WithinData(RawData data, const void* ptr, std::size_t size, std::string_view what) -> void {
+    const auto* begin = data.data();
+    const auto* end = begin + data.size();
+    const auto* p = static_cast<const std::byte*>(ptr);
+    if (p < begin || p > end || size > static_cast<std::size_t>(end - p)) {
+        throw DictionaryDataError(
+            fmt::format("Invalid {}: a {}-byte region lies outside the dictionary data", what, size)
+        );
+    }
+}
 }  // namespace
 
 namespace detail {
@@ -457,6 +471,105 @@ auto TagEntry::GetTagEntry(const std::byte* base) -> const TagEntry* {
 }
 
 //-----------------------------------------------------------------------------
+// Recursive validation
+//-----------------------------------------------------------------------------
+namespace detail {
+
+auto SparseIndex::Validate(RawData data, IndexType word_count) const -> void {
+    const auto count = static_cast<std::size_t>(count_.GetUnderlying());
+    WithinData(data, this, sizeof(IndexType) * (count + 1), "sparse index");
+    for (const auto& index : *this) {
+        if (index >= word_count) {
+            throw DictionaryDataError(
+                fmt::format("Invalid sparse index: word index {} is >= word count {}", index, word_count)
+            );
+        }
+    }
+}
+
+auto LengthIndexTable::Validate(RawData data, IndexType word_count) const -> void {
+    if (!IsValid()) {
+        throw DictionaryDataError(
+            fmt::format("Invalid length index table: magic num {} is not {}", MagicNum(), kMagicNum)
+        );
+    }
+    const auto count = static_cast<std::size_t>(count_.GetUnderlying());
+    WithinData(data, this, sizeof(LengthIndexTable) + sizeof(LengthIndex) * count, "length index table");
+    for (const auto& length_index : *this) {
+        if (!length_index.range.IsValid() || length_index.range.end_index > word_count) {
+            throw DictionaryDataError(fmt::format(
+                "Invalid length index: range [{}, {}) is not within [0, {}]",
+                length_index.range.start_index,
+                length_index.range.end_index,
+                word_count
+            ));
+        }
+    }
+}
+
+auto LanguageTable::Validate(RawData data, IndexType word_count) const -> void {
+    // Offsets were bounds-checked by ValidateOffsetTable, so iteration is safe.
+    for (const auto& language_info : *this) {
+        language_info.Validate(data, word_count);
+    }
+}
+
+auto TagsTable::Validate(RawData data, IndexType word_count) const -> void {
+    for (const auto& tag_entry : *this) {
+        tag_entry.Validate(data, word_count);
+    }
+}
+
+}  // namespace detail
+
+auto LanguageInfo::Validate(RawData data, IndexType word_count) const -> void {
+    WithinData(data, this, sizeof(LanguageInfo), "language info");
+    bool terminated = false;
+    for (std::size_t i = 0; i < kCodeSize; ++i) {
+        if (code_[i] == '\0') {
+            terminated = true;
+            break;
+        }
+    }
+    if (!terminated) {
+        throw DictionaryDataError("Invalid language info: language code is not null-terminated");
+    }
+    if (!range_.IsValid() || range_.end_index > word_count) {
+        throw DictionaryDataError(fmt::format(
+            "Invalid language info: range [{}, {}) is not within [0, {}]",
+            range_.start_index,
+            range_.end_index,
+            word_count
+        ));
+    }
+    length_index_table_.Validate(data, word_count);
+}
+
+auto TagEntry::Validate(RawData data, IndexType word_count) const -> void {
+    if (!IsValid()) {
+        throw DictionaryDataError(fmt::format("Invalid tag entry: magic num {} is not {}", MagicNum(), kMagicNum));
+    }
+    WithinData(data, this, sizeof(TagEntry), "tag entry");
+    const auto name = Name().GetUnderlying();
+    WithinData(data, name.data(), name.size(), "tag name");
+    const auto description = Description();
+    WithinData(data, description.data(), description.size(), "tag description");
+    // Bound the sparse-index header before dereferencing it (Index() reads its count).
+    WithinData(data, GetIndexBase(), sizeof(IndexType), "tag sparse index");
+    Index().Validate(data, word_count);
+}
+
+auto WordEntry::Validate(RawData data) const -> void {
+    WithinData(data, this, sizeof(WordEntry), "word entry");
+    const auto lowercase = Lowercase();
+    WithinData(data, lowercase.data(), lowercase.size(), "word lowercase");
+    const auto uppercase = Uppercase();
+    WithinData(data, uppercase.data(), uppercase.size(), "word uppercase");
+    const auto titlecase = Titlecase();
+    WithinData(data, titlecase.data(), titlecase.size(), "word titlecase");
+}
+
+//-----------------------------------------------------------------------------
 // FilteredDictionary
 //-----------------------------------------------------------------------------
 auto FilteredDictionary::operator[](IndexType index) const -> const WordEntry& {
@@ -482,6 +595,20 @@ BinaryDictionary::BinaryDictionary(RawData data)
     consumed_size += detail::Align(tags_table_->Size()).GetUnderlying();
 
     word_data_ = detail::WordData::GetWordData(data_.subspan(consumed_size));
+
+    Validate();
+}
+
+auto BinaryDictionary::Validate() const -> void {
+    const auto word_count = index_table_->Count();
+    // Every index entry must address a word entry whose fixed header and case strings are
+    // in-bounds; walking all words validates the word-data region end to end.
+    for (IndexType::UnderlyingType i = 0; i < word_count.GetUnderlying(); ++i) {
+        const auto offset = (*index_table_)[IndexType{i}];
+        word_data_->At(offset).Validate(data_);
+    }
+    language_table_->Validate(data_, word_count);
+    tags_table_->Validate(data_, word_count);
 }
 
 auto BinaryDictionary::operator[](LanguageCodeView language) const -> const LanguageInfo& {

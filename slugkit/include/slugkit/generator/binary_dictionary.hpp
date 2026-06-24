@@ -84,6 +84,12 @@ public:
     auto operator[](IndexType index) const -> const WordEntry&;
 
 private:
+    /// @brief Recursively validate the whole dictionary against the backing data: every word
+    /// entry, language info, and tag entry, and that all referenced word indexes are in
+    /// range. Runs once at construction; throws DictionaryDataError on any violation.
+    auto Validate() const -> void;
+
+private:
     RawData data_;
     const detail::Header* header_;
     const detail::IndexTable* index_table_;
