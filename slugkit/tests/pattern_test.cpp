@@ -35,6 +35,17 @@ UTEST(PlaceholdersParser, InvalidPlaceholder) {
     EXPECT_THROW(ParsePlaceholders("{special:1-1000}"), PatternSyntaxError);
 }
 
+UTEST(PlaceholdersParser, MutuallyExclusiveTags) {
+    // A tag that is both included and excluded makes the selector invalid
+    // (Selector::MutuallyExclusiveTags -> set_intersection of the two sorted tag sets).
+    EXPECT_THROW(ParsePlaceholders("{selector:+formal-formal}"), PatternSyntaxError);
+    EXPECT_THROW(ParsePlaceholders("{selector:+formal+casual-casual}"), PatternSyntaxError);
+    EXPECT_THROW(ParsePlaceholders("{selector:+a+b+c-b}"), PatternSyntaxError);
+    // Distinct include/exclude tags are fine.
+    EXPECT_NO_THROW(ParsePlaceholders("{selector:+formal-casual}"));
+    EXPECT_NO_THROW(ParsePlaceholders("{selector:+formal+casual-slang}"));
+}
+
 UTEST(PlaceholdersParser, NumberPlaceholder) {
     auto placeholders = ParsePlaceholders("test{number:10}");
     EXPECT_EQ(placeholders.size(), 1);

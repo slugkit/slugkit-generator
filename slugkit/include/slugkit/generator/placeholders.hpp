@@ -69,9 +69,10 @@ struct Selector {
     /// If there is a tag in the exclude list that is also in the include list,
     /// the tags are mutually exclusive and the selector is invalid.
     [[nodiscard]] auto MutuallyExclusiveTags() const -> std::vector<TagView> {
-        // TODO use set_intersection
+        // include_tags and exclude_tags are sorted std::sets, so a set_intersection yields
+        // the tags present in both (which make the selector invalid).
         std::vector<TagView> result;
-        result.reserve(exclude_tags.size());
+        result.reserve(std::min(include_tags.size(), exclude_tags.size()));
         std::set_intersection(
             exclude_tags.begin(),
             exclude_tags.end(),
