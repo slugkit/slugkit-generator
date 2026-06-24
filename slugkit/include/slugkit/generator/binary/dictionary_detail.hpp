@@ -9,10 +9,12 @@
 #include <userver/utils/strong_typedef.hpp>
 
 #include <array>
+#include <bit>
 #include <cassert>
 #include <span>
 #include <stdexcept>
 #include <string_view>
+#include <type_traits>
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wc99-extensions"
@@ -921,6 +923,54 @@ private:
 };
 
 }  // namespace detail
+
+// ---------------------------------------------------------------------------------------
+// Wire-format layout locks.
+//
+// The structures above are reinterpret_cast directly over memory-mapped file bytes, so
+// their in-memory layout *is* the on-disk format. These compile-time assertions fail the
+// build if a field type, order, size, or padding changes in a way that would silently
+// corrupt parsing — a class of bug the runtime magic/bounds checks cannot catch — and pin
+// the format to little-endian hosts (the parser does no byte-swapping).
+// ---------------------------------------------------------------------------------------
+
+static_assert(
+    std::endian::native == std::endian::little,
+    "binary dictionary format is little-endian; big-endian hosts are unsupported"
+);
+
+// Fixed-size scalar building blocks (the format spec sizes).
+static_assert(sizeof(IndexType) == 4, "IndexType must be 4 bytes");
+static_assert(sizeof(SizeType) == 4, "SizeType must be 4 bytes");
+static_assert(sizeof(detail::OffsetType) == 4, "OffsetType must be 4 bytes");
+static_assert(sizeof(detail::StringMarkup) == 4, "StringMarkup is two uint16_t (offset, size)");
+static_assert(sizeof(detail::IndexRange) == 8, "IndexRange is two IndexType");
+static_assert(sizeof(detail::LengthIndex) == 12, "LengthIndex is SizeType + IndexRange");
+
+// Every wire struct must be standard-layout: reinterpret_cast from raw bytes is only
+// well-defined for standard-layout types.
+static_assert(std::is_standard_layout_v<detail::IndexRange>);
+static_assert(std::is_standard_layout_v<detail::LengthIndex>);
+static_assert(std::is_standard_layout_v<detail::SparseIndex>);
+static_assert(std::is_standard_layout_v<detail::LengthIndexTable>);
+static_assert(std::is_standard_layout_v<detail::Header>);
+static_assert(std::is_standard_layout_v<detail::IndexTable>);
+static_assert(std::is_standard_layout_v<detail::LanguageTable>);
+static_assert(std::is_standard_layout_v<detail::TagsTable>);
+static_assert(std::is_standard_layout_v<detail::WordData>);
+static_assert(std::is_standard_layout_v<LanguageInfo>);
+static_assert(std::is_standard_layout_v<TagEntry>);
+static_assert(std::is_standard_layout_v<WordEntry>);
+
+// Section magic numbers must match their documented on-disk widths.
+static_assert(detail::Header::kMagicNum.size() == 8, "SLUGDICT");
+static_assert(detail::IndexTable::kMagicNum.size() == 8, "INDEX===");
+static_assert(detail::WordData::kMagicNum.size() == 8, "WORDS===");
+static_assert(TagEntry::kMagicNum.size() == 8, "TAG=====");
+static_assert(detail::LanguageTable::kMagicNum.size() == 16, "LANG-TABLE======");
+static_assert(detail::TagsTable::kMagicNum.size() == 16, "TAGS-TABLE======");
+static_assert(detail::LengthIndexTable::kMagicNum.size() == 16, "LENGTH-INDEX====");
+
 }  // namespace slugkit::generator::binary
 
 #pragma clang diagnostic pop
