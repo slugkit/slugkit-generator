@@ -101,59 +101,20 @@ auto SparseIndex::GetSparseIndex(const std::byte* base) -> const SparseIndex* {
 //-----------------------------------------------------------------------------
 // LengthIndexTable
 //-----------------------------------------------------------------------------
-auto LengthIndexTable::Filter(SizeLimit size_limit) const -> filter::IndexRangeSequence {
-    // depending on size limit operation, we need to find and grab the appropriate number of length indexes
-    // and return them as a sequence
-    auto apex = std::find_if(begin(), end(), [size_limit](const auto& length_index) {
-        return length_index.length == size_limit.value;
-    });
-
-    switch (size_limit.op) {
-        case CompareOperator::kEq:
-            if (apex == end()) {
-                return {};
-            }
-            return {apex->range.Filter()};
-        case CompareOperator::kNe:
-            if (apex == end()) {
-                // everything in range
-                return {front().range.start_index, back().range.end_index};
-            } else if (apex == begin()) {
-                return {apex->range.end_index, back().range.end_index};
-            } else {
-                return {
-                    filter::IndexRange{front().range.start_index, apex->range.start_index},
-                    filter::IndexRange{apex->range.end_index, back().range.end_index}
-                };
-            }
-        case CompareOperator::kGt:
-            if (apex == end()) {
-                return {};
-            }
-            return {apex->range.end_index, back().range.end_index};
-        case CompareOperator::kGe:
-            if (apex == end()) {
-                return {};
-            }
-            return {apex->range.start_index, back().range.end_index};
-        case CompareOperator::kLt:
-            if (apex == begin()) {
-                return {};
-            }
-            if (apex == end()) {
-                return {front().range.start_index, back().range.end_index};
-            }
-            return {front().range.start_index, apex->range.start_index};
-        case CompareOperator::kLe:
-            if (apex == end()) {
-                return {front().range.start_index, back().range.end_index};
-            }
-            return {front().range.start_index, apex->range.end_index};
-        default:
-            throw DictionaryFilterError(
-                fmt::format("Invalid size limit operation: {}", static_cast<std::int64_t>(size_limit.op))
-            );
+auto LengthIndexTable::Filter(SizeLimit size_limit) const -> filter::IndexSet {
+    // The logical word order is lexicographic, so words of a given length are not contiguous.
+    // Collect the lex positions of every length that satisfies the size limit and merge them
+    // into a single ascending (lexicographic) set. Each per-length sparse index is already
+    // ascending, and the buckets are disjoint, so a sort suffices to merge them.
+    std::vector<IndexType> result;
+    for (const auto& length_index : *this) {
+        if (size_limit.Matches(length_index.Length().GetUnderlying())) {
+            const auto& sparse = length_index.Index();
+            result.insert(result.end(), sparse.begin(), sparse.end());
+        }
     }
+    std::sort(result.begin(), result.end());
+    return filter::IndexSet(std::move(result));
 }
 
 //-----------------------------------------------------------------------------
@@ -224,15 +185,25 @@ auto LanguageTable::Languages() const noexcept -> LanguageCodeSet {
 }
 
 auto LanguageTable::Filter(std::optional<LanguageCodeView> language, std::optional<SizeLimit> size_limit) const
-    -> filter::IndexRangeSequence {
+    -> filter::IndexSequence {
     if (language) {
         return (*this)[*language].Filter(size_limit);
     }
-    filter::IndexRangeSequence sequence;
-    for (const auto& language_info : *this) {
-        sequence = sequence + language_info.Filter(size_limit);
+    // Combine across all languages. Without a length limit each language contributes its
+    // contiguous range, so the union stays a range sequence. With a length limit each
+    // contributes a sparse set, so the union is a single ascending (lex) set.
+    if (!size_limit) {
+        filter::IndexRangeSequence sequence;
+        for (const auto& language_info : *this) {
+            sequence = sequence + language_info.FullRange();
+        }
+        return sequence;
     }
-    return sequence;
+    filter::IndexSet set;
+    for (const auto& language_info : *this) {
+        set = set + language_info.LengthFilter(*size_limit);
+    }
+    return set;
 }
 
 auto LanguageTable::operator[](LanguageCodeView language) const -> const LanguageInfo& {
@@ -295,14 +266,14 @@ auto TagsTable::Tags() const noexcept -> TagSet {
 // Intersection of include tags and difference of exclude tags from include tags
 // Empty tag list - all tags
 auto TagsTable::Filter(
-    const filter::IndexRangeSequence& index_range_sequence,
+    const filter::IndexSequence& index_sequence,
     const TagSet& include_tags,
     const TagSet& exclude_tags
 ) const -> filter::IndexSequence {
     if (include_tags.empty() && exclude_tags.empty()) {
-        return {index_range_sequence};
+        return index_sequence;
     }
-    filter::IndexSequence indices{index_range_sequence};
+    filter::IndexSequence indices{index_sequence};
     for (auto in_tag : include_tags) {
         auto tag_entry = FindTagEntry(in_tag);
         if (!tag_entry) {
@@ -493,17 +464,13 @@ auto LengthIndexTable::Validate(RawData data, IndexType word_count) const -> voi
             fmt::format("Invalid length index table: magic num {} is not {}", MagicNum(), kMagicNum)
         );
     }
-    const auto count = static_cast<std::size_t>(count_.GetUnderlying());
-    WithinData(data, this, sizeof(LengthIndexTable) + sizeof(LengthIndex) * count, "length index table");
+    // Bound the fixed header (magic + count) before walking the variable-size entries.
+    WithinData(data, this, sizeof(LengthIndexTable), "length index table");
     for (const auto& length_index : *this) {
-        if (!length_index.range.IsValid() || length_index.range.end_index > word_count) {
-            throw DictionaryDataError(fmt::format(
-                "Invalid length index: range [{}, {}) is not within [0, {}]",
-                length_index.range.start_index,
-                length_index.range.end_index,
-                word_count
-            ));
-        }
+        // Bound the entry's fixed prefix (length + the sparse-index count) before reading
+        // the sparse index, which determines the entry's full size.
+        WithinData(data, &length_index, sizeof(SizeType) + sizeof(IndexType), "length index entry");
+        length_index.Index().Validate(data, word_count);
     }
 }
 
@@ -629,8 +596,8 @@ auto BinaryDictionary::operator[](IndexType index) const -> const WordEntry& {
 }
 
 auto BinaryDictionary::Filter(const Selector& selector) const -> FilteredDictionaryPtr {
-    auto index_range_sequence = language_table_->Filter(selector.language, selector.size_limit);
-    auto indices = tags_table_->Filter(index_range_sequence, selector.include_tags, selector.exclude_tags);
+    auto index_sequence = language_table_->Filter(selector.language, selector.size_limit);
+    auto indices = tags_table_->Filter(index_sequence, selector.include_tags, selector.exclude_tags);
     // TODO opt-in tags
     return std::make_shared<FilteredDictionary>(indices, index_table_, word_data_);
 }

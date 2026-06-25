@@ -8,7 +8,10 @@ from pydantic import BaseModel, Field
 from slugkit.tools import DictionaryData, TagData
 
 SLGUKIT_MAGIC_NUMBER = b"SLUGDICT"
-SLUGKIT_BINARY_FORMAT_VERSION = 1
+# v2: logical word index is lexicographic (matching the in-memory dictionary's generation
+# order); the per-language length index is a per-length sparse index over lex positions
+# (replacing the v1 contiguous length-sorted ranges).
+SLUGKIT_BINARY_FORMAT_VERSION = 2
 
 CHAR_OFFSET_SIZE = 2
 INDEX_TYPE_SIZE = 4
@@ -70,19 +73,22 @@ class RangeIndex:
 
 
 class LengthIndex:
-    def __init__(self, length: int, range_index: RangeIndex):
+    # A length paired with a sparse index of the lex positions of words of that length.
+    def __init__(self, length: int, sparse_index: SparseIndex):
         self.length = length
-        self.range_index = range_index
+        self.sparse_index = sparse_index
 
     def size(self) -> int:
-        return INDEX_TYPE_SIZE + self.range_index.size()
+        return INDEX_TYPE_SIZE + self.sparse_index.size()
 
     def write(self, buffer: BinaryIO) -> bytes:
         buffer.write(self.length.to_bytes(INDEX_TYPE_SIZE, "little"))
-        self.range_index.write(buffer)
+        self.sparse_index.write(buffer)
 
 
 class LengthIndexTable:
+    # Length indexes are sorted by length ascending; each is a sparse index of lex positions,
+    # so length filtering is a union of sparse sets that stays in lex order.
     length_indexes: list[LengthIndex]
 
     def __init__(self):
@@ -92,7 +98,7 @@ class LengthIndexTable:
         return (
             len(LENGTH_INDEX_TABLE_MAGIC_NUMBER)
             + INDEX_TYPE_SIZE
-            + len(self.length_indexes) * self.length_indexes[0].size()
+            + sum(length_index.size() for length_index in self.length_indexes)
         )
 
     def write(self, buffer: BinaryIO) -> bytes:
@@ -100,7 +106,7 @@ class LengthIndexTable:
         buffer.write(LENGTH_INDEX_TABLE_MAGIC_NUMBER)
         # write the length index count
         buffer.write(len(self.length_indexes).to_bytes(INDEX_TYPE_SIZE, "little"))
-        # write the length index values
+        # write the length index values (variable size: length + sparse index)
         for length_index in self.length_indexes:
             length_index.write(buffer)
 
@@ -332,19 +338,13 @@ class WordsData:
             self.tags_table.add_tag_entry(tag, tag_entry.description, tag_entry.opt_in)
         for language, words in self.dictionary_data.words.items():
             lang_start_index = index
-            current_size = 0
-            size_start_index = index
-            length_index_table = LengthIndexTable()
-            for word, tags in sorted(words.items(), key=lambda x: (len(x[0]), x[0].lower())):
-                size = len(word)
-                if current_size != size:
-                    if current_size != 0:
-                        # LOGGER.debug(f"Adding {language} size index for size {current_size} from {size_start_index} to {index}")
-                        length_index_table.length_indexes.append(
-                            LengthIndex(current_size, RangeIndex(size_start_index, index))
-                        )
-                    current_size = size
-                    size_start_index = index
+            # Iterate words in lexicographic order so the logical index (index_table) and the
+            # tag sparse indices are all in lex order, matching the in-memory dictionary's
+            # generation order. Bucket each word's lex index by length to build a per-length
+            # sparse index over lex positions (replacing v1's contiguous length-sorted ranges).
+            length_buckets: dict[int, list[int]] = {}
+            for word, tags in sorted(words.items(), key=lambda x: x[0].lower()):
+                length_buckets.setdefault(len(word), []).append(index)
                 for tag in tags:
                     self.tags_table.add_index(tag, index)
                 entry = WordEntry(word, offset)
@@ -352,8 +352,13 @@ class WordsData:
                 index += 1
                 offset += entry.size()
 
-            # trailing length index
-            length_index_table.length_indexes.append(LengthIndex(current_size, RangeIndex(size_start_index, index)))
+            # Build the length index, sorted by length ascending. Each bucket is already in
+            # ascending (lex) index order because we appended in lex order.
+            length_index_table = LengthIndexTable()
+            for length in sorted(length_buckets.keys()):
+                sparse = SparseIndex()
+                sparse.index = length_buckets[length]
+                length_index_table.length_indexes.append(LengthIndex(length, sparse))
 
             lang_info = LanguageInfo(language_offset, language, lang_start_index, index, length_index_table)
             self.lang_table.language_infos.append(lang_info)
