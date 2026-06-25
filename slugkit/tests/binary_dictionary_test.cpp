@@ -24,7 +24,7 @@ constexpr IndexType kTestWordCount{7238};
 
 constexpr char kHeaderRawData[] =
     "SLUGDICT"
-    "\x01\0\0\0"             // binary format version, 1 (little-endian 4 bytes)
+    "\x02\0\0\0"             // binary format version, 2 (little-endian 4 bytes)
     "\x00\0"                 // kind markup, start 0 (little-endian 2 bytes)
     "\x04\0"                 // kind markup, length 4 (little-endian 2 bytes)
     "\x04\0"                 // version markup, start 4 (little-endian 2 bytes)
@@ -176,10 +176,12 @@ void TestData(std::span<const std::byte> data) {
     EXPECT_TRUE(index_table->IsValid());
     EXPECT_EQ(index_table->MagicNum(), detail::IndexTable::kMagicNum);
     EXPECT_EQ(index_table->Count(), kTestWordCount);
+    // The logical word order is lexicographic: "aback" (27 bytes), "abaft" (27),
+    // "abaxially" (39), ... so the offsets accumulate the variable entry sizes.
     EXPECT_EQ((*index_table)[IndexType(0)], 0);
-    EXPECT_EQ((*index_table)[IndexType(1)], 18);
-    EXPECT_EQ((*index_table)[IndexType(2)], 36);
-    EXPECT_EQ((*index_table)[IndexType(3)], 54);
+    EXPECT_EQ((*index_table)[IndexType(1)], 27);
+    EXPECT_EQ((*index_table)[IndexType(2)], 54);
+    EXPECT_EQ((*index_table)[IndexType(3)], 93);
 
     consumed_size += detail::Align(index_table->Size()).GetUnderlying();
 
@@ -252,38 +254,40 @@ void TestData(std::span<const std::byte> data) {
     EXPECT_EQ(word_data->MagicNum(), detail::WordData::kMagicNum);
     EXPECT_EQ(word_data->Count(), kTestWordCount);
 
+    // Words are now in lexicographic order, so the first words are the alphabetically
+    // smallest ones rather than the shortest.
     auto offset = (*index_table)[0_idx];
-    EXPECT_EQ(word_data->At(offset).Lowercase(), "as");
-    EXPECT_EQ(word_data->At(offset).Uppercase(), "AS");
-    EXPECT_EQ(word_data->At(offset).Titlecase(), "As");
-    EXPECT_EQ(word_data->At(offset).Size(), 18);
+    EXPECT_EQ(word_data->At(offset).Lowercase(), "aback");
+    EXPECT_EQ(word_data->At(offset).Uppercase(), "ABACK");
+    EXPECT_EQ(word_data->At(offset).Titlecase(), "Aback");
+    EXPECT_EQ(word_data->At(offset).Size(), 27);
 
     offset = (*index_table)[1_idx];
-    EXPECT_EQ(word_data->At(offset).Lowercase(), "by");
-    EXPECT_EQ(word_data->At(offset).Uppercase(), "BY");
-    EXPECT_EQ(word_data->At(offset).Titlecase(), "By");
-    EXPECT_EQ(word_data->At(offset).Size(), 18);
+    EXPECT_EQ(word_data->At(offset).Lowercase(), "abaft");
+    EXPECT_EQ(word_data->At(offset).Uppercase(), "ABAFT");
+    EXPECT_EQ(word_data->At(offset).Titlecase(), "Abaft");
+    EXPECT_EQ(word_data->At(offset).Size(), 27);
 
     offset = (*index_table)[2_idx];
-    EXPECT_EQ(word_data->At(offset).Lowercase(), "in");
-    EXPECT_EQ(word_data->At(offset).Uppercase(), "IN");
-    EXPECT_EQ(word_data->At(offset).Titlecase(), "In");
-    EXPECT_EQ(word_data->At(offset).Size(), 18);
+    EXPECT_EQ(word_data->At(offset).Lowercase(), "abaxially");
+    EXPECT_EQ(word_data->At(offset).Uppercase(), "ABAXIALLY");
+    EXPECT_EQ(word_data->At(offset).Titlecase(), "Abaxially");
+    EXPECT_EQ(word_data->At(offset).Size(), 39);
 
     auto middle_index = index_table->Count() / 2;
     offset = (*index_table)[middle_index - 1];
-    // last word in the first half of the dictionary is the longest word
-    EXPECT_EQ(word_data->At(offset).Lowercase(), "uncharacteristically");
-    EXPECT_EQ(word_data->At(offset).Uppercase(), "UNCHARACTERISTICALLY");
-    EXPECT_EQ(word_data->At(offset).Titlecase(), "Uncharacteristically");
-    EXPECT_EQ(word_data->At(offset).Size(), 72);
+    // last word in the first half of the dictionary is the alphabetically last word
+    EXPECT_EQ(word_data->At(offset).Lowercase(), "zigzag");
+    EXPECT_EQ(word_data->At(offset).Uppercase(), "ZIGZAG");
+    EXPECT_EQ(word_data->At(offset).Titlecase(), "Zigzag");
+    EXPECT_EQ(word_data->At(offset).Size(), 30);
 
     offset = (*index_table)[middle_index];
     // test data contains two identical dictionaries for different languages
-    EXPECT_EQ(word_data->At(offset).Lowercase(), "as");
-    EXPECT_EQ(word_data->At(offset).Uppercase(), "AS");
-    EXPECT_EQ(word_data->At(offset).Titlecase(), "As");
-    EXPECT_EQ(word_data->At(offset).Size(), 18);
+    EXPECT_EQ(word_data->At(offset).Lowercase(), "aback");
+    EXPECT_EQ(word_data->At(offset).Uppercase(), "ABACK");
+    EXPECT_EQ(word_data->At(offset).Titlecase(), "Aback");
+    EXPECT_EQ(word_data->At(offset).Size(), 27);
 }
 
 void TestDictionary(std::span<const std::byte> data) {
@@ -340,32 +344,32 @@ void TestDictionary(std::span<const std::byte> data) {
     EXPECT_EQ(dictionary["pos"_tag_view].Count(), 86);
     EXPECT_THROW(dictionary["foo"_tag_view], std::runtime_error);
 
-    EXPECT_EQ(dictionary[0_idx].Lowercase(), "as");
-    EXPECT_EQ(dictionary[0_idx].Uppercase(), "AS");
-    EXPECT_EQ(dictionary[0_idx].Titlecase(), "As");
-    EXPECT_EQ(dictionary[0_idx].Size(), 18);
+    EXPECT_EQ(dictionary[0_idx].Lowercase(), "aback");
+    EXPECT_EQ(dictionary[0_idx].Uppercase(), "ABACK");
+    EXPECT_EQ(dictionary[0_idx].Titlecase(), "Aback");
+    EXPECT_EQ(dictionary[0_idx].Size(), 27);
 
-    EXPECT_EQ(dictionary[1_idx].Lowercase(), "by");
-    EXPECT_EQ(dictionary[1_idx].Uppercase(), "BY");
-    EXPECT_EQ(dictionary[1_idx].Titlecase(), "By");
-    EXPECT_EQ(dictionary[1_idx].Size(), 18);
+    EXPECT_EQ(dictionary[1_idx].Lowercase(), "abaft");
+    EXPECT_EQ(dictionary[1_idx].Uppercase(), "ABAFT");
+    EXPECT_EQ(dictionary[1_idx].Titlecase(), "Abaft");
+    EXPECT_EQ(dictionary[1_idx].Size(), 27);
 
-    EXPECT_EQ(dictionary[2_idx].Lowercase(), "in");
-    EXPECT_EQ(dictionary[2_idx].Uppercase(), "IN");
-    EXPECT_EQ(dictionary[2_idx].Titlecase(), "In");
-    EXPECT_EQ(dictionary[2_idx].Size(), 18);
+    EXPECT_EQ(dictionary[2_idx].Lowercase(), "abaxially");
+    EXPECT_EQ(dictionary[2_idx].Uppercase(), "ABAXIALLY");
+    EXPECT_EQ(dictionary[2_idx].Titlecase(), "Abaxially");
+    EXPECT_EQ(dictionary[2_idx].Size(), 39);
 
     auto middle_index = kTestWordCount / 2;
 
-    EXPECT_EQ(dictionary[middle_index - 1].Lowercase(), "uncharacteristically");
-    EXPECT_EQ(dictionary[middle_index - 1].Uppercase(), "UNCHARACTERISTICALLY");
-    EXPECT_EQ(dictionary[middle_index - 1].Titlecase(), "Uncharacteristically");
-    EXPECT_EQ(dictionary[middle_index - 1].Size(), 72);
+    EXPECT_EQ(dictionary[middle_index - 1].Lowercase(), "zigzag");
+    EXPECT_EQ(dictionary[middle_index - 1].Uppercase(), "ZIGZAG");
+    EXPECT_EQ(dictionary[middle_index - 1].Titlecase(), "Zigzag");
+    EXPECT_EQ(dictionary[middle_index - 1].Size(), 30);
 
-    EXPECT_EQ(dictionary[middle_index].Lowercase(), "as");
-    EXPECT_EQ(dictionary[middle_index].Uppercase(), "AS");
-    EXPECT_EQ(dictionary[middle_index].Titlecase(), "As");
-    EXPECT_EQ(dictionary[middle_index].Size(), 18);
+    EXPECT_EQ(dictionary[middle_index].Lowercase(), "aback");
+    EXPECT_EQ(dictionary[middle_index].Uppercase(), "ABACK");
+    EXPECT_EQ(dictionary[middle_index].Titlecase(), "Aback");
+    EXPECT_EQ(dictionary[middle_index].Size(), 27);
 }
 
 UTEST(BinaryDictionary, InMemoryTestData) {
@@ -407,6 +411,36 @@ void TestFilteredByLangSize(std::span<const std::byte> data) {
     auto filtered_dictionary = dictionary.Filter("adverb@en:<10"_selector);
     EXPECT_FALSE(filtered_dictionary->empty());
     EXPECT_EQ(filtered_dictionary->size(), 1670);
+}
+
+// Enumerating filtered positions 0..size-1 must map (via the filtered index sequence) to
+// words in lexicographic order, each satisfying the selector — the contract the generation
+// hot path relies on.
+void TestFilteredEnumeration(std::span<const std::byte> data) {
+    BinaryDictionary dictionary(data);
+    auto filtered = dictionary.Filter("adverb@en:<10"_selector);
+    ASSERT_EQ(filtered->size(), 1670u);
+    EXPECT_EQ((*filtered)[0_idx].Lowercase(), "aback");
+    EXPECT_EQ((*filtered)[IndexType(filtered->size() - 1)].Lowercase(), "zigzag");
+
+    std::string previous;
+    for (std::size_t i = 0; i < filtered->size(); ++i) {
+        const auto word = (*filtered)[IndexType(i)].Lowercase();
+        EXPECT_LT(word.size(), 10u) << "word '" << word << "' violates the size limit";
+        if (i > 0) {
+            EXPECT_LT(previous, word) << "filtered enumeration is not lexicographically ascending";
+        }
+        previous = std::string(word);
+    }
+}
+
+UTEST(BinaryDictionary, InMemoryTestFilteredEnumeration) {
+    TestFilteredEnumeration(test::kDictionaryTestData);
+}
+
+UTEST(BinaryDictionary, FileTestFilteredEnumeration) {
+    utils::MemoryMappedFile file(test::kTestDictionaryFile);
+    TestFilteredEnumeration(file.data());
 }
 
 UTEST(BinaryDictionary, InMemoryTestFilteredByLangSize) {

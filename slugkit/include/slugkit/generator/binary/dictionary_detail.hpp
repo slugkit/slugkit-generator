@@ -106,8 +106,9 @@ public:
     using const_iterator = const IndexType*;
 
 public:
+    /// @brief The on-disk byte size: the count field plus @c count index values.
     [[nodiscard]] auto Size() const noexcept -> SizeType {
-        return SizeType(sizeof(IndexType) * count_.GetUnderlying() + 1);
+        return SizeType(sizeof(IndexType) * (count_.GetUnderlying() + 1));
     }
 
     [[nodiscard]] auto Count() const noexcept -> IndexType {
@@ -119,6 +120,11 @@ public:
             throw std::runtime_error(fmt::format("Index out of range [0, {}): {}", count_, index));
         }
         return indexes_[index.GetUnderlying()];
+    }
+
+    /// @brief A zero-copy view over the index array.
+    [[nodiscard]] auto FilterView() const noexcept -> filter::IndexSetView {
+        return {indexes_, indexes_ + count_.GetUnderlying()};
     }
 
     auto begin() const noexcept -> const_iterator {
@@ -145,23 +151,89 @@ private:
     IndexType indexes_[];
 };
 
-/// @brief Length index, range of word with the same length.
-/// @note The length index is immutable.
-/// The length index is index range of words with the same length that are stored in a contiguous array.
-/// Length index is a pair of length and index range.
-struct LengthIndex final {
-    SizeType length;
-    IndexRange range;
+/// @brief Length index: a word length paired with a sparse index of the lex positions of
+/// all words of that length.
+/// @note The length index is immutable and variable-size (the trailing sparse index).
+/// Because the logical word order is lexicographic, words of a given length are not
+/// contiguous, so each length maps to a sparse set of lex indexes rather than a range.
+class LengthIndex final : public NoAlloc {
+public:
+    [[nodiscard]] auto Length() const noexcept -> SizeType {
+        return length_;
+    }
+
+    /// @brief The sparse index of lex positions of words of this length.
+    [[nodiscard]] auto Index() const noexcept -> const SparseIndex& {
+        return *SparseIndex::GetSparseIndex(&sparse_start_);
+    }
+
+    /// @brief The on-disk byte size: the length field plus the trailing sparse index.
+    [[nodiscard]] auto Size() const noexcept -> SizeType {
+        return SizeType(sizeof(SizeType) + Index().Size().GetUnderlying());
+    }
+
+private:
+    SizeType length_;
+    // the sparse index of lex positions starts here
+    std::byte sparse_start_;
 };
 
 /// @brief Table of length indexes.
 /// @note The length index table is immutable.
-/// The length index table is a table of length indexes that are stored in a contiguous array.
+/// The length index table is a table of variable-size length indexes stored back to back.
 /// Length indexes are sorted by word length in ascending order.
 class LengthIndexTable final : public NoAlloc {
 public:
-    using iterator = LengthIndex*;
-    using const_iterator = const LengthIndex*;
+    /// @brief Forward iterator over variable-size length indexes. Advances by each entry's
+    /// own byte size; compares by the number of entries remaining.
+    class LengthIndexIterator final {
+    public:
+        using difference_type = std::ptrdiff_t;
+        using value_type = LengthIndex;
+        using pointer = const LengthIndex*;
+        using reference = const LengthIndex&;
+        using iterator_category = std::forward_iterator_tag;
+
+        LengthIndexIterator() noexcept = default;
+        LengthIndexIterator(const std::byte* ptr, IndexType::UnderlyingType remaining) noexcept
+            : ptr_(ptr)
+            , remaining_(remaining) {
+        }
+
+        auto operator*() const noexcept -> reference {
+            return *reinterpret_cast<const LengthIndex*>(ptr_);
+        }
+
+        auto operator->() const noexcept -> pointer {
+            return reinterpret_cast<const LengthIndex*>(ptr_);
+        }
+
+        auto operator++() noexcept -> LengthIndexIterator& {
+            ptr_ += (**this).Size().GetUnderlying();
+            --remaining_;
+            return *this;
+        }
+
+        auto operator++(int) noexcept -> LengthIndexIterator {
+            auto copy = *this;
+            ++(*this);
+            return copy;
+        }
+
+        auto operator==(const LengthIndexIterator& other) const noexcept -> bool {
+            return remaining_ == other.remaining_;
+        }
+
+        auto operator!=(const LengthIndexIterator& other) const noexcept -> bool {
+            return remaining_ != other.remaining_;
+        }
+
+    private:
+        const std::byte* ptr_{nullptr};
+        IndexType::UnderlyingType remaining_{0};
+    };
+
+    using const_iterator = LengthIndexIterator;
 
 public:
     static constexpr std::string_view kMagicNum = "LENGTH-INDEX====";
@@ -174,41 +246,43 @@ public:
         return MagicNum() == kMagicNum;
     }
 
+    /// @brief The on-disk byte size: magic + count + the sum of the variable-size entries.
     [[nodiscard]] auto Size() const noexcept -> SizeType {
-        return SizeType(kMagicNum.size() + sizeof(IndexType) + sizeof(LengthIndex) * count_.GetUnderlying());
+        std::size_t total = kMagicNum.size() + sizeof(IndexType);
+        const auto* ptr = &data_start_;
+        for (IndexType::UnderlyingType i = 0; i < count_.GetUnderlying(); ++i) {
+            const auto entry_size = reinterpret_cast<const LengthIndex*>(ptr)->Size().GetUnderlying();
+            total += entry_size;
+            ptr += entry_size;
+        }
+        return SizeType(total);
     }
 
     [[nodiscard]] auto Count() const noexcept -> IndexType {
         return count_;
     }
 
-    [[nodiscard]] auto Filter(SizeLimit size_limit) const -> filter::IndexRangeSequence;
+    /// @brief The union of the per-length sparse sets whose length satisfies @c size_limit.
+    /// The result is in ascending (lexicographic) order.
+    [[nodiscard]] auto Filter(SizeLimit size_limit) const -> filter::IndexSet;
 
-    /// @brief Validate the magic, bound the length-index array against @c data, and verify
-    /// every range stays within [0, word_count). Throws DictionaryDataError on violation.
+    /// @brief Validate the magic, walk and bound every variable-size entry against @c data,
+    /// and verify each sparse index stays within [0, word_count). Throws on violation.
     auto Validate(RawData data, IndexType word_count) const -> void;
 
     auto begin() const noexcept -> const_iterator {
-        return length_indexes_;
+        return LengthIndexIterator(&data_start_, count_.GetUnderlying());
     }
 
     auto end() const noexcept -> const_iterator {
-        return length_indexes_ + count_.GetUnderlying();
-    }
-
-    auto front() const noexcept -> const LengthIndex& {
-        return length_indexes_[0];
-    }
-
-    auto back() const noexcept -> const LengthIndex& {
-        return length_indexes_[count_.GetUnderlying() - 1];
+        return LengthIndexIterator(nullptr, 0);
     }
 
 private:
     std::array<char, kMagicNum.size()> magic_num_;
     IndexType count_;
-
-    LengthIndex length_indexes_[];
+    // the first variable-size length index starts here
+    std::byte data_start_;
 };
 
 /// @brief A header is a header of a binary dictionary file.
@@ -217,7 +291,8 @@ private:
 class Header final : public NoAlloc {
 public:
     static constexpr std::string_view kMagicNum = "SLUGDICT";
-    static constexpr std::uint32_t kBinaryFormatVersion = 1;
+    // v2: lexicographic logical word order + per-length sparse length index (see binary_format.py).
+    static constexpr std::uint32_t kBinaryFormatVersion = 2;
 
     [[nodiscard]] auto IsValid() const noexcept -> bool {
         return MagicNum() == kMagicNum && binary_format_version_ == kBinaryFormatVersion;
@@ -354,15 +429,20 @@ public:
         return {range_.start_index, range_.end_index};
     }
 
-    [[nodiscard]] auto Filter(SizeLimit size_limit) const noexcept -> filter::IndexRangeSequence {
+    /// @brief The lex-ordered set of word indexes of this language whose length satisfies
+    /// @c size_limit (a union of per-length sparse sets, all within this language's range).
+    [[nodiscard]] auto LengthFilter(SizeLimit size_limit) const -> filter::IndexSet {
         return length_index_table_.Filter(size_limit);
     }
 
-    [[nodiscard]] auto Filter(std::optional<SizeLimit> size_limit) const noexcept -> filter::IndexRangeSequence {
+    /// @brief The lex-ordered indexes of this language, optionally restricted by length.
+    /// Without a size limit this is the contiguous language range; with one it is a sparse
+    /// set. Wrapped in IndexSequence so callers can combine it with tag filters uniformly.
+    [[nodiscard]] auto Filter(std::optional<SizeLimit> size_limit) const -> filter::IndexSequence {
         if (size_limit) {
-            return length_index_table_.Filter(*size_limit);
+            return filter::IndexSequence(LengthFilter(*size_limit));
         }
-        return FullRange();
+        return filter::IndexSequence(FullRange());
     }
 
     /// @brief Recursively validate this language info (code, range, length-index table)
@@ -487,7 +567,7 @@ public:
     [[nodiscard]] auto Languages() const noexcept -> LanguageCodeSet;
 
     [[nodiscard]] auto Filter(std::optional<LanguageCodeView> language, std::optional<SizeLimit> size_limit) const
-        -> filter::IndexRangeSequence;
+        -> filter::IndexSequence;
 
     [[nodiscard]] auto operator[](IndexType index) const -> const LanguageInfo& {
         return *LanguageInfo::GetLanguageInfo(GetLanguageBase(index));
@@ -773,9 +853,9 @@ public:
 
     [[nodiscard]] auto Tags() const noexcept -> TagSet;
 
-    /// @brief Filter the tags table based on the index range sequence, include tags, and exclude tags.
-    /// @param index_range_sequence The index range sequence to filter the tags table. Calcluated based on language
-    /// and length limits.
+    /// @brief Filter the tags table based on the index sequence, include tags, and exclude tags.
+    /// @param index_sequence The index sequence to filter the tags table. Calculated based on language
+    /// and length limits (a range sequence when unconstrained by length, a sparse set otherwise).
     /// @param include_tags The include tags to filter the tags table.
     /// @param exclude_tags The exclude tags to filter the tags table.
     /// @return The index set of the filtered tags table.
@@ -783,7 +863,7 @@ public:
     /// Intersection of include tags and difference of exclude tags from include tags
     /// Empty tag list - all tags
     [[nodiscard]] auto Filter(
-        const filter::IndexRangeSequence& index_range_sequence,
+        const filter::IndexSequence& index_sequence,
         const TagSet& include_tags,
         const TagSet& exclude_tags
     ) const -> filter::IndexSequence;
@@ -973,7 +1053,8 @@ static_assert(sizeof(SizeType) == 4, "SizeType must be 4 bytes");
 static_assert(sizeof(detail::OffsetType) == 4, "OffsetType must be 4 bytes");
 static_assert(sizeof(detail::StringMarkup) == 4, "StringMarkup is two uint16_t (offset, size)");
 static_assert(sizeof(detail::IndexRange) == 8, "IndexRange is two IndexType");
-static_assert(sizeof(detail::LengthIndex) == 12, "LengthIndex is SizeType + IndexRange");
+// LengthIndex is now variable-size (a SizeType length followed by a trailing sparse index),
+// so it is no longer fixed-width; its standard-layout property is asserted below.
 
 // Every wire struct must be standard-layout: reinterpret_cast from raw bytes is only
 // well-defined for standard-layout types.

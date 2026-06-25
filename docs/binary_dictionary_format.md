@@ -1,5 +1,10 @@
 # Binary Format for SlugKit Dictionary Files
 
+> Format version: **2**. v2 stores the logical word index in lexicographic order (matching
+> the in-memory dictionary's generation order) and replaces v1's contiguous length-sorted
+> ranges with a per-length sparse index over lexicographic positions. See the `LengthIndex`,
+> `LengthIndexTable` and `Word Data` sections below.
+
 > Note: *START and SIZE are seem to be redundant when in a row, but we'll use the string_markup utility that is perfectly binary mapped to those two numbers*
 
 | Section | Size |
@@ -85,7 +90,7 @@ A word contains precomputed lowercase, uppercase and title variants of the word.
 
 ### Word Data
 
-Words are stored in a contigious memory region, grouped by language and sorted first by length, then lexicographically, to simplify length and language filtering. Access is via offset to the beginning of data
+Words are stored in a contiguous memory region, grouped by language and sorted lexicographically. The logical word index (the Word Index offsets and every `SparseIndex` of word positions) is therefore in lexicographic order, so all selectors enumerate words in the same order as the in-memory dictionary. Access is via offset to the beginning of data. Language filtering uses the contiguous per-language `LANGUAGE_RANGE`; length filtering uses the per-length `LengthIndexTable`.
 
 ### Word Index
 
@@ -137,21 +142,27 @@ Array of non-contiguous indexes
 
 ### `LengthIndex`
 
+Because the logical word order is lexicographic, words of a given length are not contiguous,
+so each length maps to a sparse index of the lexicographic positions of its words rather than
+a range. The trailing `SparseIndex` makes the entry variable-size.
+
 | Field | Size | Data type | Meaning |
 |---|---|---|---|
-| `LENGTH` | 4 | `SizeType` | the lenght of words in the index |
-| `INDEX_RANGE` | 8 | `IndexRange` | index range of words of the same length |
+| `LENGTH` | 4 | `SizeType` | the length of words in the index |
+| `INDEX` | *variable* | `SparseIndex` | lexicographic positions of words of this length, ascending |
 
-`size = sizeof(SizeType) + sizeof(IndexRange) * 2` == 12
+`size = sizeof(SizeType) + INDEX.size()`
 
 ### `LengthIndexTable`
 
-The indexes are sorted by the lengths of the words
-Lenght index is of fixed size, so the size can be calculated from item count
+The entries are sorted by word length ascending. Entries are variable-size (each carries a
+`SparseIndex`), so they are stored back to back and walked by their own size; the total table
+size is the sum of the entry sizes. A length query unions the `SparseIndex` of every entry
+whose length satisfies the constraint, yielding a lexicographically ordered set.
 
 | Field | Size | Data type | Meaning |
 |---|---|---|---|
 | `MAGIC_NUM` | 16 | `array<char, 16>` | binary "LENGTH-INDEX====" |
 | `COUNT` | 4 | `IndexType` | number of indexes in the table |
-| `INDEXES` | 12 * `COUNT` | `LengthIndex` | legth range indexes |
+| `INDEXES` | *variable* | `LengthIndex[]` | per-length sparse indexes, back to back |
 
