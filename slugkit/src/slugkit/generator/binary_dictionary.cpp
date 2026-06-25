@@ -540,7 +540,12 @@ auto WordEntry::Validate(RawData data) const -> void {
 // FilteredDictionary
 //-----------------------------------------------------------------------------
 auto FilteredDictionary::operator[](IndexType index) const -> const WordEntry& {
-    auto offset = (*index_table_)[index];
+    // index is a position into the filtered set [0, size); map it through the filtered
+    // index sequence to a logical (lexicographic) word index, then to a word entry. Because
+    // the index sequence is sorted, enumerating positions 0..size-1 yields words in
+    // lexicographic order — matching the in-memory dictionary's generation order.
+    auto logical_index = indices_.at(index);
+    auto offset = (*index_table_)[logical_index];
     return word_data_->At(offset);
 }
 

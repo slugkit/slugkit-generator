@@ -413,6 +413,36 @@ void TestFilteredByLangSize(std::span<const std::byte> data) {
     EXPECT_EQ(filtered_dictionary->size(), 1670);
 }
 
+// Enumerating filtered positions 0..size-1 must map (via the filtered index sequence) to
+// words in lexicographic order, each satisfying the selector — the contract the generation
+// hot path relies on.
+void TestFilteredEnumeration(std::span<const std::byte> data) {
+    BinaryDictionary dictionary(data);
+    auto filtered = dictionary.Filter("adverb@en:<10"_selector);
+    ASSERT_EQ(filtered->size(), 1670u);
+    EXPECT_EQ((*filtered)[0_idx].Lowercase(), "aback");
+    EXPECT_EQ((*filtered)[IndexType(filtered->size() - 1)].Lowercase(), "zigzag");
+
+    std::string previous;
+    for (std::size_t i = 0; i < filtered->size(); ++i) {
+        const auto word = (*filtered)[IndexType(i)].Lowercase();
+        EXPECT_LT(word.size(), 10u) << "word '" << word << "' violates the size limit";
+        if (i > 0) {
+            EXPECT_LT(previous, word) << "filtered enumeration is not lexicographically ascending";
+        }
+        previous = std::string(word);
+    }
+}
+
+UTEST(BinaryDictionary, InMemoryTestFilteredEnumeration) {
+    TestFilteredEnumeration(test::kDictionaryTestData);
+}
+
+UTEST(BinaryDictionary, FileTestFilteredEnumeration) {
+    utils::MemoryMappedFile file(test::kTestDictionaryFile);
+    TestFilteredEnumeration(file.data());
+}
+
 UTEST(BinaryDictionary, InMemoryTestFilteredByLangSize) {
     TestFilteredByLangSize(test::kDictionaryTestData);
 }
