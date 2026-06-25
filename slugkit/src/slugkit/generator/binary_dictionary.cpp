@@ -2,6 +2,8 @@
 
 #include <slugkit/generator/exceptions.hpp>
 
+#include <slugkit/utils/text.hpp>
+
 #include <algorithm>
 
 namespace slugkit::generator::binary {
@@ -549,6 +551,17 @@ auto FilteredDictionary::operator[](IndexType index) const -> const WordEntry& {
     return word_data_->At(offset);
 }
 
+auto FilteredDictionary::ComputeMaxLength() const -> std::size_t {
+    // Max byte length over the filtered words, matching the in-memory FilteredDictionary.
+    std::size_t max_length = 0;
+    const auto count = indices_.count().GetUnderlying();
+    for (IndexType::UnderlyingType i = 0; i < count; ++i) {
+        const auto offset = (*index_table_)[indices_.at(IndexType(i))];
+        max_length = std::max(max_length, word_data_->At(offset).Lowercase().size());
+    }
+    return max_length;
+}
+
 //-----------------------------------------------------------------------------
 // BinaryDictionary
 //-----------------------------------------------------------------------------
@@ -604,7 +617,39 @@ auto BinaryDictionary::Filter(const Selector& selector) const -> FilteredDiction
     auto index_sequence = language_table_->Filter(selector.language, selector.size_limit);
     auto indices = tags_table_->Filter(index_sequence, selector.include_tags, selector.exclude_tags);
     // TODO opt-in tags
-    return std::make_shared<FilteredDictionary>(indices, index_table_, word_data_);
+    return std::make_shared<FilteredDictionary>(indices, index_table_, word_data_, selector.GetCase());
+}
+
+//-----------------------------------------------------------------------------
+// DictionarySet
+//-----------------------------------------------------------------------------
+void DictionarySet::Add(RawData data, std::shared_ptr<void> keepalive) {
+    BinaryDictionary dictionary(data);
+    auto kind = utils::text::ToLower(dictionary.Kind(), utils::text::kEnUsLocale);
+    keepalives_.push_back(std::move(keepalive));
+    dictionaries_.insert_or_assign(std::move(kind), std::move(dictionary));
+}
+
+auto DictionarySet::Filter(const Selector& selector) const -> FilteredDictionaryPtr {
+    auto kind = utils::text::ToLower(selector.kind, utils::text::kEnUsLocale);
+    auto it = dictionaries_.find(kind);
+    if (it == dictionaries_.end()) {
+        return {};
+    }
+    const auto& dictionary = it->second;
+
+    // Determine the effective language: explicit on the selector, else default to "en"
+    // (matching the in-memory DictionarySet's language-specific default). An unknown
+    // language yields an empty result rather than throwing, again matching the in-memory set.
+    Selector effective = selector;
+    if (!effective.language) {
+        effective.language = LanguageCodeView{kDefaultLanguage};
+    }
+    const auto languages = dictionary.Languages();
+    if (languages.find(*effective.language) == languages.end()) {
+        return {};
+    }
+    return dictionary.Filter(effective);
 }
 
 }  // namespace slugkit::generator::binary

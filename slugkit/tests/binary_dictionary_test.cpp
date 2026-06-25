@@ -22,7 +22,9 @@ namespace {
 
 constexpr IndexType kTestWordCount{7238};
 
-constexpr char kHeaderRawData[] =
+// alignas(4): the parser requires 4-byte-aligned section bases (CheckPointer); a bare
+// char[] has alignment 1, so without this the standalone-blob tests can fault on layout.
+alignas(4) constexpr char kHeaderRawData[] =
     "SLUGDICT"
     "\x02\0\0\0"             // binary format version, 2 (little-endian 4 bytes)
     "\x00\0"                 // kind markup, start 0 (little-endian 2 bytes)
@@ -39,7 +41,7 @@ constexpr char kHeaderRawData[] =
 const std::span<const std::byte> kHeaderData =
     std::span<const std::byte>(reinterpret_cast<const std::byte*>(kHeaderRawData), sizeof(kHeaderRawData));
 
-constexpr char kWordEntryRawData[] =
+alignas(4) constexpr char kWordEntryRawData[] =
     "WORDS==="
     "\0\0"    // lowercase markup, start 0 (little-endian 2 bytes)
     "\x04\0"  // lowercase markup, length 4 (little-endian 2 bytes)
@@ -57,7 +59,7 @@ const std::span<const std::byte> kWordEntryData =
 
 // A complete word data section: magic + size + count + one 24-byte word entry. (Unlike
 // kWordEntryRawData above, this includes the WordData header fields so WordData::At works.)
-constexpr char kWordDataRawData[] =
+alignas(4) constexpr char kWordDataRawData[] =
     "WORDS==="
     "\x18\0\0\0"  // size: 24-byte word-data region (little-endian 4 bytes)
     "\x01\0\0\0"  // count: 1 word (little-endian 4 bytes)

@@ -111,6 +111,48 @@ std::size_t SelectorSubstitutionGenerator::GetMaxLength() const {
 }
 
 //-------------------------------------------------------------
+// BinarySelectorSubstitutionGenerator
+//-------------------------------------------------------------
+BinarySelectorSubstitutionGenerator::BinarySelectorSubstitutionGenerator(
+    binary::FilteredDictionaryConstPtr dictionary,
+    const SelectorSettings& settings
+)
+    : dictionary_{std::move(dictionary)}
+    , selected_size_{settings.selected_size} {
+}
+
+std::string BinarySelectorSubstitutionGenerator::Generate(std::uint32_t seed, std::size_t sequence_number) const {
+    auto index = Permute(selected_size_, seed, sequence_number);
+    const auto& entry = (*dictionary_)[IndexType(static_cast<IndexType::UnderlyingType>(index))];
+    // The dictionary stores precomputed case variants, so pick the matching one instead of
+    // converting at generation time. kMixed uses the lowercase variant plus a per-word mask.
+    switch (dictionary_->GetCase()) {
+        case CaseType::kUpper:
+            return std::string{entry.Uppercase()};
+        case CaseType::kTitle:
+            return std::string{entry.Titlecase()};
+        case CaseType::kMixed: {
+            auto word = entry.Lowercase();
+            std::uint64_t max_mask_value = 1ULL << dictionary_->GetMaxLength();
+            if (max_mask_value < 2) {
+                // Guard against FPE in __builtin_clzll when the longest word is 1 character.
+                max_mask_value = 2;
+            }
+            utils::text::CaseMask mask{PermutePowerOf2(max_mask_value, seed, sequence_number)};
+            return utils::text::MixedCase(word, utils::text::kEnUsLocale, mask);
+        }
+        case CaseType::kNone:
+        case CaseType::kLower:
+        default:
+            return std::string{entry.Lowercase()};
+    }
+}
+
+std::size_t BinarySelectorSubstitutionGenerator::GetMaxLength() const {
+    return dictionary_->GetMaxLength();
+}
+
+//-------------------------------------------------------------
 // NumberSubstitutionGenerator
 //-------------------------------------------------------------
 NumberSubstitutionGenerator::NumberSubstitutionGenerator(const NumberGen& number_gen)
@@ -307,6 +349,23 @@ numeric::BigInt EmojiSubstitutionGenerator::GetCapacity() const {
 //-------------------------------------------------------------
 // PatternGenerator::Impl
 //-------------------------------------------------------------
+namespace {
+
+// Build the selector substitution generator appropriate to the filtered-dictionary type, so
+// the otherwise-identical settings/init logic can be shared between the in-memory and binary
+// dictionary sets.
+auto MakeSelectorGenerator(FilteredDictionaryConstPtr dictionary, const SelectorSettings& settings)
+    -> SubstitutionGeneratorPtr {
+    return std::make_unique<SelectorSubstitutionGenerator>(std::move(dictionary), settings);
+}
+
+auto MakeSelectorGenerator(binary::FilteredDictionaryConstPtr dictionary, const SelectorSettings& settings)
+    -> SubstitutionGeneratorPtr {
+    return std::make_unique<BinarySelectorSubstitutionGenerator>(std::move(dictionary), settings);
+}
+
+}  // namespace
+
 struct PatternGenerator::Impl {
     PatternPtr pattern;
     std::string seed;
@@ -329,13 +388,32 @@ struct PatternGenerator::Impl {
         InitGenerators(dictionaries);
     }
 
+    // Binary dictionary set overloads: the binary dictionaries reproduce the in-memory
+    // dictionaries' lexicographic order, so the same settings/init logic applies and the
+    // generated slugs are byte-identical.
+    Impl(const binary::DictionarySet& dictionaries, PatternPtr pattern)
+        : pattern{pattern}
+        , generators{}
+        , settings{CalculateSettings(dictionaries)} {
+        //
+    }
+
+    Impl(const binary::DictionarySet& dictionaries, PatternPtr pattern, PatternSettings settings)
+        : pattern{pattern}
+        , generators{}
+        , settings{settings} {
+        InitGenerators(dictionaries);
+    }
+
     // This function has a side effect of initializing the generators
-    PatternSettings CalculateSettings(const DictionarySet& dictionaries) {
+    template <typename DictSet>
+    PatternSettings CalculateSettings(const DictSet& dictionaries) {
         numeric::BigInt capacity(1);
         std::size_t max_pattern_length = pattern->ArbitraryTextLength();
 
         std::vector<SelectorSettings> selectors;
-        std::map<std::int64_t, FilteredDictionaryConstPtr> filtered_dictionaries;
+        using FilteredPtr = decltype(dictionaries.Filter(std::declval<const Selector&>()));
+        std::map<std::int64_t, FilteredPtr> filtered_dictionaries;
 
         for (const auto& element : pattern->placeholders) {
             if (std::holds_alternative<Selector>(element)) {
@@ -366,7 +444,7 @@ struct PatternGenerator::Impl {
                     }
                 }
                 selectors.push_back(settings);
-                generators.push_back(std::make_unique<SelectorSubstitutionGenerator>(filtered_dict, settings));
+                generators.push_back(MakeSelectorGenerator(filtered_dict, settings));
             } else if (std::holds_alternative<NumberGen>(element)) {
                 const auto& number_gen = std::get<NumberGen>(element);
                 if (number_gen.base == NumberBase::kRoman || number_gen.base == NumberBase::kRomanLower) {
@@ -387,7 +465,8 @@ struct PatternGenerator::Impl {
         return PatternSettings{selectors, capacity, static_cast<std::uint8_t>(max_pattern_length)};
     }
 
-    void InitGenerators(const DictionarySet& dictionaries) {
+    template <typename DictSet>
+    void InitGenerators(const DictSet& dictionaries) {
         auto selector_settings = settings.selectors.begin();
         numeric::BigInt capacity{1};
         std::size_t max_pattern_length = pattern->ArbitraryTextLength();
@@ -401,8 +480,7 @@ struct PatternGenerator::Impl {
                 if (!filtered_dict || filtered_dict->empty()) {
                     throw PatternSyntaxError("No matching words found for: " + selector.ToString());
                 }
-                generators.push_back(std::make_unique<SelectorSubstitutionGenerator>(filtered_dict, *selector_settings)
-                );
+                generators.push_back(MakeSelectorGenerator(filtered_dict, *selector_settings));
                 ++selector_settings;
             } else if (std::holds_alternative<NumberGen>(element)) {
                 const auto& number_gen = std::get<NumberGen>(element);
@@ -444,6 +522,18 @@ PatternGenerator::PatternGenerator(const DictionarySet& dictionaries, PatternPtr
 }
 
 PatternGenerator::PatternGenerator(const DictionarySet& dictionaries, PatternPtr pattern, PatternSettings settings)
+    : impl_{dictionaries, pattern, settings} {
+}
+
+PatternGenerator::PatternGenerator(const binary::DictionarySet& dictionaries, PatternPtr pattern)
+    : impl_{dictionaries, pattern} {
+}
+
+PatternGenerator::PatternGenerator(
+    const binary::DictionarySet& dictionaries,
+    PatternPtr pattern,
+    PatternSettings settings
+)
     : impl_{dictionaries, pattern, settings} {
 }
 
