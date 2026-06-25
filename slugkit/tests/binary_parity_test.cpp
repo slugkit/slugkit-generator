@@ -4,6 +4,7 @@
 // generators are compared across selector shapes, cases, seeds and sequence numbers.
 #include <slugkit/generator/binary_dictionary.hpp>
 #include <slugkit/generator/dictionary.hpp>
+#include <slugkit/generator/generator.hpp>
 #include <slugkit/generator/pattern.hpp>
 #include <slugkit/generator/pattern_generator.hpp>
 
@@ -100,6 +101,25 @@ void TestSlugParity(std::span<const std::byte> data, std::shared_ptr<void> keepa
     }
 }
 
+// The top-level Generator (which dispatches over an in-memory / binary dictionary-set
+// variant) must likewise produce identical slugs through its batch callback API.
+void TestGeneratorParity(std::span<const std::byte> data, std::shared_ptr<void> keepalive) {
+    binary::BinaryDictionary dict(data);
+    Generator mem_gen(BuildInMemorySet(dict));
+
+    binary::DictionarySet bin_set;
+    bin_set.Add(data, std::move(keepalive));
+    Generator bin_gen(std::move(bin_set));
+
+    for (const auto& pattern_str : kPatterns) {
+        std::vector<std::string> mem_out;
+        std::vector<std::string> bin_out;
+        mem_gen.Generate(pattern_str, "parity-seed", 0, 32, [&](std::string s) { mem_out.push_back(std::move(s)); });
+        bin_gen.Generate(pattern_str, "parity-seed", 0, 32, [&](std::string s) { bin_out.push_back(std::move(s)); });
+        EXPECT_EQ(mem_out, bin_out) << "pattern '" << pattern_str << "'";
+    }
+}
+
 }  // namespace
 
 UTEST(BinaryParity, InMemorySlugParity) {
@@ -109,6 +129,10 @@ UTEST(BinaryParity, InMemorySlugParity) {
 UTEST(BinaryParity, FileSlugParity) {
     auto file = std::make_shared<utils::MemoryMappedFile>(test::kTestDictionaryFile);
     TestSlugParity(file->data(), file);
+}
+
+UTEST(BinaryParity, GeneratorSlugParity) {
+    TestGeneratorParity(test::kDictionaryTestData, nullptr);
 }
 
 }  // namespace slugkit::generator

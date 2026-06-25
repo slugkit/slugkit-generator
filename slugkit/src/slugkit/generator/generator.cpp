@@ -1,18 +1,24 @@
 #include <slugkit/generator/generator.hpp>
 
+#include <slugkit/generator/binary_dictionary.hpp>
 #include <slugkit/generator/exceptions.hpp>
 #include <slugkit/generator/pattern_generator.hpp>
 
 #include <random>
+#include <variant>
 
 namespace slugkit::generator {
 
 struct Generator::Impl {
-    DictionarySet dictionaries;
+    // The generator works with either an in-memory or a binary (memory-mapped) dictionary
+    // set; PatternGenerator accepts both and produces byte-identical slugs.
+    std::variant<DictionarySet, binary::DictionarySet> dictionaries;
 
     PatternSettings GetCapacity(PatternPtr pattern) const {
         // TODO LRU cache for pattern generators
-        return PatternGenerator(dictionaries, pattern).GetSettings();
+        return std::visit(
+            [&](const auto& dict) { return PatternGenerator(dict, pattern).GetSettings(); }, dictionaries
+        );
     }
 
     std::string Generate(std::string_view pattern_str, std::string_view seed, std::size_t sequence_number) const {
@@ -21,8 +27,13 @@ struct Generator::Impl {
     }
 
     std::string Generate(PatternPtr pattern, std::string_view seed, std::size_t sequence_number) const {
-        auto generator = PatternGenerator(dictionaries, pattern);
-        return generator(seed, sequence_number);
+        return std::visit(
+            [&](const auto& dict) {
+                auto generator = PatternGenerator(dict, pattern);
+                return generator(seed, sequence_number);
+            },
+            dictionaries
+        );
     }
 
     std::string Generate(
@@ -32,8 +43,13 @@ struct Generator::Impl {
         std::size_t sequence_number
     ) const {
         // TODO LRU cache for pattern generators
-        auto generator = PatternGenerator(dictionaries, pattern, settings);
-        return generator(seed, sequence_number);
+        return std::visit(
+            [&](const auto& dict) {
+                auto generator = PatternGenerator(dict, pattern, settings);
+                return generator(seed, sequence_number);
+            },
+            dictionaries
+        );
     }
 
     void Generate(
@@ -54,11 +70,16 @@ struct Generator::Impl {
         std::size_t count,
         GenerateCallback callback
     ) const {
-        auto generator = PatternGenerator(dictionaries, pattern);
-        auto seed_hash = PatternGenerator::SeedHash(seed);
-        for (std::size_t i = 0; i < count; ++i) {
-            callback(generator(seed_hash, sequence_number + i));
-        }
+        std::visit(
+            [&](const auto& dict) {
+                auto generator = PatternGenerator(dict, pattern);
+                auto seed_hash = PatternGenerator::SeedHash(seed);
+                for (std::size_t i = 0; i < count; ++i) {
+                    callback(generator(seed_hash, sequence_number + i));
+                }
+            },
+            dictionaries
+        );
     }
 
     void Generate(
@@ -70,17 +91,26 @@ struct Generator::Impl {
         GenerateCallback callback
     ) const {
         // TODO LRU cache for pattern generators
-        auto generator = PatternGenerator(dictionaries, pattern, settings);
-        auto seed_hash = PatternGenerator::SeedHash(seed);
-        for (std::size_t i = 0; i < count; ++i) {
-            callback(generator(seed_hash, sequence_number + i));
-        }
+        std::visit(
+            [&](const auto& dict) {
+                auto generator = PatternGenerator(dict, pattern, settings);
+                auto seed_hash = PatternGenerator::SeedHash(seed);
+                for (std::size_t i = 0; i < count; ++i) {
+                    callback(generator(seed_hash, sequence_number + i));
+                }
+            },
+            dictionaries
+        );
     }
 };
 
 //--------------------------------
 
 Generator::Generator(DictionarySet dictionaries)
+    : impl_{std::move(dictionaries)} {
+}
+
+Generator::Generator(binary::DictionarySet dictionaries)
     : impl_{std::move(dictionaries)} {
 }
 
