@@ -11,6 +11,7 @@ set(${PROJECT_NAME}_TEST_SRC
     ${TEST_SRC_ROOT}/sructrured_loading_test.cpp
     ${TEST_SRC_ROOT}/emoji_generator_test.cpp
     ${TEST_SRC_ROOT}/binary_dictionary_test.cpp
+    ${TEST_SRC_ROOT}/binary_parity_test.cpp
     ${TEST_SRC_ROOT}/filtered_ids_test.cpp
 )
 

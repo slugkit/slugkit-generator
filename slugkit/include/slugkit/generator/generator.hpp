@@ -14,13 +14,21 @@
 
 namespace slugkit::generator {
 
+namespace binary {
+class DictionarySet;
+}  // namespace binary
+
 using GenerateCallback = std::function<void(std::string generated_slug)>;
 
 /// @brief A generator is a class that generates human-readable IDs.
 /// TODO move to a separate file
 class Generator {
 public:
+    /// @brief Construct from an in-memory dictionary set (YAML/JSON-loaded).
     Generator(DictionarySet dictionaries);
+    /// @brief Construct from a binary (memory-mapped) dictionary set. Produces byte-identical
+    /// slugs to the in-memory set built from the same data.
+    Generator(binary::DictionarySet dictionaries);
     ~Generator() noexcept;
 
     [[nodiscard]] auto RandomSeed() const -> std::string;
@@ -130,7 +138,8 @@ public:
     }
 
 private:
-    constexpr static std::size_t kImplSize = 96;
+    // Holds a variant of the in-memory and binary dictionary sets.
+    constexpr static std::size_t kImplSize = 144;
     constexpr static std::size_t kImplAlign = 8;
     struct Impl;
     userver::utils::FastPimpl<Impl, kImplSize, kImplAlign> impl_;

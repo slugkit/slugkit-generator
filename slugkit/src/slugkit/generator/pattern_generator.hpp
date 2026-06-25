@@ -1,5 +1,6 @@
 #pragma once
 
+#include <slugkit/generator/binary_dictionary.hpp>
 #include <slugkit/generator/dictionary.hpp>
 #include <slugkit/generator/generator.hpp>
 #include <slugkit/generator/pattern.hpp>
@@ -47,6 +48,28 @@ public:
 
 private:
     FilteredDictionaryConstPtr dictionary_;
+    std::int64_t selected_size_;
+};
+
+/// @brief Selector substitution generator backed by a memory-mapped binary dictionary.
+/// Functionally identical to SelectorSubstitutionGenerator but consumes binary::WordEntry
+/// precomputed case variants (string_views) instead of the std::string-returning in-memory
+/// FilteredDictionary, so it produces byte-identical slugs without per-word case conversion
+/// (kMixed uses the lowercase variant plus a per-word case mask).
+class BinarySelectorSubstitutionGenerator : public SubstitutionGenerator {
+public:
+    BinarySelectorSubstitutionGenerator(binary::FilteredDictionaryConstPtr dictionary, const SelectorSettings& settings);
+    ~BinarySelectorSubstitutionGenerator() override = default;
+
+    std::string Generate(std::uint32_t seed, std::size_t sequence_number) const override;
+
+    numeric::BigInt GetCapacity() const override {
+        return numeric::BigInt(selected_size_);
+    }
+    std::size_t GetMaxLength() const override;
+
+private:
+    binary::FilteredDictionaryConstPtr dictionary_;
     std::int64_t selected_size_;
 };
 
@@ -163,6 +186,8 @@ class PatternGenerator {
 public:
     PatternGenerator(const DictionarySet& dictionaries, PatternPtr pattern);
     PatternGenerator(const DictionarySet& dictionaries, PatternPtr pattern, PatternSettings settings);
+    PatternGenerator(const binary::DictionarySet& dictionaries, PatternPtr pattern);
+    PatternGenerator(const binary::DictionarySet& dictionaries, PatternPtr pattern, PatternSettings settings);
     ~PatternGenerator();
 
     /// @brief Generate a string from a pattern
