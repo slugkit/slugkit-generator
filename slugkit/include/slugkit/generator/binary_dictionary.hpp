@@ -159,6 +159,9 @@ public:
 
 private:
     static constexpr std::string_view kDefaultLanguage = "en";
+    // Language-agnostic dictionaries (e.g. domain, shell) store words under the empty
+    // language code; a no-language selector resolves to it when "en" is absent.
+    static constexpr std::string_view kAgnosticLanguage = "";
 
     std::map<std::string, BinaryDictionary> dictionaries_;
     std::vector<std::shared_ptr<void>> keepalives_;

@@ -409,7 +409,9 @@ public:
     static constexpr std::size_t kCodeSize = 4;
 
     [[nodiscard]] auto IsValid() const noexcept -> bool {
-        return Code() != std::string_view{} && length_index_table_.IsValid();
+        // An empty code is valid: it denotes a language-agnostic dictionary (e.g. domain,
+        // shell). Structural validity is carried by the length-index table's magic.
+        return length_index_table_.IsValid();
     }
 
     [[nodiscard]] auto Code() const noexcept -> LanguageCodeView {
