@@ -36,7 +36,11 @@ LOGGER = logging.getLogger(__name__)
 
 
 def _pad_count(size: int) -> int:
-    return INDEX_TYPE_SIZE - (size % INDEX_TYPE_SIZE)
+    # Bytes needed to align `size` up to a 4-byte boundary: 0 when already aligned. The C++
+    # reader advances over each section with Align() (which adds 0 when aligned), so emitting
+    # 4 padding bytes for an already-aligned size shifts every following section and corrupts
+    # parsing (the index magic ends up read as "****INDE").
+    return (INDEX_TYPE_SIZE - (size % INDEX_TYPE_SIZE)) % INDEX_TYPE_SIZE
     if pad_count != INDEX_TYPE_SIZE:
         return pad_count
     return 0
