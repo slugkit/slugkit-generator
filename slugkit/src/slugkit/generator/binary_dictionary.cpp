@@ -637,16 +637,23 @@ auto DictionarySet::Filter(const Selector& selector) const -> FilteredDictionary
         return {};
     }
     const auto& dictionary = it->second;
+    const auto languages = dictionary.Languages();
 
-    // Determine the effective language: explicit on the selector, else default to "en"
-    // (matching the in-memory DictionarySet's language-specific default). An unknown
-    // language yields an empty result rather than throwing, again matching the in-memory set.
+    // Determine the effective language, mirroring the in-memory DictionarySet:
+    //  - no language on the selector: prefer "en"; if the dictionary is language-agnostic
+    //    (its words carry the empty language code, e.g. domain/shell), fall back to that;
+    //  - an explicit language must be present in the dictionary, else the result is empty.
+    // An unknown language yields an empty result rather than throwing.
     Selector effective = selector;
     if (!effective.language) {
-        effective.language = LanguageCodeView{kDefaultLanguage};
-    }
-    const auto languages = dictionary.Languages();
-    if (languages.find(*effective.language) == languages.end()) {
+        if (languages.find(LanguageCodeView{kDefaultLanguage}) != languages.end()) {
+            effective.language = LanguageCodeView{kDefaultLanguage};
+        } else if (languages.find(LanguageCodeView{kAgnosticLanguage}) != languages.end()) {
+            effective.language = LanguageCodeView{kAgnosticLanguage};
+        } else {
+            return {};
+        }
+    } else if (languages.find(*effective.language) == languages.end()) {
         return {};
     }
     return dictionary.Filter(effective);

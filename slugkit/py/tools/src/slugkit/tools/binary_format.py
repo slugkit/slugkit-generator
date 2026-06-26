@@ -334,7 +334,8 @@ class WordsData:
         offset = 0
         index = 0
         language_offset = 0
-        for tag, tag_entry in self.dictionary_data.tags.items():
+        # tags may be absent (a dictionary with no defined tag metadata, e.g. shell commands).
+        for tag, tag_entry in (self.dictionary_data.tags or {}).items():
             self.tags_table.add_tag_entry(tag, tag_entry.description, tag_entry.opt_in)
         for language, words in self.dictionary_data.words.items():
             lang_start_index = index
