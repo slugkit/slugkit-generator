@@ -8,15 +8,10 @@
 #include <slugkit/utils/roman.hpp>
 #include <slugkit/utils/text.hpp>
 
-#include <generated/emoji.yaml.hpp>
-
 #include <cstdint>
 #include <stdexcept>
 
 namespace slugkit::generator {
-
-const std::string_view EmojiSubstitutionGenerator::kEmojiDictionaryText =
-    std::string_view{emoji_dict_begin, static_cast<size_t>(emoji_dict_size)};
 
 namespace {
 
@@ -67,17 +62,7 @@ struct RomanDictionary {
 
 const RomanDictionary kRomanDictionary;
 
-Dictionary LoadEmojiDictionary() {
-    using namespace literals;
-    auto yaml = userver::formats::yaml::FromString(std::string{EmojiSubstitutionGenerator::kEmojiDictionaryText});
-    auto data = yaml["emoji"].As<data::Dictionary<WordTags>>();
-    return Dictionary("emoji", ""_lang_view, std::move(data.words));
-}
-
 }  // namespace
-
-// this one is from dictionary.hpp
-const Dictionary kEmojiDictionary = LoadEmojiDictionary();
 
 //-------------------------------------------------------------
 // SelectorSubstitutionGenerator
@@ -92,18 +77,16 @@ SelectorSubstitutionGenerator::SelectorSubstitutionGenerator(
 
 std::string SelectorSubstitutionGenerator::Generate(std::uint32_t seed, std::size_t sequence_number) const {
     auto index = Permute(selected_size_, seed, sequence_number);
-    auto word = (*dictionary_)[index];
     if (dictionary_->GetCase() == CaseType::kMixed) {
-        std::uint64_t max_mask_value = 1ULL << dictionary_->GetMaxLength();
-        if (max_mask_value < 2) {
-            // If the longest word is 1 character, we need to guard against
-            // FPE in __builtin_clzll
-            max_mask_value = 2;
-        }
-        utils::text::CaseMask mask{PermutePowerOf2(max_mask_value, seed, sequence_number)};
+        // For mixed case selected_size_ is the mixed-case capacity (sum of every word's case
+        // space). Decompose the permuted value into a word and its case mask so each sequence
+        // value maps to a distinct cased slug -- collision-free, unlike a uniform per-word mask.
+        auto [word_index, case_index] = dictionary_->DecomposeMixed(static_cast<std::uint64_t>(index));
+        const auto& word = dictionary_->GetWord(word_index).word;
+        auto mask = utils::text::ExpandCaseMask(word, case_index);
         return utils::text::MixedCase(word, utils::text::kEnUsLocale, mask);
     }
-    return word;
+    return (*dictionary_)[index];
 }
 
 std::size_t SelectorSubstitutionGenerator::GetMaxLength() const {
@@ -123,26 +106,25 @@ BinarySelectorSubstitutionGenerator::BinarySelectorSubstitutionGenerator(
 
 std::string BinarySelectorSubstitutionGenerator::Generate(std::uint32_t seed, std::size_t sequence_number) const {
     auto index = Permute(selected_size_, seed, sequence_number);
-    const auto& entry = (*dictionary_)[IndexType(static_cast<IndexType::UnderlyingType>(index))];
     // The dictionary stores precomputed case variants, so pick the matching one instead of
-    // converting at generation time. kMixed uses the lowercase variant plus a per-word mask.
+    // converting at generation time. kMixed decomposes the permuted value into a word and its
+    // case mask (selected_size_ is the mixed-case capacity), then applies the lowercase variant.
+    if (dictionary_->GetCase() == CaseType::kMixed) {
+        auto [word_index, case_index] = dictionary_->DecomposeMixed(static_cast<std::uint64_t>(index));
+        const auto& entry = (*dictionary_)[IndexType(static_cast<IndexType::UnderlyingType>(word_index))];
+        auto word = entry.Lowercase();
+        auto mask = utils::text::ExpandCaseMask(word, case_index);
+        return utils::text::MixedCase(word, utils::text::kEnUsLocale, mask);
+    }
+    const auto& entry = (*dictionary_)[IndexType(static_cast<IndexType::UnderlyingType>(index))];
     switch (dictionary_->GetCase()) {
         case CaseType::kUpper:
             return std::string{entry.Uppercase()};
         case CaseType::kTitle:
             return std::string{entry.Titlecase()};
-        case CaseType::kMixed: {
-            auto word = entry.Lowercase();
-            std::uint64_t max_mask_value = 1ULL << dictionary_->GetMaxLength();
-            if (max_mask_value < 2) {
-                // Guard against FPE in __builtin_clzll when the longest word is 1 character.
-                max_mask_value = 2;
-            }
-            utils::text::CaseMask mask{PermutePowerOf2(max_mask_value, seed, sequence_number)};
-            return utils::text::MixedCase(word, utils::text::kEnUsLocale, mask);
-        }
         case CaseType::kNone:
         case CaseType::kLower:
+        case CaseType::kMixed:  // handled above
         default:
             return std::string{entry.Lowercase()};
     }
@@ -287,11 +269,11 @@ numeric::BigInt SpecialSubstitutionGenerator::GetCapacity() const {
 }
 
 //-------------------------------------------------------------
-// EmojiSubstitutionGenerator
+// EmojiSubstitutionGeneratorBase
 //-------------------------------------------------------------
 
-EmojiSubstitutionGenerator::EmojiSubstitutionGenerator(const EmojiGen& emoji_gen)
-    : dictionary_{kEmojiDictionary.Filter(emoji_gen.include_tags, emoji_gen.exclude_tags)}
+EmojiSubstitutionGeneratorBase::EmojiSubstitutionGeneratorBase(std::size_t dict_size, const EmojiGen& emoji_gen)
+    : dict_size_{dict_size}
     , min_count_{static_cast<std::size_t>(emoji_gen.min_count)}
     , max_count_{static_cast<std::size_t>(emoji_gen.max_count)}
     , unique_{emoji_gen.unique}
@@ -303,24 +285,24 @@ EmojiSubstitutionGenerator::EmojiSubstitutionGenerator(const EmojiGen& emoji_gen
         throw DictionaryError("Max count for emoji generator cannot be greater than 16");
     }
     if (unique_) {
-        if (dictionary_->size() < min_count_) {
+        if (dict_size_ < min_count_) {
             throw DictionaryError("Not enough emoji to generate a unique string");
         }
-        if (dictionary_->size() < max_count_) {
+        if (dict_size_ < max_count_) {
             // Adjust max_count_ to the size of the dictionary
-            max_count_ = dictionary_->size();
+            max_count_ = dict_size_;
         }
         for (std::size_t i = 0; i < cumulative_caps_.size(); ++i) {
-            cumulative_caps_[i] = UniquePermutationCount(dictionary_->size(), i + min_count_);
+            cumulative_caps_[i] = UniquePermutationCount(dict_size_, i + min_count_);
         }
     } else {
         for (std::size_t i = 0; i < cumulative_caps_.size(); ++i) {
-            cumulative_caps_[i] = PermutationCount(dictionary_->size(), i + min_count_);
+            cumulative_caps_[i] = PermutationCount(dict_size_, i + min_count_);
         }
     }
 }
 
-std::size_t EmojiSubstitutionGenerator::SelectCount(std::uint32_t seed, std::size_t sequence_number) const {
+std::size_t EmojiSubstitutionGeneratorBase::SelectCount(std::uint32_t seed, std::size_t sequence_number) const {
     if (min_count_ == max_count_) {
         return min_count_;
     }
@@ -330,19 +312,19 @@ std::size_t EmojiSubstitutionGenerator::SelectCount(std::uint32_t seed, std::siz
     return min_count_ + idx;
 }
 
-std::string EmojiSubstitutionGenerator::Generate(std::uint32_t seed, std::size_t sequence_number) const {
+std::string EmojiSubstitutionGeneratorBase::Generate(std::uint32_t seed, std::size_t sequence_number) const {
     auto count = SelectCount(seed, sequence_number);
-    auto permutation = unique_ ? UniquePermutation(seed, dictionary_->size(), count, sequence_number)
-                               : NonUniquePermutation(seed, dictionary_->size(), count, sequence_number);
+    auto permutation = unique_ ? UniquePermutation(seed, dict_size_, count, sequence_number)
+                               : NonUniquePermutation(seed, dict_size_, count, sequence_number);
     std::string result;
     result.reserve(constants::kEmojiMaxCharLength * count);
     for (const auto& item : permutation) {
-        result += (*dictionary_)[item];
+        result += EmojiAt(item);
     }
     return result;
 }
 
-numeric::BigInt EmojiSubstitutionGenerator::GetCapacity() const {
+numeric::BigInt EmojiSubstitutionGeneratorBase::GetCapacity() const {
     return std::accumulate(cumulative_caps_.begin(), cumulative_caps_.end(), numeric::BigInt{0});
 }
 
@@ -362,6 +344,27 @@ auto MakeSelectorGenerator(FilteredDictionaryConstPtr dictionary, const Selector
 auto MakeSelectorGenerator(binary::FilteredDictionaryConstPtr dictionary, const SelectorSettings& settings)
     -> SubstitutionGeneratorPtr {
     return std::make_unique<BinarySelectorSubstitutionGenerator>(std::move(dictionary), settings);
+}
+
+// Build the emoji substitution generator appropriate to the filtered-dictionary type. Emoji is a
+// regular dictionary kind now, sourced from the dictionary set like any selector.
+auto MakeEmojiGenerator(FilteredDictionaryConstPtr dictionary, const EmojiGen& emoji_gen) -> SubstitutionGeneratorPtr {
+    return std::make_unique<EmojiSubstitutionGenerator>(std::move(dictionary), emoji_gen);
+}
+
+auto MakeEmojiGenerator(binary::FilteredDictionaryConstPtr dictionary, const EmojiGen& emoji_gen)
+    -> SubstitutionGeneratorPtr {
+    return std::make_unique<BinaryEmojiSubstitutionGenerator>(std::move(dictionary), emoji_gen);
+}
+
+// The emoji placeholder filters the "emoji" dictionary kind by its include/exclude tags, exactly
+// like a selector; build the equivalent Selector so the shared DictionarySet::Filter path applies.
+auto EmojiSelector(const EmojiGen& emoji_gen) -> Selector {
+    Selector selector;
+    selector.kind = constants::kEmojiKind;
+    selector.include_tags = emoji_gen.include_tags;
+    selector.exclude_tags = emoji_gen.exclude_tags;
+    return selector;
 }
 
 }  // namespace
@@ -427,20 +430,23 @@ struct PatternGenerator::Impl {
                 if (!filtered_dict || filtered_dict->empty()) {
                     throw PatternSyntaxError("No matching words found for: " + selector.ToString());
                 }
-                // TODO get mixed case capacity into account
-
-                // use primes to maximize capacity
                 auto original_size = filtered_dict->size();
-                auto original_capacity = lcm(capacity, numeric::BigInt(original_size));
                 SelectorSettings settings{
                     static_cast<std::int64_t>(original_size), static_cast<std::int64_t>(original_size)
                 };
-                numeric::BigInt prime_capacity(1);
-                if (original_size > 2) {
-                    auto prime = utils::PrevPrime(original_size);
-                    prime_capacity = lcm(capacity, numeric::BigInt(prime));
-                    if (prime_capacity > original_capacity) {
-                        settings.selected_size = prime;
+                if (filtered_dict->GetCase() == CaseType::kMixed) {
+                    // Mixed case multiplies a word's capacity by its number of cased forms; use the
+                    // collision-free block layout's total instead of the plain word count.
+                    settings.selected_size = static_cast<std::int64_t>(filtered_dict->MixedCapacity());
+                } else {
+                    // use primes to maximize capacity
+                    auto original_capacity = lcm(capacity, numeric::BigInt(original_size));
+                    if (original_size > 2) {
+                        auto prime = utils::PrevPrime(original_size);
+                        auto prime_capacity = lcm(capacity, numeric::BigInt(prime));
+                        if (prime_capacity > original_capacity) {
+                            settings.selected_size = prime;
+                        }
                     }
                 }
                 selectors.push_back(settings);
@@ -457,7 +463,11 @@ struct PatternGenerator::Impl {
                 generators.push_back(std::make_unique<SpecialSubstitutionGenerator>(special_gen));
             } else if (std::holds_alternative<EmojiGen>(element)) {
                 const auto& emoji_gen = std::get<EmojiGen>(element);
-                generators.push_back(std::make_unique<EmojiSubstitutionGenerator>(emoji_gen));
+                auto emoji_dict = dictionaries.Filter(EmojiSelector(emoji_gen));
+                if (!emoji_dict || emoji_dict->empty()) {
+                    throw PatternSyntaxError("No matching emoji found for: " + emoji_gen.ToString());
+                }
+                generators.push_back(MakeEmojiGenerator(emoji_dict, emoji_gen));
             }
             capacity = lcm(capacity, generators.back()->GetCapacity());
             max_pattern_length += generators.back()->GetMaxLength();
@@ -494,7 +504,11 @@ struct PatternGenerator::Impl {
                 generators.push_back(std::make_unique<SpecialSubstitutionGenerator>(special_gen));
             } else if (std::holds_alternative<EmojiGen>(element)) {
                 const auto& emoji_gen = std::get<EmojiGen>(element);
-                generators.push_back(std::make_unique<EmojiSubstitutionGenerator>(emoji_gen));
+                auto emoji_dict = dictionaries.Filter(EmojiSelector(emoji_gen));
+                if (!emoji_dict || emoji_dict->empty()) {
+                    throw PatternSyntaxError("No matching emoji found for: " + emoji_gen.ToString());
+                }
+                generators.push_back(MakeEmojiGenerator(emoji_dict, emoji_gen));
             }
             capacity = lcm(capacity, generators.back()->GetCapacity());
             max_pattern_length += generators.back()->GetMaxLength();

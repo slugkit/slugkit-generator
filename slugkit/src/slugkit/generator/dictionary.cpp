@@ -17,6 +17,11 @@ FilteredDictionary::FilteredDictionary(
     , case_type_{case_type}
     , words_{std::move(storage)}
     , max_length_{max_length} {
+    if (case_type_ == CaseType::kMixed) {
+        // Build the collision-free mixed-case block layout over the lower-case words, in the same
+        // order the binary dictionary visits them, so both paths generate byte-identical slugs.
+        mixed_index_.Build(words_.size(), [&](std::size_t i) -> std::string_view { return words_[i]->word; });
+    }
 }
 
 std::string FilteredDictionary::operator[](std::size_t index) const {

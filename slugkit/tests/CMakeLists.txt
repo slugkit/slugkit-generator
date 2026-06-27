@@ -23,6 +23,7 @@ target_link_libraries(
         userver::utest
         ${PROJECT_NAME}-test-utils
         ${PROJECT_NAME}-dictionary_test_data
+        ${PROJECT_NAME}-emoji_test_data
 )
 target_include_directories(
     test_${PROJECT_NAME}

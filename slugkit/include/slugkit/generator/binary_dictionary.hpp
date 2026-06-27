@@ -2,6 +2,7 @@
 
 #include <slugkit/generator/binary/dictionary_detail.hpp>
 #include <slugkit/generator/dictionary_types.hpp>
+#include <slugkit/generator/mixed_case_index.hpp>
 #include <slugkit/generator/pattern.hpp>
 
 #include <userver/cache/nway_lru_cache.hpp>
@@ -12,6 +13,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 /*
@@ -35,6 +37,9 @@ public:
         , max_length_(ComputeMaxLength()) {
         assert(index_table_ != nullptr);
         assert(word_data_ != nullptr);
+        if (case_type_ == CaseType::kMixed) {
+            BuildMixedIndex();
+        }
     }
 
     ~FilteredDictionary() = default;
@@ -60,16 +65,31 @@ public:
         return max_length_;
     }
 
+    /// @brief Mixed-case capacity: the number of distinct cased forms across all filtered words.
+    /// Only meaningful when GetCase() == kMixed; otherwise the layout is empty and this is 0.
+    [[nodiscard]] auto MixedCapacity() const noexcept -> std::uint64_t {
+        return mixed_index_.Capacity();
+    }
+
+    /// @brief Decompose a permuted sequence value into (word index, compact case index) for the
+    /// mixed-case path. @see MixedCaseIndex.
+    [[nodiscard]] auto DecomposeMixed(std::uint64_t value) const -> std::pair<std::size_t, std::uint64_t> {
+        return mixed_index_.Decompose(value);
+    }
+
     auto operator[](IndexType index) const -> const WordEntry&;
 
 private:
     auto ComputeMaxLength() const -> std::size_t;
+    void BuildMixedIndex();
 
     filter::IndexSequence indices_;
     const detail::IndexTable* index_table_;
     const detail::WordData* word_data_;
     CaseType case_type_;
     std::size_t max_length_;
+    // Built only for kMixed selectors; maps sequence values to (word, case mask) without collisions.
+    MixedCaseIndex mixed_index_;
 };
 
 using FilteredDictionaryPtr = std::shared_ptr<FilteredDictionary>;

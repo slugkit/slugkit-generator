@@ -31,6 +31,19 @@ auto FirstUpper(std::string_view str, const std::string& locale) -> std::string;
 /// @return The string with changed case
 auto MixedCase(std::string_view str, const std::string& locale, CaseMask permutation) -> std::string;
 
+/// @brief Count the byte positions in @p str whose case can change (ASCII letters). This matches
+/// MixedCase's byte-wise model: only these positions are affected by a case mask, so a word has
+/// exactly 2^CountCaseToggleable(str) distinct cased forms (digits, hyphens, spaces and bytes of
+/// multi-byte sequences are not counted).
+auto CountCaseToggleable(std::string_view str) noexcept -> std::size_t;
+
+/// @brief Expand a compact case index into a CaseMask for MixedCase. The low bits of @p compact
+/// are assigned in order to the toggleable (letter) positions of @p str; non-letter positions
+/// stay lower-case. This is a collision-free bijection between [0, 2^CountCaseToggleable(str)) and
+/// the distinct cased forms of @p str. If @p compact carries more bits than there are toggleable
+/// positions the surplus high bits are ignored.
+auto ExpandCaseMask(std::string_view str, std::uint64_t compact) noexcept -> CaseMask;
+
 /// @brief Split the string into a vector of strings using the delimiter
 /// @tparam OutputIterator The type of the output iterator
 /// @param str The string to split
