@@ -90,6 +90,23 @@ class DictionaryData(BaseModel):
             self.tags = {}
         self.tags[tag_id] = TagData(name=name, description=description, opt_in=opt_in)
 
+    def merge(self, other: "DictionaryData") -> None:
+        """Merge another dictionary's words and tags into this one (used to compile a kind whose
+        source is split across multiple YAML files). Words present in both are unioned by tag;
+        tag definitions already present win (first file is authoritative)."""
+        for language, words in other.words.items():
+            target = self.words.setdefault(language, {})
+            for word, tags in words.items():
+                if word in target:
+                    target[word] = sorted(set(target[word]) | set(tags))
+                else:
+                    target[word] = tags
+        if other.tags:
+            if self.tags is None:
+                self.tags = {}
+            for tag_id, tag_data in other.tags.items():
+                self.tags.setdefault(tag_id, tag_data)
+
 
 class DictionaryFile(BaseModel):
     """Container for multiple dictionaries in a single YAML file."""
@@ -142,6 +159,14 @@ class DictionaryFile(BaseModel):
     def add_dictionary(self, kind: str, dictionary: DictionaryData) -> None:
         """Add a new dictionary."""
         self.dictionaries[kind] = dictionary
+
+    def merge(self, other: "DictionaryFile") -> None:
+        """Merge another DictionaryFile into this one, per kind (see DictionaryData.merge)."""
+        for kind, data in other.dictionaries.items():
+            if kind in self.dictionaries:
+                self.dictionaries[kind].merge(data)
+            else:
+                self.dictionaries[kind] = data
     
     def list_dictionaries(self) -> List[str]:
         """List all available dictionary kinds."""
