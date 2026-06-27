@@ -1,15 +1,18 @@
 #pragma once
 
 #include <slugkit/generator/dictionary_types.hpp>
+#include <slugkit/generator/mixed_case_index.hpp>
 #include <slugkit/generator/pattern.hpp>
 #include <slugkit/generator/types.hpp>
 
 #include <userver/utils/fast_pimpl.hpp>
 
+#include <cstdint>
 #include <iosfwd>
 #include <map>
 #include <memory>
 #include <set>
+#include <utility>
 #include <vector>
 
 namespace slugkit::generator {
@@ -51,6 +54,18 @@ public:
         return max_length_;
     }
 
+    /// @brief Mixed-case capacity: the number of distinct cased forms across all filtered words.
+    /// Only meaningful when GetCase() == kMixed; otherwise the layout is empty and this is 0.
+    std::uint64_t MixedCapacity() const {
+        return mixed_index_.Capacity();
+    }
+
+    /// @brief Decompose a permuted sequence value into (word index, compact case index) for the
+    /// mixed-case path. @see MixedCaseIndex.
+    std::pair<std::size_t, std::uint64_t> DecomposeMixed(std::uint64_t value) const {
+        return mixed_index_.Decompose(value);
+    }
+
 private:
     // we hold the pointer to the original dictionary to avoid copying the words
     // and iterators not to be invalidated
@@ -58,6 +73,8 @@ private:
     CaseType case_type_;
     StorageType words_;
     std::size_t max_length_;
+    // Built only for kMixed selectors; maps sequence values to (word, case mask) without collisions.
+    MixedCaseIndex mixed_index_;
 };
 
 using FilteredDictionaryPtr = std::shared_ptr<FilteredDictionary>;
@@ -149,7 +166,5 @@ private:
     std::set<std::string> language_agnostic_kinds_;
     // TODO LRU cache for filtered dictionaries
 };
-
-extern const Dictionary kEmojiDictionary;
 
 }  // namespace slugkit::generator

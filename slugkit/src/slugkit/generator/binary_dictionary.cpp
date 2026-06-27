@@ -564,6 +564,16 @@ auto FilteredDictionary::ComputeMaxLength() const -> std::size_t {
     return max_length;
 }
 
+void FilteredDictionary::BuildMixedIndex() {
+    // Visit logical indices in lexicographic order (O(count)), matching the in-memory dictionary's
+    // word order, and append each lower-case word's block so the two paths stay byte-identical.
+    mixed_index_.Reserve(size());
+    indices_.for_each([&](IndexType logical_index) {
+        const auto offset = (*index_table_)[logical_index];
+        mixed_index_.AddWord(word_data_->At(offset).Lowercase());
+    });
+}
+
 //-----------------------------------------------------------------------------
 // BinaryDictionary
 //-----------------------------------------------------------------------------

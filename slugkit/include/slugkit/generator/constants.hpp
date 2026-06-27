@@ -1,7 +1,11 @@
 #pragma once
 #include <cstdint>
+#include <string_view>
 
 namespace slugkit::generator::constants {
+
+// dictionary kind under which emoji are stored and filtered
+constexpr std::string_view kEmojiKind = "emoji";
 
 // pattern length limits
 constexpr auto kMaxDecimalLength = 18U;   // 18 digits, fits in 64 bits signed integer

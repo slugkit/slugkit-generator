@@ -7,6 +7,8 @@
 
 #include <userver/engine/shared_mutex.hpp>
 
+#include <cctype>
+
 namespace slugkit::utils::text {
 
 const std::string kEnUsLocale{"en_US.UTF-8"};
@@ -62,6 +64,32 @@ std::string MixedCase(std::string_view str, const std::string& locale, CaseMask 
         ++it;
     }
     return result;
+}
+
+auto CountCaseToggleable(std::string_view str) noexcept -> std::size_t {
+    std::size_t count = 0;
+    for (unsigned char c : str) {
+        if (std::isalpha(c) != 0) {
+            ++count;
+        }
+    }
+    return count;
+}
+
+auto ExpandCaseMask(std::string_view str, std::uint64_t compact) noexcept -> CaseMask {
+    // Lay the low bits of `compact` onto the toggleable (letter) byte positions of `str`, in
+    // order, so MixedCase reproduces exactly one distinct cased form per `compact` value. Byte
+    // positions are limited to the 64 the mask can address; words are far shorter in practice.
+    std::uint64_t mask = 0;
+    for (std::size_t j = 0; j < str.size() && j < 64; ++j) {
+        if (std::isalpha(static_cast<unsigned char>(str[j])) != 0) {
+            if ((compact & 1ULL) != 0) {
+                mask |= (std::uint64_t{1} << j);
+            }
+            compact >>= 1;
+        }
+    }
+    return CaseMask{mask};
 }
 
 }  // namespace slugkit::utils::text

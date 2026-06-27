@@ -140,15 +140,14 @@ private:
     std::vector<std::size_t> cumulative_caps_;
 };
 
-/// @brief Substitution generator that uses an emoji generator to generate a string
-/// @note Can be used only for emoji
-/// @param emoji_gen The emoji generator to use
-/// @param seed The seed to use
-class EmojiSubstitutionGenerator : public SubstitutionGenerator {
+/// @brief Shared logic for emoji generation, independent of the dictionary backing. The emoji
+/// dictionary is now a regular kind sourced from the (binary or in-memory) DictionarySet rather
+/// than an embedded global; only the per-index emoji lookup differs between the two, so it is the
+/// single virtual hook (EmojiAt). Count selection, permutations and capacity are shared.
+class EmojiSubstitutionGeneratorBase : public SubstitutionGenerator {
 public:
-    static const std::string_view kEmojiDictionaryText;
-    EmojiSubstitutionGenerator(const EmojiGen& emoji_gen);
-    ~EmojiSubstitutionGenerator() override = default;
+    EmojiSubstitutionGeneratorBase(std::size_t dict_size, const EmojiGen& emoji_gen);
+    ~EmojiSubstitutionGeneratorBase() override = default;
 
     std::string Generate(std::uint32_t seed, std::size_t sequence_number) const override;
 
@@ -159,16 +158,53 @@ public:
         return static_cast<std::size_t>(max_count_);
     }
 
+protected:
+    /// @brief Return the emoji string at @p index in the filtered dictionary.
+    virtual std::string EmojiAt(std::size_t index) const = 0;
+
+    std::size_t dict_size_;
+
 private:
     std::size_t SelectCount(std::uint32_t seed, std::size_t sequence_number) const;
 
-    FilteredDictionaryConstPtr dictionary_;
     std::size_t min_count_;
     std::size_t max_count_;
     bool unique_;
     std::string_view tone_;
     std::string_view gender_;
     std::vector<std::size_t> cumulative_caps_;
+};
+
+/// @brief Emoji generator over an in-memory filtered dictionary.
+class EmojiSubstitutionGenerator : public EmojiSubstitutionGeneratorBase {
+public:
+    EmojiSubstitutionGenerator(FilteredDictionaryConstPtr dictionary, const EmojiGen& emoji_gen)
+        : EmojiSubstitutionGeneratorBase(dictionary->size(), emoji_gen)
+        , dictionary_{std::move(dictionary)} {}
+
+protected:
+    std::string EmojiAt(std::size_t index) const override {
+        return (*dictionary_)[index];
+    }
+
+private:
+    FilteredDictionaryConstPtr dictionary_;
+};
+
+/// @brief Emoji generator over a binary (memory-mapped) filtered dictionary.
+class BinaryEmojiSubstitutionGenerator : public EmojiSubstitutionGeneratorBase {
+public:
+    BinaryEmojiSubstitutionGenerator(binary::FilteredDictionaryConstPtr dictionary, const EmojiGen& emoji_gen)
+        : EmojiSubstitutionGeneratorBase(dictionary->size(), emoji_gen)
+        , dictionary_{std::move(dictionary)} {}
+
+protected:
+    std::string EmojiAt(std::size_t index) const override {
+        return std::string{(*dictionary_)[IndexType(static_cast<IndexType::UnderlyingType>(index))].Lowercase()};
+    }
+
+private:
+    binary::FilteredDictionaryConstPtr dictionary_;
 };
 
 //-------------------------------------------------------------

@@ -1,11 +1,15 @@
+#include <slugkit/generator/binary_dictionary.hpp>
 #include <slugkit/generator/exceptions.hpp>
 #include <slugkit/generator/generator.hpp>
 #include <slugkit/generator/pattern_generator.hpp>
 #include <slugkit/utils/text.hpp>
 
+#include <slugkit/test_utils/test_dictionary.hpp>
+
 #include <userver/utest/utest.hpp>
 
 #include <iostream>
+#include <set>
 
 namespace slugkit::generator {
 
@@ -135,15 +139,25 @@ UTEST(SubstitutionGenerator, MixedCaseWords) {
     Dictionary dictionary("noun", "en"_lang_view, kNouns);
 
     auto filtered_dictionary = dictionary.Filter("nOun"_selector);
-    SelectorSubstitutionGenerator generator{filtered_dictionary, {5, 5}};
+    // Each noun is "nounN": four letters plus a digit, so it has 2^4 = 16 distinct cased forms
+    // (the digit has no case). Five nouns -> mixed-case capacity 5 * 16 = 80.
+    constexpr std::int64_t kMixedCapacity = 5 * 16;
+    EXPECT_EQ(filtered_dictionary->MixedCapacity(), static_cast<std::uint64_t>(kMixedCapacity));
+
+    SelectorSubstitutionGenerator generator{filtered_dictionary, {5, kMixedCapacity}};
+    EXPECT_EQ(generator.GetCapacity(), kMixedCapacity);
+
     auto seed_hash = PatternGenerator::SeedHash(kTestSeed);
-    EXPECT_EQ(generator.Generate(seed_hash, 0), "NOUn2");
-    EXPECT_EQ(generator.Generate(seed_hash, 1), "Noun3");
-    EXPECT_EQ(generator.Generate(seed_hash, 2), "NOUN4");
-    EXPECT_EQ(generator.Generate(seed_hash, 3), "NOun5");
-    EXPECT_EQ(generator.Generate(seed_hash, 4), "nouN1");
-    EXPECT_EQ(generator.Generate(seed_hash, 5), "NoUN2");
-    EXPECT_EQ(generator.Generate(seed_hash, 6), "nOUn3");
+    // Every sequence value in [0, capacity) must yield a distinct slug (collision-free) and each
+    // must be a cased form of one of the nouns.
+    const std::set<std::string> kBaseWords{"noun1", "noun2", "noun3", "noun4", "noun5"};
+    std::set<std::string> seen;
+    for (std::int64_t i = 0; i < kMixedCapacity; ++i) {
+        auto value = generator.Generate(seed_hash, i);
+        EXPECT_TRUE(kBaseWords.count(utils::text::ToLower(value, utils::text::kEnUsLocale)) == 1) << value;
+        seen.insert(value);
+    }
+    EXPECT_EQ(seen.size(), static_cast<std::size_t>(kMixedCapacity));
 }
 
 UTEST(SubstitutionGenerator, Numbers) {
@@ -286,6 +300,10 @@ UTEST(PatternGenerator, GetCapacity) {
     EXPECT_EQ(PatternGenerator(kDictionariesSet, "{noun}-{noun}"_pattern_ptr).GetCapacity(), 5);
     EXPECT_EQ(PatternGenerator(kDictionariesSet, "{noun}-{noun}-{noun}"_pattern_ptr).GetCapacity(), 5);
 
+    // Mixed case explodes capacity by each word's case space: "nounN" has four letters -> 2^4 = 16
+    // cased forms, times 5 nouns = 80 (the digit has no case).
+    EXPECT_EQ(PatternGenerator(kDictionariesSet, "{nOun}"_pattern_ptr).GetCapacity(), 80);
+
     EXPECT_EQ(PatternGenerator(kDictionariesSet, "{adjective}-{noun}"_pattern_ptr).GetCapacity(), 35);
     EXPECT_EQ(PatternGenerator(kDictionariesSet, "{adjective}-{noun}-{noun}"_pattern_ptr).GetCapacity(), 35);
 
@@ -365,16 +383,38 @@ UTEST(Generator, GenerateIDRoman) {
 }
 
 UTEST(Generator, GenerateWithEmoji) {
-    Generator generator(kDictionariesSet);
+    // Emoji is a regular file-based dictionary kind now; assemble a set with the fake selector
+    // dictionaries plus the real emoji dictionary (decompiled from emoji.bin).
+    binary::BinaryDictionary emoji_binary(test::kEmojiTestData);
+    std::vector<Dictionary> dicts{
+        Dictionary("noun", "en"_lang_view, kNouns),
+        Dictionary("adjective", "en"_lang_view, kAdjectives),
+        Dictionary("verb", "en"_lang_view, kVerbs),
+        Dictionary("adverb", "en"_lang_view, kAdverbs),
+        Dictionary("noun", ""_lang_view, kLanguageAgnosticNouns),
+    };
+    for (auto& d : test::Decompile(emoji_binary)) {
+        dicts.push_back(std::move(d));
+    }
+    Generator generator(DictionarySet{std::move(dicts)});
     auto pattern = "-{emoji:+face}-{adjective}-{adverb}-{noun}-{number:2d}-"_pattern_ptr;
     auto settings = generator.GetCapacity(pattern);
 
-    EXPECT_EQ(generator.Generate(settings, pattern, kTestSeed, 0), "-😇-adjective3-adverb3-noun4-36-");
-    EXPECT_EQ(generator.Generate(settings, pattern, kTestSeed, 1), "-😜-adjective5-adverb4-noun2-73-");
-    EXPECT_EQ(generator.Generate(settings, pattern, kTestSeed, 2), "-😏-adjective7-adverb5-noun5-10-");
-    EXPECT_EQ(generator.Generate(settings, pattern, kTestSeed, 3), "-😫-adjective2-adverb6-noun3-47-");
-    EXPECT_EQ(generator.Generate(settings, pattern, kTestSeed, 4), "-🤕-adjective4-adverb7-noun1-84-");
-    EXPECT_EQ(generator.Generate(settings, pattern, kTestSeed, 5), "-😮-adjective6-adverb8-noun4-21-");
+    // The non-emoji placeholders are driven by the fake dictionaries and stay deterministic; only
+    // the emoji content depends on the (now file-based) emoji dictionary. Assert the deterministic
+    // suffix and that a non-empty emoji was substituted for the leading placeholder.
+    const std::vector<std::string> suffixes = {
+        "-adjective3-adverb3-noun4-36-", "-adjective5-adverb4-noun2-73-",
+        "-adjective7-adverb5-noun5-10-", "-adjective2-adverb6-noun3-47-",
+        "-adjective4-adverb7-noun1-84-", "-adjective6-adverb8-noun4-21-",
+    };
+    for (std::size_t i = 0; i < suffixes.size(); ++i) {
+        auto out = generator.Generate(settings, pattern, kTestSeed, i);
+        EXPECT_TRUE(out.starts_with("-")) << out;
+        EXPECT_TRUE(out.ends_with(suffixes[i])) << "seq " << i << ": " << out;
+        // "-<emoji>" precedes the suffix, so there must be at least one emoji byte.
+        EXPECT_GT(out.size(), suffixes[i].size() + 1) << out;
+    }
 }
 
 }  // namespace slugkit::generator

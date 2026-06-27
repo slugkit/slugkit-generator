@@ -3,7 +3,6 @@ project(slugkit-generator CXX)
 
 set(${PROJECT_NAME}_INCLUDE_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/include)
 set(${PROJECT_NAME}_SRC_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/src)
-set(${PROJECT_NAME}_EMBEDDED_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../data)
 
 # Utils library
 set(${PROJECT_NAME}_UTILS_SRC
@@ -26,10 +25,6 @@ target_include_directories(${PROJECT_NAME}-utils
         ${${PROJECT_NAME}_INCLUDE_ROOT}
 )
 
-# Emoji library
-# maybe optional?
-userver_embed_file(${PROJECT_NAME}-emoji NAME emoji_dict FILEPATH ${${PROJECT_NAME}_EMBEDDED_ROOT}/emoji.yaml)
-
 # Generator library
 set(${PROJECT_NAME}_SRC
     ${${PROJECT_NAME}_SRC_ROOT}/slugkit/generator/permutations.cpp
@@ -51,7 +46,6 @@ target_link_libraries(
     ${PROJECT_NAME}
     PUBLIC
         ${PROJECT_NAME}-utils
-        ${PROJECT_NAME}-emoji
 )
 target_include_directories(
     ${PROJECT_NAME} 
@@ -74,6 +68,11 @@ if (SLUGKIT_GENERATOR_BUILD_TESTS OR SLUGKIT_GENERATOR_BUILD_BENCHMARKS OR SLUGK
         ${PROJECT_NAME}-dictionary_test_data
         NAME dictionary_test_data
         FILEPATH ${${PROJECT_NAME}-test-dictionary-data}
+        )
+    userver_embed_file(
+        ${PROJECT_NAME}-emoji_test_data
+        NAME emoji_test_data
+        FILEPATH ${CMAKE_CURRENT_SOURCE_DIR}/tests/data/emoji.bin
         )
     set(DICTIONARY_TEST_FILE "${${PROJECT_NAME}-test-dictionary-data}")
     configure_file(
@@ -102,6 +101,10 @@ if (SLUGKIT_GENERATOR_BUILD_TESTS OR SLUGKIT_GENERATOR_BUILD_BENCHMARKS OR SLUGK
         ${PROJECT_NAME}-test-utils
         PUBLIC
             ${PROJECT_NAME}
+            # test_dictionary.cpp includes the generated embed headers; linking the embed targets
+            # provides their include dirs and orders their generation before this library compiles.
+            ${PROJECT_NAME}-dictionary_test_data
+            ${PROJECT_NAME}-emoji_test_data
     )
 endif()
 
