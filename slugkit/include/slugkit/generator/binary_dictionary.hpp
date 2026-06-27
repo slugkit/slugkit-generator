@@ -4,8 +4,11 @@
 #include <slugkit/generator/dictionary_types.hpp>
 #include <slugkit/generator/pattern.hpp>
 
+#include <userver/cache/nway_lru_cache.hpp>
+
 #include <fmt/format.h>
 
+#include <cstdint>
 #include <map>
 #include <memory>
 #include <string>
@@ -116,12 +119,21 @@ private:
     auto Validate() const -> void;
 
 private:
+    // Per-selector cache of built filtered dictionaries, keyed by Selector::GetHash(). The binary
+    // Filter path otherwise rebuilds the whole FilteredDictionary every request; this mirrors the
+    // in-memory path's FilteredDictionaryCache (userver thread-safe sharded LRU). Held by
+    // shared_ptr so BinaryDictionary stays movable (it's stored by value in DictionarySet).
+    using FilterCache = userver::cache::NWayLRU<std::int64_t, FilteredDictionaryPtr>;
+    static constexpr std::size_t kFilterCacheWays = 16UL;
+    static constexpr std::size_t kFilterCacheWaySize = 1024UL;
+
     RawData data_;
     const detail::Header* header_;
     const detail::IndexTable* index_table_;
     const detail::LanguageTable* language_table_;
     const detail::TagsTable* tags_table_;
     const detail::WordData* word_data_;
+    std::shared_ptr<FilterCache> filter_cache_;
 };
 
 /// @brief A set of binary dictionaries keyed by kind, the binary counterpart of
