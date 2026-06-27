@@ -553,12 +553,14 @@ auto FilteredDictionary::operator[](IndexType index) const -> const WordEntry& {
 
 auto FilteredDictionary::ComputeMaxLength() const -> std::size_t {
     // Max byte length over the filtered words, matching the in-memory FilteredDictionary.
+    // Visit logical indices directly (O(count)); the old per-position indices_.at(i) was an
+    // O(ranges) scan, making this O(count * ranges) -- ~25s for a scattered exclude over a 1M-word
+    // dictionary (e.g. {geo:-multi_token}).
     std::size_t max_length = 0;
-    const auto count = indices_.count().GetUnderlying();
-    for (IndexType::UnderlyingType i = 0; i < count; ++i) {
-        const auto offset = (*index_table_)[indices_.at(IndexType(i))];
+    indices_.for_each([&](IndexType logical_index) {
+        const auto offset = (*index_table_)[logical_index];
         max_length = std::max(max_length, word_data_->At(offset).Lowercase().size());
-    }
+    });
     return max_length;
 }
 
