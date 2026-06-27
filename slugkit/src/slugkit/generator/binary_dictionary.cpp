@@ -582,6 +582,7 @@ BinaryDictionary::BinaryDictionary(RawData data)
     consumed_size += detail::Align(tags_table_->Size()).GetUnderlying();
 
     word_data_ = detail::WordData::GetWordData(data_.subspan(consumed_size));
+    filter_cache_ = std::make_shared<FilterCache>(kFilterCacheWays, kFilterCacheWaySize);
 
     Validate();
 }
@@ -616,10 +617,19 @@ auto BinaryDictionary::operator[](IndexType index) const -> const WordEntry& {
 }
 
 auto BinaryDictionary::Filter(const Selector& selector) const -> FilteredDictionaryPtr {
+    // Reuse the built filtered dictionary for identical selectors (same language/tags/size/case);
+    // building it (filter + max-length) is the expensive part, so caching keeps repeated patterns
+    // cheap under load. Keyed by the selector's identity hash, same as the in-memory path.
+    const auto hash = selector.GetHash();
+    if (auto cached = filter_cache_->Get(hash)) {
+        return *cached;
+    }
     auto index_sequence = language_table_->Filter(selector.language, selector.size_limit);
     auto indices = tags_table_->Filter(index_sequence, selector.include_tags, selector.exclude_tags);
     // TODO opt-in tags
-    return std::make_shared<FilteredDictionary>(indices, index_table_, word_data_, selector.GetCase());
+    auto filtered = std::make_shared<FilteredDictionary>(indices, index_table_, word_data_, selector.GetCase());
+    filter_cache_->Put(hash, filtered);
+    return filtered;
 }
 
 //-----------------------------------------------------------------------------
