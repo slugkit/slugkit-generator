@@ -126,6 +126,15 @@ public:
         return begin_ <= index && index < end_;
     }
 
+    /// @brief Visit every logical index in the range in ascending order. O(count), no per-index
+    /// position lookup (unlike at()).
+    template <typename F>
+    void for_each(F&& f) const {
+        for (auto i = begin_.GetUnderlying(); i < end_.GetUnderlying(); ++i) {
+            f(IndexType(i));
+        }
+    }
+
     /// @brief Intersection of two index ranges.
     auto operator*(const IndexRange& other) const noexcept -> IndexRange {
         if (!(*this & other)) {
@@ -231,6 +240,15 @@ public:
 
     //{@
     /// @name Range iteration
+    /// @brief Visit every logical index across all ranges in ascending order. O(count) total,
+    /// without the per-index O(ranges) at() lookup.
+    template <typename F>
+    void for_each(F&& f) const {
+        for (const auto& range : ranges_) {
+            range.for_each(f);
+        }
+    }
+
     auto begin() const noexcept -> range_iterator_type {
         return ranges_.begin();
     }
@@ -370,6 +388,14 @@ public:
 
     [[nodiscard]] auto count() const noexcept -> IndexType {
         return IndexType(size());
+    }
+
+    /// @brief Visit every index in the set in ascending order.
+    template <typename F>
+    void for_each(F&& f) const {
+        for (const auto& index : indexes_) {
+            f(index);
+        }
     }
 
     [[nodiscard]] auto density() const -> float {
@@ -550,6 +576,14 @@ public:
         return begin_[index.GetUnderlying()];
     }
 
+    /// @brief Visit every index in the view in ascending order.
+    template <typename F>
+    void for_each(F&& f) const {
+        for (auto it = begin_; it != end_; ++it) {
+            f(*it);
+        }
+    }
+
     auto at(IndexType::UnderlyingType index) const -> IndexType {
         return begin_[index];
     }
@@ -702,6 +736,12 @@ public:
 
     auto at(IndexType::UnderlyingType index) const -> IndexType {
         return at(IndexType(index));
+    }
+
+    /// @brief Visit every logical index in ascending order in O(count) (no per-index at()).
+    template <typename F>
+    void for_each(F&& f) const {
+        std::visit([&f](const auto& chunk) { chunk.for_each(f); }, chunk_);
     }
 
     auto front() const noexcept -> IndexType {
