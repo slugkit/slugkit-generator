@@ -5,7 +5,7 @@
 #include <slugkit/generator/mixed_case_index.hpp>
 #include <slugkit/generator/pattern.hpp>
 
-#include <userver/cache/nway_lru_cache.hpp>
+#include <slugkit/compat/lru_cache.hpp>
 
 #include <fmt/format.h>
 
@@ -143,7 +143,7 @@ private:
     // Filter path otherwise rebuilds the whole FilteredDictionary every request; this mirrors the
     // in-memory path's FilteredDictionaryCache (userver thread-safe sharded LRU). Held by
     // shared_ptr so BinaryDictionary stays movable (it's stored by value in DictionarySet).
-    using FilterCache = userver::cache::NWayLRU<std::int64_t, FilteredDictionaryPtr>;
+    using FilterCache = slugkit::compat::NWayLRU<std::int64_t, FilteredDictionaryPtr>;
     static constexpr std::size_t kFilterCacheWays = 16UL;
     static constexpr std::size_t kFilterCacheWaySize = 1024UL;
 

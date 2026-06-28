@@ -4,7 +4,7 @@
 #include <slugkit/generator/dictionary.hpp>
 #include <slugkit/generator/hash.hpp>
 
-#include <userver/cache/nway_lru_cache.hpp>
+#include <slugkit/compat/lru_cache.hpp>
 
 namespace slugkit::generator::detail {
 
@@ -59,7 +59,7 @@ struct FilteredDictionaryNoCache : FilteredDictionaryCacheBase {
 };
 
 struct FilteredDictionaryCache : FilteredDictionaryCacheBase {
-    using LruCache = userver::cache::NWayLRU<std::int64_t, FilteredDictionaryConstPtr>;
+    using LruCache = slugkit::compat::NWayLRU<std::int64_t, FilteredDictionaryConstPtr>;
 
     static constexpr std::size_t kWays = 16UL;
     static constexpr std::size_t kWaySize = 1024UL;

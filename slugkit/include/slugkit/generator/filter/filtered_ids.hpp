@@ -43,7 +43,9 @@ public:
         : begin_(begin)
         , end_(end) {
         if (begin_ > end_) {
-            throw std::invalid_argument(fmt::format("begin must be less or equal to end: {} > {}", begin_, end_));
+            throw std::invalid_argument(fmt::format(
+                "begin must be less or equal to end: {} > {}", begin_.GetUnderlying(), end_.GetUnderlying()
+            ));
         }
     }
 

@@ -2,9 +2,12 @@
 
 #include <boost/multiprecision/cpp_int.hpp>
 
+#include <slugkit/compat/strong_typedef.hpp>
+
+#ifdef SLUGKIT_GENERATOR_WITH_SERIALIZATION
 #include <userver/formats/parse/to.hpp>
 #include <userver/formats/serialize/to.hpp>
-#include <userver/utils/strong_typedef.hpp>
+#endif
 
 namespace numeric {
 
@@ -14,6 +17,8 @@ BigInt lcm(const BigInt& a, const BigInt& b);
 BigInt gcd(const BigInt& a, const BigInt& b);
 
 }  // namespace numeric
+
+#ifdef SLUGKIT_GENERATOR_WITH_SERIALIZATION
 
 namespace boost::multiprecision {
 
@@ -30,3 +35,5 @@ auto Parse(const Value& value, userver::formats::parse::To<cpp_int>) -> cpp_int 
 }
 
 }  // namespace boost::multiprecision
+
+#endif  // SLUGKIT_GENERATOR_WITH_SERIALIZATION

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <userver/utils/strong_typedef.hpp>
+#include <slugkit/compat/strong_typedef.hpp>
 
 #include <cstdint>
 #include <string>
@@ -9,11 +9,9 @@
 
 namespace slugkit::utils::text {
 
-using CaseMask = userver::utils::StrongTypedef<struct CaseMaskTag, std::uint64_t>;
+using CaseMask = slugkit::compat::StrongTypedef<struct CaseMaskTag, std::uint64_t>;
 
 extern const std::string kEnUsLocale;
-
-auto GetLocale(const std::string& name) -> const std::locale&;
 
 auto ToLower(std::string_view str, const std::string& locale) -> std::string;
 
@@ -82,7 +80,7 @@ auto Join(InputIterator first, InputIterator last, std::string_view delimiter) -
     while (first != last) {
         if constexpr (std::is_same_v<iterator_value_type, std::string>) {
             result += *first;
-        } else if constexpr (userver::utils::IsStrongTypedef<iterator_value_type>::value) {
+        } else if constexpr (slugkit::compat::IsStrongTypedef<iterator_value_type>::value) {
             result += std::string(first->GetUnderlying());
         } else {
             result += std::string(*first);

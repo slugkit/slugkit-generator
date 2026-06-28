@@ -156,7 +156,7 @@ DictionarySet::DictionarySet(std::vector<Dictionary> dictionaries)
     for (auto& dictionary : dictionaries) {
         std::string key = dictionary.GetKind();
         const auto& language = dictionary.GetLanguage();
-        if (!language.empty()) {
+        if (!language.GetUnderlying().empty()) {
             key += "-" + std::string(language.GetUnderlying());
         } else {
             language_agnostic_kinds_.insert(key);
