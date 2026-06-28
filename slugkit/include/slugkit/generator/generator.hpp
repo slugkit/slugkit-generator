@@ -6,7 +6,7 @@
 
 #include <slugkit/utils/numeric.hpp>
 
-#include <userver/utils/fast_pimpl.hpp>
+#include <slugkit/compat/fast_pimpl.hpp>
 
 #include <map>
 #include <string>
@@ -139,10 +139,17 @@ public:
 
 private:
     // Holds a variant of the in-memory and binary dictionary sets.
-    constexpr static std::size_t kImplSize = 144;
-    constexpr static std::size_t kImplAlign = 8;
+    // Impl size differs by toolchain/stdlib (userver/gcc+libstdc++ vs standalone clang+libc++),
+    // so the pimpl storage is sized per build.
+#ifdef SLUGKIT_USE_USERVER
+    static constexpr std::size_t kPimplSize = 144UL;
+    static constexpr std::size_t kPimplAlign = 8UL;
+#else
+    static constexpr std::size_t kPimplSize = 56UL;
+    static constexpr std::size_t kPimplAlign = 8UL;
+#endif
     struct Impl;
-    userver::utils::FastPimpl<Impl, kImplSize, kImplAlign> impl_;
+    slugkit::compat::FastPimpl<Impl, kPimplSize, kPimplAlign> impl_;
 };
 
 using DictionaryStatistics = std::vector<DictionaryStats>;

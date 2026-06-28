@@ -5,7 +5,7 @@
 #include <slugkit/generator/pattern.hpp>
 #include <slugkit/generator/types.hpp>
 
-#include <userver/utils/fast_pimpl.hpp>
+#include <slugkit/compat/fast_pimpl.hpp>
 
 #include <cstdint>
 #include <iosfwd>
@@ -120,11 +120,18 @@ public:
     std::vector<TagDefinition> GetTagDefinitions() const;
 
 private:
-    static constexpr auto kPimplSize = 216UL;
-    static constexpr auto kPimplAlignment = 8UL;
+    // Impl size differs by toolchain/stdlib (userver/gcc+libstdc++ vs standalone clang+libc++),
+    // so the pimpl storage is sized per build.
+#ifdef SLUGKIT_USE_USERVER
+    static constexpr std::size_t kPimplSize = 216UL;
+    static constexpr std::size_t kPimplAlign = 8UL;
+#else
+    static constexpr std::size_t kPimplSize = 80UL;
+    static constexpr std::size_t kPimplAlign = 8UL;
+#endif
 
     struct Impl;
-    userver::utils::FastPimpl<Impl, kPimplSize, kPimplAlignment> pimpl_;
+    slugkit::compat::FastPimpl<Impl, kPimplSize, kPimplAlign> pimpl_;
 };
 
 /// @brief A set of dictionaries that can be used to generate human-readable IDs.

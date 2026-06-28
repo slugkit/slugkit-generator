@@ -4,6 +4,30 @@ project(slugkit-generator CXX)
 set(${PROJECT_NAME}_INCLUDE_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/include)
 set(${PROJECT_NAME}_SRC_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
+# Build the generator against userver (vocabulary types, formats serialisation).
+# OFF produces a standalone build via the slugkit/compat shims (see slugkit/host
+# for a self-contained example). This drives pimpl storage sizes in PUBLIC headers,
+# so it MUST be propagated PUBLIC to every consumer.
+option(SLUGKIT_USE_USERVER "Build the generator against userver" ON)
+
+if (SLUGKIT_USE_USERVER)
+    # Serialisation (BigInt Parse/Serialize, formats IO) is only available with userver.
+    set(${PROJECT_NAME}_COMPILE_DEFS SLUGKIT_USE_USERVER SLUGKIT_GENERATOR_WITH_SERIALIZATION)
+else()
+    set(${PROJECT_NAME}_COMPILE_DEFS)
+endif()
+
+# utf8proc backs case conversion in utils/text.cpp for BOTH builds (replaced boost::locale/ICU).
+find_package(utf8proc CONFIG QUIET)
+if (NOT TARGET utf8proc::utf8proc)
+    find_path(UTF8PROC_INCLUDE_DIR utf8proc.h REQUIRED)
+    find_library(UTF8PROC_LIBRARY NAMES utf8proc REQUIRED)
+    add_library(utf8proc::utf8proc UNKNOWN IMPORTED)
+    set_target_properties(utf8proc::utf8proc PROPERTIES
+        IMPORTED_LOCATION "${UTF8PROC_LIBRARY}"
+        INTERFACE_INCLUDE_DIRECTORIES "${UTF8PROC_INCLUDE_DIR}")
+endif()
+
 # Utils library
 set(${PROJECT_NAME}_UTILS_SRC
     ${${PROJECT_NAME}_SRC_ROOT}/slugkit/utils/numeric.cpp
@@ -18,8 +42,12 @@ add_library(${PROJECT_NAME}-utils STATIC
 )
 target_link_libraries(${PROJECT_NAME}-utils
     PUBLIC
-        userver::core
+        utf8proc::utf8proc
 )
+if (SLUGKIT_USE_USERVER)
+    target_link_libraries(${PROJECT_NAME}-utils PUBLIC userver::core)
+endif()
+target_compile_definitions(${PROJECT_NAME}-utils PUBLIC ${${PROJECT_NAME}_COMPILE_DEFS})
 target_include_directories(${PROJECT_NAME}-utils
     PUBLIC
         ${${PROJECT_NAME}_INCLUDE_ROOT}
@@ -47,9 +75,10 @@ target_link_libraries(
     PUBLIC
         ${PROJECT_NAME}-utils
 )
+target_compile_definitions(${PROJECT_NAME} PUBLIC ${${PROJECT_NAME}_COMPILE_DEFS})
 target_include_directories(
-    ${PROJECT_NAME} 
-    PUBLIC 
+    ${PROJECT_NAME}
+    PUBLIC
         ${${PROJECT_NAME}_INCLUDE_ROOT}
 )
 target_include_directories(

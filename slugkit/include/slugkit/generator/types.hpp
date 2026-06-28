@@ -1,6 +1,6 @@
 #pragma once
 
-#include <userver/utils/strong_typedef.hpp>
+#include <slugkit/compat/strong_typedef.hpp>
 
 #include <optional>
 #include <set>
@@ -10,7 +10,7 @@
 
 namespace slugkit::generator {
 
-using Slug = userver::utils::StrongTypedef<class SlugTag, std::string>;
+using Slug = slugkit::compat::StrongTypedef<class SlugTag, std::string>;
 using OptionalSlug = std::optional<Slug>;
 
 enum class CaseType {
@@ -50,10 +50,8 @@ struct BasicWord {
     [[nodiscard]] auto ToString() const -> std::string;
 };
 
-using LanguageCode = userver::utils::
-    StrongTypedef<class LanguageCodeTag, std::string, userver::utils::StrongTypedefOps::kCompareTransparent>;
-using LanguageCodeView = userver::utils::
-    StrongTypedef<class LanguageCodeTag, std::string_view, userver::utils::StrongTypedefOps::kCompareTransparent>;
+using LanguageCode = slugkit::compat::StrongTypedef<class LanguageCodeTag, std::string, slugkit::compat::StrongTypedefOps::kCompareTransparent>;
+using LanguageCodeView = slugkit::compat::StrongTypedef<class LanguageCodeTag, std::string_view, slugkit::compat::StrongTypedefOps::kCompareTransparent>;
 
 using LanguageCodeSet = std::set<LanguageCodeView>;
 
@@ -82,9 +80,8 @@ inline auto operator<(const LanguageCodeView& lhs, const LanguageCode& rhs) noex
 }
 
 using Tag =
-    userver::utils::StrongTypedef<class TagTag, std::string, userver::utils::StrongTypedefOps::kCompareTransparent>;
-using TagView = userver::utils::
-    StrongTypedef<class TagTag, std::string_view, userver::utils::StrongTypedefOps::kCompareTransparent>;
+    slugkit::compat::StrongTypedef<class TagTag, std::string, slugkit::compat::StrongTypedefOps::kCompareTransparent>;
+using TagView = slugkit::compat::StrongTypedef<class TagTag, std::string_view, slugkit::compat::StrongTypedefOps::kCompareTransparent>;
 
 using TagSet = std::set<TagView>;
 
@@ -118,9 +115,9 @@ using Word = BasicWord<WordTags>;
 using size_type = std::uint32_t;
 
 using IndexType =
-    userver::utils::StrongTypedef<class IndexTypeTag, size_type, userver::utils::StrongTypedefOps::kCompareTransparent>;
+    slugkit::compat::StrongTypedef<class IndexTypeTag, size_type, slugkit::compat::StrongTypedefOps::kCompareTransparent>;
 using SizeType =
-    userver::utils::StrongTypedef<class SizeTypeTag, size_type, userver::utils::StrongTypedefOps::kCompareTransparent>;
+    slugkit::compat::StrongTypedef<class SizeTypeTag, size_type, slugkit::compat::StrongTypedefOps::kCompareTransparent>;
 
 namespace literals {
 

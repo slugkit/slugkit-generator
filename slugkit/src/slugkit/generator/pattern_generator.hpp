@@ -5,7 +5,7 @@
 #include <slugkit/generator/generator.hpp>
 #include <slugkit/generator/pattern.hpp>
 
-#include <userver/utils/fast_pimpl.hpp>
+#include <slugkit/compat/fast_pimpl.hpp>
 
 #include <memory>
 #include <string>
@@ -245,10 +245,17 @@ public:
     static std::uint32_t SeedHash(std::string_view seed);
 
 private:
-    constexpr static std::size_t kPimplSize = 160;
-    constexpr static std::size_t kPimplAlign = 16;
+    // Impl size differs by toolchain/stdlib (userver/gcc+libstdc++ vs standalone clang+libc++),
+    // so the pimpl storage is sized per build.
+#ifdef SLUGKIT_USE_USERVER
+    static constexpr std::size_t kPimplSize = 160UL;
+    static constexpr std::size_t kPimplAlign = 16UL;
+#else
+    static constexpr std::size_t kPimplSize = 144UL;
+    static constexpr std::size_t kPimplAlign = 16UL;
+#endif
     struct Impl;
-    userver::utils::FastPimpl<Impl, kPimplSize, kPimplAlign> impl_;
+    slugkit::compat::FastPimpl<Impl, kPimplSize, kPimplAlign> impl_;
 };
 
 }  // namespace slugkit::generator

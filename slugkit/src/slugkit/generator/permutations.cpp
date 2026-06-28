@@ -1,6 +1,6 @@
 #include <slugkit/generator/permutations.hpp>
 
-#include <userver/utils/assert.hpp>
+#include <slugkit/compat/assert.hpp>
 
 #include <algorithm>
 #include <random>

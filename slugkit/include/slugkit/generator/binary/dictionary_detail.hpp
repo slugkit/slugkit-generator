@@ -6,7 +6,7 @@
 
 #include <slugkit/utils/string_markup.hpp>
 
-#include <userver/utils/strong_typedef.hpp>
+#include <slugkit/compat/strong_typedef.hpp>
 
 #include <array>
 #include <bit>
@@ -29,8 +29,7 @@ namespace detail {
 using StringMarkup =
     utils::basic_string_markup<std::string_view::value_type, std::uint16_t, std::string_view::traits_type>;
 
-using OffsetType = userver::utils::
-    StrongTypedef<class OffsetTypeTag, size_type, userver::utils::StrongTypedefOps::kCompareTransparent>;
+using OffsetType = slugkit::compat::StrongTypedef<class OffsetTypeTag, size_type, slugkit::compat::StrongTypedefOps::kCompareTransparent>;
 namespace literals {
 
 inline constexpr auto operator""_off(unsigned long long value) noexcept -> OffsetType {

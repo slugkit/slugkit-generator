@@ -3,7 +3,6 @@
 #include <slugkit/generator/constants.hpp>
 #include <slugkit/generator/exceptions.hpp>
 #include <slugkit/generator/permutations.hpp>
-#include <slugkit/generator/structured_loader.hpp>
 #include <slugkit/utils/primes.hpp>
 #include <slugkit/utils/roman.hpp>
 #include <slugkit/utils/text.hpp>

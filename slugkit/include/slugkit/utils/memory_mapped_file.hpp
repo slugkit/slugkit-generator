@@ -1,6 +1,6 @@
 #pragma once
 
-#include <userver/utils/fast_pimpl.hpp>
+#include <slugkit/compat/fast_pimpl.hpp>
 
 #include <filesystem>
 #include <span>
@@ -29,9 +29,10 @@ public:
 
 private:
     struct Impl;
-    static constexpr std::size_t kImplSize = 24UL;
-    static constexpr std::size_t kImplAlign = 8UL;
-    userver::utils::FastPimpl<Impl, kImplSize, kImplAlign> impl_;
+    // Impl is identical across toolchains here, so a single size serves both builds.
+    static constexpr std::size_t kPimplSize = 24UL;
+    static constexpr std::size_t kPimplAlign = 8UL;
+    slugkit::compat::FastPimpl<Impl, kPimplSize, kPimplAlign> impl_;
 };
 
 }  // namespace slugkit::utils

@@ -6,6 +6,8 @@
 #include <slugkit/utils/set.hpp>
 #include <slugkit/utils/text.hpp>
 
+#include <fmt/format.h>
+
 namespace slugkit::generator::detail {
 
 struct IntOrRange {
