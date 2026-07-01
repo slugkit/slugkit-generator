@@ -17,6 +17,48 @@ final class SlugkitTests: XCTestCase {
         return try Data(contentsOf: bin)
     }
 
+    private func adverbDictionary() throws -> Data {
+        let genRoot = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()  // SlugkitTests
+            .deletingLastPathComponent()  // Tests
+            .deletingLastPathComponent()  // swift
+            .deletingLastPathComponent()  // bindings
+            .deletingLastPathComponent()  // generator root
+        return try Data(contentsOf: genRoot.appendingPathComponent("slugkit/tests/data/test-adv.slugs"))
+    }
+
+    /// Multi-dictionary (adverb + emoji, n=2). Golden values (seed "foobar") are byte-identical
+    /// across all language bindings.
+    private func multi() throws -> Generator {
+        try Generator(binaryDictionaries: [adverbDictionary(), emojiDictionary()])
+    }
+
+    func testMultiCapacity() throws {
+        let cap = try multi().capacity(of: "{adverb}-{emoji}")
+        XCTAssertEqual(cap.value, "4176326")
+        XCTAssertEqual(cap.maxLength, 22)
+    }
+
+    func testMultiGoldenPrefixes() throws {
+        let gen = try multi()
+        XCTAssertTrue(try gen.generate("{adverb}-{emoji}", seed: "foobar", sequence: 0).hasPrefix("lustfully-"))
+        XCTAssertTrue(try gen.generate("{adverb}-{emoji}", seed: "foobar", sequence: 1).hasPrefix("abroad-"))
+        XCTAssertTrue(try gen.generate("{adverb}-{emoji}", seed: "foobar", sequence: 2).hasPrefix("maladroitly-"))
+    }
+
+    func testMultiLengthAndNumberGolden() throws {
+        let gen = try multi()
+        XCTAssertEqual(try gen.generate("{adverb:<=5}-{number:3d}", seed: "foobar", sequence: 0), "ago-887")
+        XCTAssertEqual(try gen.generate("{adverb:<=5}-{number:3d}", seed: "foobar", sequence: 1), "aloud-774")
+        XCTAssertEqual(try gen.generate("{adverb:<=5}-{number:3d}", seed: "foobar", sequence: 2), "apart-661")
+    }
+
+    func testMultiBatchCollisionFree() throws {
+        var slugs: [String] = []
+        try multi().generate("{adverb}-{emoji}", seed: "foobar", sequence: 0, count: 20) { slugs.append($0) }
+        XCTAssertEqual(Set(slugs).count, 20)
+    }
+
     func testVersion() throws {
         let gen = try Generator(binaryDictionary: emojiDictionary())
         XCTAssertFalse(gen.version.isEmpty)

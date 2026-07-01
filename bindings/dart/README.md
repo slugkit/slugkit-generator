@@ -21,6 +21,9 @@ final gen = Generator.fromBytes(dict);
 
 final slug = gen.generate('{emoji}', 'foobar', 0);
 
+// Several dictionaries (e.g. an adjective + a noun dictionary for {adjective}-{noun}):
+final multi = Generator.fromMultiple([adjectiveBin, nounBin]);
+
 final cap = gen.capacity('{emoji}');           // cap.value (decimal String), cap.maxLength
 
 final many = gen.generateBatch('{adjective}-{noun}', 's', 0, 100);

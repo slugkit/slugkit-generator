@@ -15,9 +15,14 @@ void main() {
       ]);
   final emojiPath = Platform.environment['SLUGKIT_EMOJI_BIN'] ??
       '../../slugkit/tests/data/emoji.bin';
+  final adverbPath = Platform.environment['SLUGKIT_ADVERB_BIN'] ??
+      '../../slugkit/tests/data/test-adv.slugs';
   final dict = File(emojiPath).readAsBytesSync();
+  final adverb = File(adverbPath).readAsBytesSync();
 
   Generator open() => Generator.fromBytes(dict, libraryPath: libPath);
+  Generator openMulti() =>
+      Generator.fromMultiple([adverb, dict], libraryPath: libPath);
 
   test('version is non-empty', () {
     final g = open();
@@ -60,5 +65,40 @@ void main() {
     final g = open();
     expect(() => g.generate('{', 'foobar', 0), throwsA(isA<SlugkitException>()));
     g.dispose();
+  });
+
+  // Multi-dictionary: load adverb + emoji (n=2) and generate real word patterns.
+  // Golden values (seed "foobar") are byte-identical across all language bindings.
+  group('multi-dictionary word patterns', () {
+    test('capacity of {adverb}-{emoji}', () {
+      final g = openMulti();
+      final cap = g.capacity('{adverb}-{emoji}');
+      expect(cap.value, '4176326');
+      expect(cap.maxLength, 22);
+      g.dispose();
+    });
+
+    test('{adverb}-{emoji} golden prefixes', () {
+      final g = openMulti();
+      expect(g.generate('{adverb}-{emoji}', 'foobar', 0), startsWith('lustfully-'));
+      expect(g.generate('{adverb}-{emoji}', 'foobar', 1), startsWith('abroad-'));
+      expect(g.generate('{adverb}-{emoji}', 'foobar', 2), startsWith('maladroitly-'));
+      g.dispose();
+    });
+
+    test('{adverb:<=5}-{number:3d} golden values', () {
+      final g = openMulti();
+      expect(g.generate('{adverb:<=5}-{number:3d}', 'foobar', 0), 'ago-887');
+      expect(g.generate('{adverb:<=5}-{number:3d}', 'foobar', 1), 'aloud-774');
+      expect(g.generate('{adverb:<=5}-{number:3d}', 'foobar', 2), 'apart-661');
+      g.dispose();
+    });
+
+    test('batch of a large capacity pattern is collision-free', () {
+      final g = openMulti();
+      final slugs = g.generateBatch('{adverb}-{emoji}', 'foobar', 0, 20);
+      expect(slugs.toSet().length, 20);
+      g.dispose();
+    });
   });
 }

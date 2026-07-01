@@ -5,8 +5,9 @@ import java.io.File
 // Host-JVM verification of the JNI bridge + Kotlin wrapper. Loads libslugkit_jni from
 // java.library.path and drives the real com.slugkit.Generator API against emoji.bin.
 fun main(args: Array<String>) {
-    require(args.isNotEmpty()) { "usage: Verify <path-to-emoji.bin>" }
+    require(args.size >= 2) { "usage: Verify <path-to-emoji.bin> <path-to-test-adv.slugs>" }
     val emoji = File(args[0]).readBytes()
+    val adverb = File(args[1]).readBytes()
 
     Generator.fromBinaryDictionary(emoji).use { gen ->
         check(gen.version.isNotEmpty()) { "version empty" }
@@ -31,6 +32,25 @@ fun main(args: Array<String>) {
             threw = true
         }
         check(threw) { "malformed pattern should throw" }
+    }
+
+    // Multi-dictionary (adverb + emoji, n=2) with real word patterns.
+    // Golden values (seed "foobar") are byte-identical across all language bindings.
+    Generator.fromBinaryDictionaries(listOf(adverb, emoji)).use { gen ->
+        val cap = gen.capacity("{adverb}-{emoji}")
+        check(cap.value == "4176326") { "multi capacity=${cap.value}" }
+        check(cap.maxLength == 22) { "multi maxLength=${cap.maxLength}" }
+
+        check(gen.generate("{adverb}-{emoji}", "foobar", 0).startsWith("lustfully-")) { "seq0 prefix" }
+        check(gen.generate("{adverb}-{emoji}", "foobar", 1).startsWith("abroad-")) { "seq1 prefix" }
+        check(gen.generate("{adverb}-{emoji}", "foobar", 2).startsWith("maladroitly-")) { "seq2 prefix" }
+
+        check(gen.generate("{adverb:<=5}-{number:3d}", "foobar", 0) == "ago-887") { "num seq0" }
+        check(gen.generate("{adverb:<=5}-{number:3d}", "foobar", 1) == "aloud-774") { "num seq1" }
+        check(gen.generate("{adverb:<=5}-{number:3d}", "foobar", 2) == "apart-661") { "num seq2" }
+
+        val batch = gen.generate("{adverb}-{emoji}", "foobar", 0, 20)
+        check(batch.toSet().size == 20) { "batch not collision-free: ${batch.toSet().size}" }
     }
 
     println("ALL KOTLIN JNI CHECKS PASSED")

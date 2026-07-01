@@ -64,6 +64,40 @@ class Generator {
     }
   }
 
+  /// Create a generator from several compiled binary dictionaries (e.g. an adjective and a noun
+  /// dictionary for `{adjective}-{noun}`). The bytes are copied; the lists need not outlive this call.
+  factory Generator.fromMultiple(List<Uint8List> dictionaries,
+      {String? libraryPath, DynamicLibrary? library}) {
+    final bindings = SlugkitBindings(library ?? _openLibrary(libraryPath));
+    final n = dictionaries.length;
+    final datas = malloc<Pointer<Uint8>>(n);
+    final lens = malloc<IntPtr>(n);
+    final errPtr = malloc<Pointer<Utf8>>()..value = nullptr;
+    final buffers = <Pointer<Uint8>>[];
+    try {
+      for (var i = 0; i < n; i++) {
+        final dict = dictionaries[i];
+        final buf = malloc<Uint8>(dict.length);
+        buf.asTypedList(dict.length).setAll(0, dict);
+        buffers.add(buf);
+        datas[i] = buf;
+        lens[i] = dict.length;
+      }
+      final handle = bindings.create(datas, lens, n, errPtr);
+      if (handle == nullptr) {
+        throw SlugkitException(_takeError(bindings, errPtr, 'failed to create generator'));
+      }
+      return Generator._(bindings, handle);
+    } finally {
+      for (final b in buffers) {
+        malloc.free(b);
+      }
+      malloc.free(datas);
+      malloc.free(lens);
+      malloc.free(errPtr);
+    }
+  }
+
   /// The native library version.
   String get version => _bindings.version().toDartString();
 
