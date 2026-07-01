@@ -1,0 +1,7 @@
+# Dart / pub
+.dart_tool/
+.packages
+pubspec.lock
+
+# Local native build output
+.build/

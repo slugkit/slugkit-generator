@@ -1,0 +1,13 @@
+name: slugkit
+description: Dart/Flutter binding for the SlugKit generator engine via dart:ffi.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.0.0
+
+dependencies:
+  ffi: ^2.1.0
+
+dev_dependencies:
+  test: ^1.24.0
