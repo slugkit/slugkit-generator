@@ -43,3 +43,6 @@
 # python stuff
 __pycache__*
 
+# CMake build trees
+build/
+

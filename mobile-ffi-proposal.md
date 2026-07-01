@@ -377,11 +377,45 @@ A C ABI now wraps the engine and is verified end-to-end on host.
   variant matches alloc variant, buffer-too-small reports required length, batch of 5,
   and a malformed pattern returns NULL without crashing. All checks pass.
 
-### What remains
+### What remains (after Phase 3)
 - **Serialisation layer** (`generator/io/`, `structured_loader.hpp`,
   `string_view_serialize.hpp`, `numeric.hpp` I/O) is still userver-only and excluded —
   needs a userver-free YAML/JSON path (or buffer-only dict construction) for mobile.
 - **Verify the userver build** of the CMake flag changes in the devcontainer.
-- **Cross-toolchains** (NDK / iOS / wasm) and **per-language bindings**
-  (Swift XCFramework, Kotlin AAR, Dart ffi plugin) per Phases 4–6 above. The C ABI
-  is the substrate they all bind to.
+
+## Phase 4 results — cross toolchains
+
+The C ABI now cross-compiles to every target. A dependency-self-contained build
+(`slugkit/mobile/CMakeLists.txt`) fetches **fmt** (11.1.4) and **utf8proc** (2.9.0)
+from source so they get the correct target ABI; boost is header-only (a host
+checkout is found via `NO_CMAKE_FIND_ROOT_PATH`, since header-only boost is
+host-independent). Toolchain files live in `cmake/toolchains/`; `CMakePresets.json`
+ties the targets together.
+
+**Verified builds (compilation is the proof; no device/emulator needed):**
+
+| Target | Toolchain | Artefact | Result |
+|---|---|---|---|
+| Host (macOS arm64) | native | `libslugkit_c.a` | ✅ golden 9/9 + C ABI test pass |
+| iOS device | `ios-device.cmake` (SYSROOT iphoneos) | `libslugkit_c.a` (arm64) | ✅ |
+| iOS simulator | `ios-simulator.cmake` | `libslugkit_c.a` (arm64 + x86_64 fat) | ✅ |
+| Android arm64-v8a | NDK 28 via `android.cmake` | `libslugkit_c.so` (aarch64) | ✅ 10 `slk_*` symbols exported |
+| WebAssembly | emscripten (`emcmake`) | `libslugkit_c.a` (wasm) | ✅ |
+
+**Notes / fixes surfaced by cross-compiling:**
+- **fmt** ≥ 11.1.4 is required for emscripten (11.0.2 fails its own `consteval`
+  format-string checks under emscripten's clang).
+- **Portability fix in `placeholders.cpp`** (emoji option parsing): three
+  `std::string_view(iterator, size)` constructions were only valid because macOS /
+  NDK libc++ expose `string_view` iterators as raw pointers; emscripten's libc++
+  wraps them. Switched to `.data()`-based construction — behaviour-identical, and the
+  host golden/C-ABI tests still pass byte-for-byte.
+- Android builds a shared `.so` (`SLUGKIT_MOBILE_SHARED=ON`, `c++_static` STL) with
+  C ABI symbols kept visible; iOS/host/wasm build static archives.
+
+### What remains (after Phase 4)
+- **Per-language binding packages**: Swift XCFramework (bundle device + simulator
+  slices + module map), Kotlin/Android AAR (JNI wrapper over the `.so`s), Dart/Flutter
+  ffi plugin. The C ABI is the substrate they all bind to.
+- **Verify the userver build** of the earlier CMake flag changes in the devcontainer.
+- Userver-free serialisation/YAML path; on-device dictionary loading from app assets.

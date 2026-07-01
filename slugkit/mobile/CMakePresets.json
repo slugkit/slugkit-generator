@@ -1,0 +1,61 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": { "major": 3, "minor": 24, "patch": 0 },
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "host",
+      "inherits": "base",
+      "displayName": "Host (macOS/Linux, native)",
+      "description": "Native build for local testing"
+    },
+    {
+      "name": "ios-device",
+      "inherits": "base",
+      "displayName": "iOS device (arm64)",
+      "toolchainFile": "${sourceDir}/../../cmake/toolchains/ios-device.cmake"
+    },
+    {
+      "name": "ios-simulator",
+      "inherits": "base",
+      "displayName": "iOS simulator (arm64 + x86_64)",
+      "toolchainFile": "${sourceDir}/../../cmake/toolchains/ios-simulator.cmake"
+    },
+    {
+      "name": "android-arm64",
+      "inherits": "base",
+      "displayName": "Android arm64-v8a (.so)",
+      "toolchainFile": "${sourceDir}/../../cmake/toolchains/android.cmake",
+      "cacheVariables": {
+        "ANDROID_ABI": "arm64-v8a",
+        "ANDROID_PLATFORM": "android-24",
+        "SLUGKIT_MOBILE_SHARED": "ON"
+      }
+    },
+    {
+      "name": "android-x86_64",
+      "inherits": "base",
+      "displayName": "Android x86_64 (.so)",
+      "toolchainFile": "${sourceDir}/../../cmake/toolchains/android.cmake",
+      "cacheVariables": {
+        "ANDROID_ABI": "x86_64",
+        "ANDROID_PLATFORM": "android-24",
+        "SLUGKIT_MOBILE_SHARED": "ON"
+      }
+    }
+  ],
+  "buildPresets": [
+    { "name": "host", "configurePreset": "host" },
+    { "name": "ios-device", "configurePreset": "ios-device" },
+    { "name": "ios-simulator", "configurePreset": "ios-simulator" },
+    { "name": "android-arm64", "configurePreset": "android-arm64" },
+    { "name": "android-x86_64", "configurePreset": "android-x86_64" }
+  ]
+}
