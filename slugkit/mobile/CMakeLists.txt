@@ -16,6 +16,8 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 # Build a shared library (e.g. Android .so) instead of a static archive.
 option(SLUGKIT_MOBILE_SHARED "Build slugkit_c as a shared library" OFF)
+# Package the shared library as an Apple .framework (for xcframework / Flutter / CocoaPods).
+option(SLUGKIT_MOBILE_FRAMEWORK "Package the shared library as an Apple .framework" OFF)
 
 get_filename_component(SLUGKIT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/.." ABSOLUTE)
 
@@ -97,3 +99,21 @@ target_link_libraries(slugkit_c PRIVATE fmt::fmt utf8proc)
 set_target_properties(slugkit_c PROPERTIES
     C_VISIBILITY_PRESET default
     CXX_VISIBILITY_PRESET default)
+
+# Apple .framework packaging: a dynamic framework whose slk_* symbols are exported and not
+# dead-stripped when embedded in an app (unlike a vendored static archive). Used to assemble a
+# dynamic Slugkit.xcframework for iOS/macOS (Flutter plugin, SwiftPM binary target, ...).
+if(SLUGKIT_MOBILE_SHARED AND SLUGKIT_MOBILE_FRAMEWORK AND APPLE)
+    set_target_properties(slugkit_c PROPERTIES
+        FRAMEWORK TRUE
+        # Framework/binary named "Slugkit" so an xcframework named Slugkit.xcframework links via
+        # `-framework Slugkit`. The exported slk_* C ABI symbols are unaffected by this name.
+        OUTPUT_NAME Slugkit
+        FRAMEWORK_VERSION A
+        MACOSX_FRAMEWORK_IDENTIFIER com.slugkit.slugkit
+        MACOSX_FRAMEWORK_BUNDLE_VERSION 0.1.0
+        MACOSX_FRAMEWORK_SHORT_VERSION_STRING 0.1.0
+        PUBLIC_HEADER "${SLUGKIT_DIR}/include/slugkit/c/slugkit_c.h"
+        BUILD_WITH_INSTALL_RPATH ON
+        INSTALL_NAME_DIR "@rpath")
+endif()
