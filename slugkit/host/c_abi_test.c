@@ -182,6 +182,14 @@ int main(void) {
             /* A bare unescaped pipe is a parse error. */
             char* bar = slk_generate_alloc(mg, "a|b", "s", 0, &err);
             CHECK(bar == NULL, "unescaped `|` outside alternation is rejected");
+            /* Equivalent alternatives collapse: {adverb}|{adverb} has the capacity of one {adverb}. */
+            char* cc = NULL;
+            slk_capacity(mg, "{adverb}|{adverb}", &cc, NULL, &err);
+            CHECK(cc && strcmp(cc, "3619") == 0, "{adverb}|{adverb} collapses to capacity 3619");
+            slk_string_free(cc);
+            /* Overlapping alternatives ({adverb} is a superset of {adverb:+pos}) are a pattern error. */
+            char* ov = slk_generate_alloc(mg, "{adverb:+pos}|{adverb}", "s", 0, &err);
+            CHECK(ov == NULL, "overlapping alternatives (superset) are rejected");
 
             slk_generator_destroy(mg);
         }
