@@ -212,6 +212,12 @@ TEST(PatternGenerator, AlternationCollapseAndDisjoint) {
     // {noun}|{noun} collapses -> capacity is 5, not 10 (no double counting, no collisions).
     EXPECT_EQ(PatternGenerator(dictionaries, "{noun}|{noun}"_pattern_ptr).GetCapacity(), 5);
     EXPECT_EQ(PatternGenerator(dictionaries, "{noun}|{noun}|{adjective}"_pattern_ptr).GetCapacity(), 12);
+    // Collapse is type-agnostic: identical number/special generators collapse too.
+    EXPECT_EQ(PatternGenerator(dictionaries, "{number:2d}|{number:2d}"_pattern_ptr).GetCapacity(), 100);
+    // Distinct-but-disjoint number generators are kept ("00".."99" vs "000".."999" never coincide).
+    EXPECT_EQ(PatternGenerator(dictionaries, "{number:2d}|{number:3d}"_pattern_ptr).GetCapacity(), 1100);
+    // But decimal and hex 2-digit overlap (e.g. "27") -> error.
+    EXPECT_THROW(PatternGenerator(dictionaries, "{number:2d}|{number:2x}"_pattern_ptr), PatternSyntaxError);
     // {noun} is a superset of {noun:+tag1}, so their outputs overlap -> error.
     EXPECT_THROW(PatternGenerator(dictionaries, "{noun:+tag1}|{noun}"_pattern_ptr), PatternSyntaxError);
     // Disjoint dictionaries (noun* vs verb*) are fine.
