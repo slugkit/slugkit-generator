@@ -1,0 +1,7 @@
+# SwiftPM
+.build/
+.swiftpm/
+Package.resolved
+
+# Prebuilt native artifact (produced by scripts/build-xcframework.sh)
+Slugkit.xcframework/
