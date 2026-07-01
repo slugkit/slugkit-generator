@@ -425,21 +425,21 @@ UTEST(PatternGenerator, Alternation) {
     // Surrounding text keeps a single alternation placeholder.
     EXPECT_EQ(PatternGenerator(kDictionariesSet, "x-{noun}|{verb}-y"_pattern_ptr).GetCapacity(), 15);
 
-    // Deterministic, collision-free over the capacity; every slug is one of the children's outputs.
+    // Golden: exact deterministic output over the full cycle (seed "foobar"), and collision-free
+    // (all 15 distinct: five nouns interleaved with ten verbs).
     PatternGenerator generator(kDictionariesSet, "{noun}|{verb}"_pattern_ptr);
     auto seed_hash = PatternGenerator::SeedHash(kTestSeed);
-    std::set<std::string> nouns{"noun1", "noun2", "noun3", "noun4", "noun5"};
-    std::set<std::string> verbs;
-    for (int i = 1; i <= 10; ++i) {
-        verbs.insert("verb" + std::to_string(i));
-    }
+    const std::vector<std::string> kExpected = {
+        "verb7", "noun1", "verb10", "noun4", "verb3",  "noun2", "verb6", "verb5",
+        "verb9", "verb8", "verb2",  "verb1", "noun5",  "verb4", "noun3",
+    };
     std::set<std::string> seen;
-    for (std::uint64_t i = 0; i < 15; ++i) {
+    for (std::uint64_t i = 0; i < kExpected.size(); ++i) {
         auto slug = generator(seed_hash, i);
-        EXPECT_TRUE(nouns.count(slug) == 1 || verbs.count(slug) == 1) << slug;
+        EXPECT_EQ(slug, kExpected[i]) << "seq " << i;
         seen.insert(slug);
     }
-    EXPECT_EQ(seen.size(), 15);
+    EXPECT_EQ(seen.size(), kExpected.size());
 }
 
 }  // namespace slugkit::generator

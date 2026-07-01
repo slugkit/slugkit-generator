@@ -188,20 +188,20 @@ TEST(PatternGenerator, Alternation) {
 
     PatternGenerator generator(dictionaries, "{noun}|{verb}"_pattern_ptr);
     auto seed_hash = PatternGenerator::SeedHash(kTestSeed);
-    std::set<std::string> nouns{"noun1", "noun2", "noun3", "noun4", "noun5"};
-    std::set<std::string> verbs;
-    for (int i = 1; i <= 10; ++i) {
-        verbs.insert("verb" + std::to_string(i));
-    }
-    const auto capacity = static_cast<std::uint64_t>(generator.GetCapacity());
-    ASSERT_EQ(capacity, 15u);
+    // Golden: the exact deterministic output over the full cycle (seed "foobar"). Also collision-free
+    // (all 15 distinct: five nouns interleaved with ten verbs).
+    const std::vector<std::string> kExpected = {
+        "verb7", "noun1", "verb10", "noun4", "verb3",  "noun2", "verb6", "verb5",
+        "verb9", "verb8", "verb2",  "verb1", "noun5",  "verb4", "noun3",
+    };
+    ASSERT_EQ(kExpected.size(), 15u);
     std::set<std::string> seen;
-    for (std::uint64_t i = 0; i < capacity; ++i) {
+    for (std::uint64_t i = 0; i < kExpected.size(); ++i) {
         auto slug = generator(seed_hash, i);
-        EXPECT_TRUE(nouns.count(slug) == 1 || verbs.count(slug) == 1) << slug;
+        EXPECT_EQ(slug, kExpected[i]) << "seq " << i;
         seen.insert(slug);
     }
-    EXPECT_EQ(seen.size(), capacity);  // collision-free: all 15 distinct
+    EXPECT_EQ(seen.size(), kExpected.size());  // collision-free
 }
 
 // End-to-end generator: committed full-slug expectations from generator_test.cpp (GenerateID).
