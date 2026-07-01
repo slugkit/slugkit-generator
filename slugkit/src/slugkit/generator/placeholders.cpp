@@ -364,7 +364,10 @@ void EmojiGen::ApplyOptions(
             if (pos != option.second.end()) {
                 throw PatternSyntaxError(fmt::format(
                     "Unexpected character(s) after count option: {} at column {}",
-                    std::string_view(pos, option.second.end() - pos),
+                    // Build from a raw pointer + length: a string_view's iterator is a raw pointer on
+                    // some libc++ builds but a wrapped iterator on others (e.g. emscripten), so the
+                    // (iterator, size) constructor is not portable.
+                    std::string_view(option.second.data() + (pos - option.second.begin()), option.second.end() - pos),
                     pos - original_pattern.begin()
                 ));
             }
@@ -385,7 +388,7 @@ void EmojiGen::ApplyOptions(
                     option.second.begin() - original_pattern.begin()
                 ));
             }
-            count_option = std::string_view(option.first.begin(), option.second.end() - option.first.begin());
+            count_option = std::string_view(option.first.data(), option.second.end() - option.first.begin());
             has_options_ = true;
         } else if (option.first == kUniqueOption) {
             if (option.second == "true" || option.second == "yes") {
@@ -397,7 +400,7 @@ void EmojiGen::ApplyOptions(
                     option.second.begin() - original_pattern.begin()
                 ));
             }
-            unique_option = std::string_view(option.first.begin(), option.second.end() - option.first.begin());
+            unique_option = std::string_view(option.first.data(), option.second.end() - option.first.begin());
             has_options_ = true;
         } else if (option.first == kToneOption) {
             tone = option.second;
