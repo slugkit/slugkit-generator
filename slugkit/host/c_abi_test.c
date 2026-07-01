@@ -170,6 +170,19 @@ int main(void) {
             slk_string_free(n1);
             slk_string_free(n2);
 
+            /* Placeholder alternation: capacity is the sum of the children (adverb + emoji). */
+            char* ac = NULL;
+            slk_capacity(mg, "{adverb}|{emoji}", &ac, NULL, &err);
+            CHECK(ac && strcmp(ac, "4773") == 0, "capacity({adverb}|{emoji}) == 4773 (3619 adverbs + 1154 emoji)");
+            slk_string_free(ac);
+            /* Escaped pipe is a literal pipe in the output. */
+            char* esc = slk_generate_alloc(mg, "x\\|y", "s", 0, &err);
+            CHECK(esc && strcmp(esc, "x|y") == 0, "escaped pipe `x\\|y` -> `x|y`");
+            slk_string_free(esc);
+            /* A bare unescaped pipe is a parse error. */
+            char* bar = slk_generate_alloc(mg, "a|b", "s", 0, &err);
+            CHECK(bar == NULL, "unescaped `|` outside alternation is rejected");
+
             slk_generator_destroy(mg);
         }
     }

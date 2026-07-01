@@ -417,4 +417,29 @@ UTEST(Generator, GenerateWithEmoji) {
     }
 }
 
+UTEST(PatternGenerator, Alternation) {
+    // Capacity is the sum of the children's capacities (noun=5, verb=10, adjective=7).
+    EXPECT_EQ(PatternGenerator(kDictionariesSet, "{noun}|{verb}"_pattern_ptr).GetCapacity(), 15);
+    EXPECT_EQ(PatternGenerator(kDictionariesSet, "{noun}|{adjective}"_pattern_ptr).GetCapacity(), 12);
+    EXPECT_EQ(PatternGenerator(kDictionariesSet, "{noun}|{verb}|{adjective}"_pattern_ptr).GetCapacity(), 22);
+    // Surrounding text keeps a single alternation placeholder.
+    EXPECT_EQ(PatternGenerator(kDictionariesSet, "x-{noun}|{verb}-y"_pattern_ptr).GetCapacity(), 15);
+
+    // Golden: exact deterministic output over the full cycle (seed "foobar"), and collision-free
+    // (all 15 distinct: five nouns interleaved with ten verbs).
+    PatternGenerator generator(kDictionariesSet, "{noun}|{verb}"_pattern_ptr);
+    auto seed_hash = PatternGenerator::SeedHash(kTestSeed);
+    const std::vector<std::string> kExpected = {
+        "verb7", "noun1", "verb10", "noun4", "verb3",  "noun2", "verb6", "verb5",
+        "verb9", "verb8", "verb2",  "verb1", "noun5",  "verb4", "noun3",
+    };
+    std::set<std::string> seen;
+    for (std::uint64_t i = 0; i < kExpected.size(); ++i) {
+        auto slug = generator(seed_hash, i);
+        EXPECT_EQ(slug, kExpected[i]) << "seq " << i;
+        seen.insert(slug);
+    }
+    EXPECT_EQ(seen.size(), kExpected.size());
+}
+
 }  // namespace slugkit::generator

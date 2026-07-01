@@ -20,10 +20,59 @@ std::string Pattern::ToString() const {
     std::vector<std::string> substitutions;
     for (const auto& element : placeholders) {
         std::visit(
-            [&substitutions](auto&& arg) { substitutions.push_back(fmt::format("{{{}}}", arg.ToString())); }, element
+            [&substitutions](auto&& arg) {
+                using T = std::decay_t<decltype(arg)>;
+                if constexpr (std::is_same_v<T, Alternation>) {
+                    // Alternation::ToString already yields "{a}|{b}" with its own braces.
+                    substitutions.push_back(arg.ToString());
+                } else {
+                    substitutions.push_back(fmt::format("{{{}}}", arg.ToString()));
+                }
+            },
+            element
         );
     }
-    return SlugFormatter(*this)(substitutions);
+    // Canonical output must round-trip through the parser, so keep the arbitrary text verbatim
+    // (escapes preserved).
+    return SlugFormatter(*this, /*unescape_text=*/false)(substitutions);
+}
+
+std::string Pattern::Alternation::ToString() const {
+    std::string result;
+    bool first = true;
+    for (const auto& alt : alternatives) {
+        if (!first) {
+            result += '|';
+        }
+        first = false;
+        std::visit([&result](auto&& arg) { result += fmt::format("{{{}}}", arg.ToString()); }, alt);
+    }
+    return result;
+}
+
+std::int64_t Pattern::Alternation::GetHash() const {
+    std::size_t seed = 0;
+    for (const auto& alt : alternatives) {
+        std::visit([&seed](auto&& arg) { boost::hash_combine(seed, arg.GetHash()); }, alt);
+    }
+    return seed;
+}
+
+std::int32_t Pattern::Alternation::Complexity() const {
+    std::int32_t cost = 0;
+    for (const auto& alt : alternatives) {
+        std::visit([&cost](auto&& arg) { cost += arg.Complexity(); }, alt);
+    }
+    return cost;
+}
+
+bool Pattern::Alternation::IsNSFW() const {
+    for (const auto& alt : alternatives) {
+        if (std::holds_alternative<Selector>(alt) && std::get<Selector>(alt).IsNSFW()) {
+            return true;
+        }
+    }
+    return false;
 }
 
 std::string Pattern::Format(Substitutions substitutions) const {
@@ -38,6 +87,10 @@ bool Pattern::IsNSFW() const {
     for (const auto& element : placeholders) {
         if (std::holds_alternative<Selector>(element)) {
             if (std::get<Selector>(element).IsNSFW()) {
+                return true;
+            }
+        } else if (std::holds_alternative<Alternation>(element)) {
+            if (std::get<Alternation>(element).IsNSFW()) {
                 return true;
             }
         }
@@ -84,8 +137,29 @@ Pattern ParsePattern(std::string_view pattern) {
     return Pattern(std::string(pattern));
 }
 
-SlugFormatter::SlugFormatter(const Pattern& pattern)
-    : pattern_(pattern) {
+namespace {
+
+// Append arbitrary text, optionally resolving backslash escapes (`\X` -> `X`). Called for each text
+// chunk during formatting; the parser guarantees every backslash is followed by an escapable char.
+void AppendText(std::string& result, std::string_view chunk, bool unescape) {
+    if (!unescape) {
+        result.append(chunk);
+        return;
+    }
+    for (std::size_t i = 0; i < chunk.size(); ++i) {
+        if (chunk[i] == '\\' && i + 1 < chunk.size()) {
+            result.push_back(chunk[++i]);
+        } else {
+            result.push_back(chunk[i]);
+        }
+    }
+}
+
+}  // namespace
+
+SlugFormatter::SlugFormatter(const Pattern& pattern, bool unescape_text)
+    : pattern_(pattern)
+    , unescape_text_(unescape_text) {
 }
 
 std::string SlugFormatter::operator()(Substitutions substitutions) const {
@@ -110,12 +184,12 @@ std::string SlugFormatter::operator()(Substitutions substitutions) const {
     auto substitution_iter = substitutions.begin();
 
     while (substitution_iter != substitutions.end()) {
-        result.append(*text_chunk_iter);
+        AppendText(result, *text_chunk_iter, unescape_text_);
         text_chunk_iter++;
         result.append(*substitution_iter);
         substitution_iter++;
     }
-    result.append(*text_chunk_iter);
+    AppendText(result, *text_chunk_iter, unescape_text_);
 
     return result;
 }

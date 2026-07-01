@@ -175,6 +175,35 @@ TEST(PatternGenerator, GetCapacity) {
     EXPECT_EQ(PatternGenerator(dictionaries, "{adjective}-{noun}"_pattern_ptr).GetCapacity(), 35);
 }
 
+// Placeholder alternation: {a}|{b} chooses one child. Capacity is the sum of the children's
+// capacities, it is deterministic, and collision-free over that capacity.
+TEST(PatternGenerator, Alternation) {
+    auto dictionaries = MakeDictionarySet();
+    // noun=5, verb=10, adjective=7.
+    EXPECT_EQ(PatternGenerator(dictionaries, "{noun}|{verb}"_pattern_ptr).GetCapacity(), 5 + 10);
+    EXPECT_EQ(PatternGenerator(dictionaries, "{noun}|{adjective}"_pattern_ptr).GetCapacity(), 5 + 7);
+    EXPECT_EQ(PatternGenerator(dictionaries, "{noun}|{verb}|{adjective}"_pattern_ptr).GetCapacity(), 5 + 10 + 7);
+    // Surrounding text keeps a single alternation placeholder.
+    EXPECT_EQ(PatternGenerator(dictionaries, "x-{noun}|{verb}-y"_pattern_ptr).GetCapacity(), 15);
+
+    PatternGenerator generator(dictionaries, "{noun}|{verb}"_pattern_ptr);
+    auto seed_hash = PatternGenerator::SeedHash(kTestSeed);
+    // Golden: the exact deterministic output over the full cycle (seed "foobar"). Also collision-free
+    // (all 15 distinct: five nouns interleaved with ten verbs).
+    const std::vector<std::string> kExpected = {
+        "verb7", "noun1", "verb10", "noun4", "verb3",  "noun2", "verb6", "verb5",
+        "verb9", "verb8", "verb2",  "verb1", "noun5",  "verb4", "noun3",
+    };
+    ASSERT_EQ(kExpected.size(), 15u);
+    std::set<std::string> seen;
+    for (std::uint64_t i = 0; i < kExpected.size(); ++i) {
+        auto slug = generator(seed_hash, i);
+        EXPECT_EQ(slug, kExpected[i]) << "seq " << i;
+        seen.insert(slug);
+    }
+    EXPECT_EQ(seen.size(), kExpected.size());  // collision-free
+}
+
 // End-to-end generator: committed full-slug expectations from generator_test.cpp (GenerateID).
 TEST(Generator, GenerateID) {
     Generator generator(MakeDictionarySet());

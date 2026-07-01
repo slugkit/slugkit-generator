@@ -328,6 +328,39 @@ numeric::BigInt EmojiSubstitutionGeneratorBase::GetCapacity() const {
 }
 
 //-------------------------------------------------------------
+// AlternationSubstitutionGenerator
+//-------------------------------------------------------------
+AlternationSubstitutionGenerator::AlternationSubstitutionGenerator(std::vector<SubstitutionGeneratorPtr> children)
+    : children_{std::move(children)}
+    , max_length_{0} {
+    if (children_.empty()) {
+        throw std::runtime_error("Alternation must have at least one alternative");
+    }
+    cumulative_caps_.reserve(children_.size());
+    numeric::BigInt total{0};
+    for (const auto& child : children_) {
+        total += child->GetCapacity();
+        // uint64 prefix sums for the block-selection Permute (matching special/emoji cumulative caps).
+        cumulative_caps_.push_back(static_cast<std::uint64_t>(total));
+        max_length_ = std::max(max_length_, child->GetMaxLength());
+    }
+    capacity_ = total;
+}
+
+std::string AlternationSubstitutionGenerator::Generate(std::uint32_t seed, std::size_t sequence_number) const {
+    auto total = cumulative_caps_.back();
+    // Permute over the whole sum, then split into (child block, offset within block). The offset
+    // becomes the child's sequence, so as the sum's values sweep a block the child sees each of its
+    // own indices exactly once -> collision-free.
+    auto p = Permute(total, seed, sequence_number);
+    auto it = std::upper_bound(cumulative_caps_.begin(), cumulative_caps_.end(), p);
+    auto idx = static_cast<std::size_t>(std::distance(cumulative_caps_.begin(), it));
+    std::uint64_t block_start = idx == 0 ? 0 : cumulative_caps_[idx - 1];
+    std::uint64_t offset = p - block_start;
+    return children_[idx]->Generate(seed, offset);
+}
+
+//-------------------------------------------------------------
 // PatternGenerator::Impl
 //-------------------------------------------------------------
 namespace {
@@ -364,6 +397,54 @@ auto EmojiSelector(const EmojiGen& emoji_gen) -> Selector {
     selector.include_tags = emoji_gen.include_tags;
     selector.exclude_tags = emoji_gen.exclude_tags;
     return selector;
+}
+
+// Build a generator for one simple (non-alternating) placeholder. Used for alternation children.
+// Unlike the top-level path, selectors here use the plain dictionary size (no prime/LCM
+// maximization, which is a flat-composition heuristic; children compose by sum) and are not stored
+// in PatternSettings::selectors, so the settings format for alternation-free patterns is unchanged.
+template <typename DictSet>
+auto BuildSimpleGenerator(const DictSet& dictionaries, const Pattern::SimplePlaceholder& element)
+    -> SubstitutionGeneratorPtr {
+    if (std::holds_alternative<Selector>(element)) {
+        const auto& selector = std::get<Selector>(element);
+        auto filtered_dict = dictionaries.Filter(selector);
+        if (!filtered_dict || filtered_dict->empty()) {
+            throw PatternSyntaxError("No matching words found for: " + selector.ToString());
+        }
+        auto original_size = static_cast<std::int64_t>(filtered_dict->size());
+        auto selected_size = filtered_dict->GetCase() == CaseType::kMixed
+                                 ? static_cast<std::int64_t>(filtered_dict->MixedCapacity())
+                                 : original_size;
+        return MakeSelectorGenerator(filtered_dict, SelectorSettings{original_size, selected_size});
+    }
+    if (std::holds_alternative<NumberGen>(element)) {
+        const auto& number_gen = std::get<NumberGen>(element);
+        if (number_gen.base == NumberBase::kRoman || number_gen.base == NumberBase::kRomanLower) {
+            return std::make_unique<RomanSubstitutionGenerator>(number_gen);
+        }
+        return std::make_unique<NumberSubstitutionGenerator>(number_gen);
+    }
+    if (std::holds_alternative<SpecialCharGen>(element)) {
+        return std::make_unique<SpecialSubstitutionGenerator>(std::get<SpecialCharGen>(element));
+    }
+    const auto& emoji_gen = std::get<EmojiGen>(element);
+    auto emoji_dict = dictionaries.Filter(EmojiSelector(emoji_gen));
+    if (!emoji_dict || emoji_dict->empty()) {
+        throw PatternSyntaxError("No matching emoji found for: " + emoji_gen.ToString());
+    }
+    return MakeEmojiGenerator(emoji_dict, emoji_gen);
+}
+
+template <typename DictSet>
+auto BuildAlternationGenerator(const DictSet& dictionaries, const Pattern::Alternation& alternation)
+    -> SubstitutionGeneratorPtr {
+    std::vector<SubstitutionGeneratorPtr> children;
+    children.reserve(alternation.alternatives.size());
+    for (const auto& alternative : alternation.alternatives) {
+        children.push_back(BuildSimpleGenerator(dictionaries, alternative));
+    }
+    return std::make_unique<AlternationSubstitutionGenerator>(std::move(children));
 }
 
 }  // namespace
@@ -467,6 +548,10 @@ struct PatternGenerator::Impl {
                     throw PatternSyntaxError("No matching emoji found for: " + emoji_gen.ToString());
                 }
                 generators.push_back(MakeEmojiGenerator(emoji_dict, emoji_gen));
+            } else if (std::holds_alternative<Pattern::Alternation>(element)) {
+                generators.push_back(
+                    BuildAlternationGenerator(dictionaries, std::get<Pattern::Alternation>(element))
+                );
             }
             capacity = lcm(capacity, generators.back()->GetCapacity());
             max_pattern_length += generators.back()->GetMaxLength();
@@ -508,6 +593,10 @@ struct PatternGenerator::Impl {
                     throw PatternSyntaxError("No matching emoji found for: " + emoji_gen.ToString());
                 }
                 generators.push_back(MakeEmojiGenerator(emoji_dict, emoji_gen));
+            } else if (std::holds_alternative<Pattern::Alternation>(element)) {
+                generators.push_back(
+                    BuildAlternationGenerator(dictionaries, std::get<Pattern::Alternation>(element))
+                );
             }
             capacity = lcm(capacity, generators.back()->GetCapacity());
             max_pattern_length += generators.back()->GetMaxLength();
