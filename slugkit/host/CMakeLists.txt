@@ -77,6 +77,7 @@ add_test(NAME golden_test COMMAND golden_test)
 add_executable(c_abi_test ${CMAKE_CURRENT_SOURCE_DIR}/c_abi_test.c)
 set_target_properties(c_abi_test PROPERTIES LINKER_LANGUAGE CXX)
 target_compile_definitions(c_abi_test PRIVATE
-    SLK_EMOJI_BIN_PATH="${SLUGKIT_DIR}/tests/data/emoji.bin")
+    SLK_EMOJI_BIN_PATH="${SLUGKIT_DIR}/tests/data/emoji.bin"
+    SLK_ADVERB_BIN_PATH="${SLUGKIT_DIR}/tests/data/test-adv.slugs")
 target_link_libraries(c_abi_test PRIVATE slugkit-generator-host)
 add_test(NAME c_abi_test COMMAND c_abi_test)

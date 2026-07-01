@@ -23,4 +23,5 @@ kotlinc "$HERE/src/main/kotlin/com/slugkit/Slugkit.kt" "$HERE/scripts/Verify.kt"
 
 echo "==> Running verification"
 java -Djava.library.path="$LIBDIR" -cp "$KOUT/verify.jar" com.slugkit.VerifyKt \
-    "$GEN_ROOT/slugkit/tests/data/emoji.bin"
+    "$GEN_ROOT/slugkit/tests/data/emoji.bin" \
+    "$GEN_ROOT/slugkit/tests/data/test-adv.slugs"

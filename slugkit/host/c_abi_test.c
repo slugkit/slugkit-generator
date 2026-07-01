@@ -106,6 +106,54 @@ int main(void) {
     char* bad = slk_generate_alloc(gen, "{", fixed_seed, 0, &err);
     CHECK(bad == NULL, "malformed pattern returns NULL");
 
+    /* --- multi-dictionary word patterns: load adverb + emoji dictionaries (n=2) --- */
+    /* Golden values below (seed "foobar") are byte-identical across every language binding. */
+    {
+        size_t la = 0, le = 0;
+        unsigned char* adv = read_file(SLK_ADVERB_BIN_PATH, &la);
+        unsigned char* emo = read_file(SLK_EMOJI_BIN_PATH, &le);
+        CHECK(adv != NULL && emo != NULL, "read adverb + emoji dictionaries");
+        const uint8_t* datas[2] = {adv, emo};
+        const size_t lens[2] = {la, le};
+        char* merr = NULL;
+        slk_generator* mg = slk_generator_create(datas, lens, 2, &merr);
+        CHECK(mg != NULL, "create generator from two dictionaries");
+        free(adv);
+        free(emo);
+
+        if (mg != NULL) {
+            char* mc = NULL;
+            int32_t mml = 0;
+            slk_capacity(mg, "{adverb}-{emoji}", &mc, &mml, &err);
+            CHECK(mc && strcmp(mc, "4176326") == 0 && mml == 22, "capacity({adverb}-{emoji}) == 4176326");
+            slk_string_free(mc);
+
+            /* {adverb}-{emoji}: adverb prefix is ASCII and deterministic (emoji suffix varies by build's font, not bytes) */
+            char* w0 = slk_generate_alloc(mg, "{adverb}-{emoji}", "foobar", 0, &err);
+            char* w1 = slk_generate_alloc(mg, "{adverb}-{emoji}", "foobar", 1, &err);
+            char* w2 = slk_generate_alloc(mg, "{adverb}-{emoji}", "foobar", 2, &err);
+            CHECK(w0 && strncmp(w0, "lustfully-", 10) == 0, "{adverb}-{emoji} seq0 starts 'lustfully-'");
+            CHECK(w1 && strncmp(w1, "abroad-", 7) == 0, "{adverb}-{emoji} seq1 starts 'abroad-'");
+            CHECK(w2 && strncmp(w2, "maladroitly-", 12) == 0, "{adverb}-{emoji} seq2 starts 'maladroitly-'");
+            slk_string_free(w0);
+            slk_string_free(w1);
+            slk_string_free(w2);
+
+            /* length constraint + number generator, fully ASCII golden */
+            char* n0 = slk_generate_alloc(mg, "{adverb:<=5}-{number:3d}", "foobar", 0, &err);
+            char* n1 = slk_generate_alloc(mg, "{adverb:<=5}-{number:3d}", "foobar", 1, &err);
+            char* n2 = slk_generate_alloc(mg, "{adverb:<=5}-{number:3d}", "foobar", 2, &err);
+            CHECK(n0 && strcmp(n0, "ago-887") == 0, "{adverb:<=5}-{number:3d} seq0 == ago-887");
+            CHECK(n1 && strcmp(n1, "aloud-774") == 0, "{adverb:<=5}-{number:3d} seq1 == aloud-774");
+            CHECK(n2 && strcmp(n2, "apart-661") == 0, "{adverb:<=5}-{number:3d} seq2 == apart-661");
+            slk_string_free(n0);
+            slk_string_free(n1);
+            slk_string_free(n2);
+
+            slk_generator_destroy(mg);
+        }
+    }
+
     slk_string_free(a);
     slk_string_free(b);
     slk_string_free(cap);

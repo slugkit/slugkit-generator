@@ -11,6 +11,13 @@ typedef _CreateOneNative = Pointer<SlkGenerator> Function(
 typedef _CreateOneDart = Pointer<SlkGenerator> Function(
     Pointer<Uint8>, int, Pointer<Pointer<Utf8>>);
 
+// const uint8_t* const* datas, const size_t* lens, size_t n, char** err_out.
+// The lens array uses IntPtr (pointer-width, matching size_t on all targets).
+typedef _CreateNative = Pointer<SlkGenerator> Function(
+    Pointer<Pointer<Uint8>>, Pointer<IntPtr>, Size, Pointer<Pointer<Utf8>>);
+typedef _CreateDart = Pointer<SlkGenerator> Function(
+    Pointer<Pointer<Uint8>>, Pointer<IntPtr>, int, Pointer<Pointer<Utf8>>);
+
 typedef _DestroyNative = Void Function(Pointer<SlkGenerator>);
 typedef _DestroyDart = void Function(Pointer<SlkGenerator>);
 
@@ -40,6 +47,7 @@ class SlugkitBindings {
   SlugkitBindings(DynamicLibrary lib)
       : createOne =
             lib.lookupFunction<_CreateOneNative, _CreateOneDart>('slk_generator_create_one'),
+        create = lib.lookupFunction<_CreateNative, _CreateDart>('slk_generator_create'),
         destroy = lib.lookupFunction<_DestroyNative, _DestroyDart>('slk_generator_destroy'),
         randomSeed =
             lib.lookupFunction<_RandomSeedNative, _RandomSeedDart>('slk_random_seed'),
@@ -51,6 +59,7 @@ class SlugkitBindings {
         version = lib.lookupFunction<_VersionNative, _VersionDart>('slk_version');
 
   final _CreateOneDart createOne;
+  final _CreateDart create;
   final _DestroyDart destroy;
   final _RandomSeedDart randomSeed;
   final _CapacityDart capacity;
