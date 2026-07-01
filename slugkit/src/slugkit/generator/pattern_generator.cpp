@@ -9,6 +9,7 @@
 
 #include <cstdint>
 #include <stdexcept>
+#include <unordered_map>
 
 namespace slugkit::generator {
 
@@ -436,13 +437,50 @@ auto BuildSimpleGenerator(const DictSet& dictionaries, const Pattern::SimplePlac
     return MakeEmojiGenerator(emoji_dict, emoji_gen);
 }
 
+// Final validation sweep for an alternation: the alternatives' output sets must be pairwise
+// disjoint, otherwise the alternation is not collision-free (two branches could produce the same
+// string -- e.g. a word that is both a noun and a verb, or `{adverb}` overlapping the subset
+// `{adverb:+pos}`). Enumerate each child's outputs and require no string appears twice. Children
+// whose output space is too large to enumerate (big number generators, large mixed-case selectors)
+// are skipped -- their outputs are effectively distinct in practice.
+void CheckAlternativesDisjoint(
+    const std::vector<SubstitutionGeneratorPtr>& children,
+    const Pattern::Alternation& alternation
+) {
+    constexpr std::uint64_t kMaxEnumerate = 100000;
+    auto describe = [&alternation](std::size_t index) {
+        return std::visit([](auto&& arg) { return "{" + arg.ToString() + "}"; }, alternation.alternatives[index]);
+    };
+    std::unordered_map<std::string, std::size_t> seen;
+    for (std::size_t i = 0; i < children.size(); ++i) {
+        if (children[i]->GetCapacity() > numeric::BigInt(kMaxEnumerate)) {
+            continue;
+        }
+        auto count = static_cast<std::uint64_t>(children[i]->GetCapacity());
+        for (std::uint64_t s = 0; s < count; ++s) {
+            auto [it, inserted] = seen.try_emplace(children[i]->Generate(0, s), i);
+            if (!inserted && it->second != i) {
+                throw PatternSyntaxError(fmt::format(
+                    "Alternation alternatives {} and {} overlap: both can produce `{}`",
+                    describe(it->second),
+                    describe(i),
+                    it->first
+                ));
+            }
+        }
+    }
+}
+
 template <typename DictSet>
-auto BuildAlternationGenerator(const DictSet& dictionaries, const Pattern::Alternation& alternation)
+auto BuildAlternationGenerator(const DictSet& dictionaries, const Pattern::Alternation& alternation, bool validate)
     -> SubstitutionGeneratorPtr {
     std::vector<SubstitutionGeneratorPtr> children;
     children.reserve(alternation.alternatives.size());
     for (const auto& alternative : alternation.alternatives) {
         children.push_back(BuildSimpleGenerator(dictionaries, alternative));
+    }
+    if (validate) {
+        CheckAlternativesDisjoint(children, alternation);
     }
     return std::make_unique<AlternationSubstitutionGenerator>(std::move(children));
 }
@@ -549,9 +587,11 @@ struct PatternGenerator::Impl {
                 }
                 generators.push_back(MakeEmojiGenerator(emoji_dict, emoji_gen));
             } else if (std::holds_alternative<Pattern::Alternation>(element)) {
-                generators.push_back(
-                    BuildAlternationGenerator(dictionaries, std::get<Pattern::Alternation>(element))
-                );
+                // Validation sweep: check the alternatives' outputs are disjoint (last, like the
+                // per-selector "no matching words" check).
+                generators.push_back(BuildAlternationGenerator(
+                    dictionaries, std::get<Pattern::Alternation>(element), /*validate=*/true
+                ));
             }
             capacity = lcm(capacity, generators.back()->GetCapacity());
             max_pattern_length += generators.back()->GetMaxLength();
@@ -594,9 +634,11 @@ struct PatternGenerator::Impl {
                 }
                 generators.push_back(MakeEmojiGenerator(emoji_dict, emoji_gen));
             } else if (std::holds_alternative<Pattern::Alternation>(element)) {
-                generators.push_back(
-                    BuildAlternationGenerator(dictionaries, std::get<Pattern::Alternation>(element))
-                );
+                // Loading stored settings: the pattern was already validated when the settings were
+                // computed, so skip the (costly) disjointness enumeration here.
+                generators.push_back(BuildAlternationGenerator(
+                    dictionaries, std::get<Pattern::Alternation>(element), /*validate=*/false
+                ));
             }
             capacity = lcm(capacity, generators.back()->GetCapacity());
             max_pattern_length += generators.back()->GetMaxLength();

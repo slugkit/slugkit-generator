@@ -674,4 +674,30 @@ UTEST(PlaceholdersParser, PipeReservedAndEscaped) {
     EXPECT_EQ(pattern.ToString(), "a\\|b");
 }
 
+UTEST(PlaceholdersParser, AlternationCollapsesEquivalentAlternatives) {
+    // Equivalent alternatives (same predicate) add no variance and collapse.
+    {
+        auto placeholders = ParsePlaceholders("{noun}|{noun}");
+        ASSERT_EQ(placeholders.size(), 1);
+        // Collapsed to a single selector -- not an alternation at all.
+        EXPECT_TRUE(std::holds_alternative<Selector>(placeholders[0]));
+    }
+    {
+        auto placeholders = ParsePlaceholders("{noun}|{noun}|{verb}");
+        ASSERT_EQ(placeholders.size(), 1);
+        ASSERT_TRUE(std::holds_alternative<Pattern::Alternation>(placeholders[0]));
+        // The duplicate noun is dropped, the verb kept.
+        EXPECT_EQ(std::get<Pattern::Alternation>(placeholders[0]).alternatives.size(), 2);
+    }
+    // Different tags are different predicates -> kept as distinct alternatives (mind the tags).
+    {
+        auto placeholders = ParsePlaceholders("{noun:+tag1}|{noun}");
+        ASSERT_EQ(placeholders.size(), 1);
+        ASSERT_TRUE(std::holds_alternative<Pattern::Alternation>(placeholders[0]));
+        EXPECT_EQ(std::get<Pattern::Alternation>(placeholders[0]).alternatives.size(), 2);
+    }
+    // The collapsed form is canonical.
+    EXPECT_EQ(ParsePattern("{noun}|{noun}").ToString(), "{noun}");
+}
+
 }  // namespace slugkit::generator

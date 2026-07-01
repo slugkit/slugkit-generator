@@ -442,4 +442,15 @@ UTEST(PatternGenerator, Alternation) {
     EXPECT_EQ(seen.size(), kExpected.size());
 }
 
+UTEST(PatternGenerator, AlternationCollapseAndDisjoint) {
+    // Equivalent alternatives collapse -> no double counting.
+    EXPECT_EQ(PatternGenerator(kDictionariesSet, "{noun}|{noun}"_pattern_ptr).GetCapacity(), 5);
+    EXPECT_EQ(PatternGenerator(kDictionariesSet, "{noun}|{noun}|{adjective}"_pattern_ptr).GetCapacity(), 12);
+    // Overlapping (non-equivalent) alternatives are a pattern error: {noun} is a superset of
+    // {noun:+tag1}, so their outputs intersect.
+    EXPECT_THROW(PatternGenerator(kDictionariesSet, "{noun:+tag1}|{noun}"_pattern_ptr), PatternSyntaxError);
+    // Disjoint dictionaries are fine (noun* vs verb* never coincide).
+    EXPECT_NO_THROW(PatternGenerator(kDictionariesSet, "{noun}|{verb}"_pattern_ptr));
+}
+
 }  // namespace slugkit::generator

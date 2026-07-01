@@ -5,6 +5,7 @@
 // / property-stable slug output without userver. The mixed-case section mirrors the property-based
 // form introduced by PR #20.
 
+#include <slugkit/generator/exceptions.hpp>
 #include <slugkit/generator/generator.hpp>
 #include <slugkit/generator/pattern_generator.hpp>
 #include <slugkit/utils/text.hpp>
@@ -202,6 +203,19 @@ TEST(PatternGenerator, Alternation) {
         seen.insert(slug);
     }
     EXPECT_EQ(seen.size(), kExpected.size());  // collision-free
+}
+
+// Equivalent alternatives (same predicate) collapse to one; alternatives whose outputs actually
+// intersect are a pattern error.
+TEST(PatternGenerator, AlternationCollapseAndDisjoint) {
+    auto dictionaries = MakeDictionarySet();
+    // {noun}|{noun} collapses -> capacity is 5, not 10 (no double counting, no collisions).
+    EXPECT_EQ(PatternGenerator(dictionaries, "{noun}|{noun}"_pattern_ptr).GetCapacity(), 5);
+    EXPECT_EQ(PatternGenerator(dictionaries, "{noun}|{noun}|{adjective}"_pattern_ptr).GetCapacity(), 12);
+    // {noun} is a superset of {noun:+tag1}, so their outputs overlap -> error.
+    EXPECT_THROW(PatternGenerator(dictionaries, "{noun:+tag1}|{noun}"_pattern_ptr), PatternSyntaxError);
+    // Disjoint dictionaries (noun* vs verb*) are fine.
+    EXPECT_NO_THROW(PatternGenerator(dictionaries, "{noun}|{verb}"_pattern_ptr));
 }
 
 // End-to-end generator: committed full-slug expectations from generator_test.cpp (GenerateID).

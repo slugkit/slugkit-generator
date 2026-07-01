@@ -529,6 +529,12 @@ struct PatternParser {
         );
     }
 
+    // Hash of a simple placeholder over its full predicate (kind, tags, options, language, size
+    // limit, ...), used to detect equivalent alternatives.
+    static std::int64_t AlternativeHash(const Pattern::SimplePlaceholder& alternative) {
+        return std::visit([](auto&& arg) { return arg.GetHash(); }, alternative);
+    }
+
     Pattern::SimplePlaceholder ParseElement() {
         SkipWhitespace();
         if (IsEof()) {
@@ -627,7 +633,29 @@ struct PatternParser {
                         SkipWhitespace();
                     } while (Match(kAlternationChar));
                     pos_ = element_end;  // trailing whitespace after the last alternative is text
-                    result.push_back(Pattern::Alternation{std::move(alternatives)});
+                    // Collapse equivalent alternatives (same predicate incl. tags/options): they add
+                    // no variance and would otherwise double the capacity and let the same output
+                    // appear from more than one branch. Order is preserved (first occurrence wins).
+                    std::vector<Pattern::SimplePlaceholder> distinct;
+                    for (auto& alternative : alternatives) {
+                        auto hash = AlternativeHash(alternative);
+                        bool duplicate = false;
+                        for (const auto& kept : distinct) {
+                            if (kept.index() == alternative.index() && AlternativeHash(kept) == hash) {
+                                duplicate = true;
+                                break;
+                            }
+                        }
+                        if (!duplicate) {
+                            distinct.push_back(std::move(alternative));
+                        }
+                    }
+                    if (distinct.size() == 1) {
+                        // All alternatives were equivalent; it is a plain placeholder, not an alternation.
+                        result.push_back(ToPatternElement(std::move(distinct.front())));
+                    } else {
+                        result.push_back(Pattern::Alternation{std::move(distinct)});
+                    }
                 } else {
                     pos_ = element_end;  // no alternation; the skipped whitespace is arbitrary text
                     result.push_back(ToPatternElement(std::move(element)));
