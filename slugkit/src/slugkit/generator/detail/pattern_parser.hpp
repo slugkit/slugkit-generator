@@ -67,6 +67,12 @@ struct PatternParser {
                 selector.language = language;
             }
         }
+        // Global settings propagate into alternation children (which are simple placeholders).
+        void operator()(Pattern::Alternation& alternation) const {
+            for (auto& child : alternation.alternatives) {
+                std::visit(*this, child);
+            }
+        }
         void operator()(auto&&) const {
         }
     };
@@ -76,6 +82,12 @@ struct PatternParser {
         void operator()(Selector& selector) const {
             if (!selector.exclude_tags.contains(tag)) {
                 selector.include_tags.insert(tag);
+            }
+        }
+        // Global settings propagate into alternation children (which are simple placeholders).
+        void operator()(Pattern::Alternation& alternation) const {
+            for (auto& child : alternation.alternatives) {
+                std::visit(*this, child);
             }
         }
         void operator()(auto&&) const {
@@ -89,6 +101,12 @@ struct PatternParser {
                 selector.exclude_tags.insert(tag);
             }
         }
+        // Global settings propagate into alternation children (which are simple placeholders).
+        void operator()(Pattern::Alternation& alternation) const {
+            for (auto& child : alternation.alternatives) {
+                std::visit(*this, child);
+            }
+        }
         void operator()(auto&&) const {
         }
     };
@@ -100,6 +118,12 @@ struct PatternParser {
                 selector.size_limit = size_limit;
             }
         }
+        // Global settings propagate into alternation children (which are simple placeholders).
+        void operator()(Pattern::Alternation& alternation) const {
+            for (auto& child : alternation.alternatives) {
+                std::visit(*this, child);
+            }
+        }
         void operator()(auto&&) const {
         }
     };
@@ -107,7 +131,8 @@ struct PatternParser {
     using position_t = std::string_view::const_iterator;
 
     constexpr static char kEscapeChar = '\\';
-    constexpr static std::string_view kEscapedChars = "\\{}[]";
+    constexpr static char kAlternationChar = '|';
+    constexpr static std::string_view kEscapedChars = "\\{}[]|";
     constexpr static std::string_view kNumberKeyword = "number";
     constexpr static std::string_view kNumKeword = "num";
     constexpr static std::string_view kSpecialCharKeyword = "special";
@@ -186,7 +211,7 @@ struct PatternParser {
     }
 
     bool IsArbitraryText(char c) const {
-        return c != '{' && c != '}' && c != '[' && c != ']' && c != kEscapeChar;
+        return c != '{' && c != '}' && c != '[' && c != ']' && c != kEscapeChar && c != kAlternationChar;
     }
 
     void SkipArbitraryText() {
@@ -497,7 +522,14 @@ struct PatternParser {
         return result;
     }
 
-    Pattern::PatternElement ParseElement() {
+    // Widen a simple placeholder into a top-level pattern element (which also admits Alternation).
+    static Pattern::PatternElement ToPatternElement(Pattern::SimplePlaceholder&& simple) {
+        return std::visit(
+            [](auto&& arg) -> Pattern::PatternElement { return std::forward<decltype(arg)>(arg); }, std::move(simple)
+        );
+    }
+
+    Pattern::SimplePlaceholder ParseElement() {
         SkipWhitespace();
         if (IsEof()) {
             return {};
@@ -577,8 +609,29 @@ struct PatternParser {
                 text_chunks.push_back(std::string_view(arbitrary_start, pos_));
                 Next();
                 auto element = ParseElement();
-                result.push_back(std::move(element));
                 Expect('}');
+                // Alternation: `{a}|{b}|...` (whitespace allowed around `|`). A run of pipe-separated
+                // placeholders becomes a single Alternation element.
+                auto element_end = pos_;
+                SkipWhitespace();
+                if (Match(kAlternationChar)) {
+                    std::vector<Pattern::SimplePlaceholder> alternatives;
+                    alternatives.push_back(std::move(element));
+                    do {
+                        Next();  // consume '|'
+                        SkipWhitespace();
+                        Expect('{');
+                        alternatives.push_back(ParseElement());
+                        Expect('}');
+                        element_end = pos_;
+                        SkipWhitespace();
+                    } while (Match(kAlternationChar));
+                    pos_ = element_end;  // trailing whitespace after the last alternative is text
+                    result.push_back(Pattern::Alternation{std::move(alternatives)});
+                } else {
+                    pos_ = element_end;  // no alternation; the skipped whitespace is arbitrary text
+                    result.push_back(ToPatternElement(std::move(element)));
+                }
                 arbitrary_start = pos_;
             } else if (Match('[')) {
                 arbitrary_text_end = pos_;
@@ -600,7 +653,14 @@ struct PatternParser {
                     );
                 }
                 ExpectOneOf(kEscapedChars);
-                // TODO handle escaped characters in substitutions.
+                // The escape (backslash + char) stays in the arbitrary-text run and is resolved at
+                // format time (SlugFormatter un-escapes `\X` -> `X`).
+            } else if (Match(kAlternationChar)) {
+                throw PatternSyntaxError(fmt::format(
+                    "Pattern parse error: unexpected `|` at column {}; alternation must be between "
+                    "placeholders (`{{a}}|{{b}}`); escape as `\\|` for a literal pipe",
+                    GetCurrentColumn()
+                ));
             } else {
                 throw PatternSyntaxError(
                     fmt::format("Pattern parse error: unexpected character at column {}", GetCurrentColumn())

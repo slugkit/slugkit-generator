@@ -207,6 +207,34 @@ private:
     binary::FilteredDictionaryConstPtr dictionary_;
 };
 
+/// @brief Substitution generator that chooses one of several child generators (placeholder
+/// alternation `{a}|{b}`). Its capacity is the sum of the children's capacities: a sequence value is
+/// permuted over that sum, selecting a child block and the offset within it (the offset becomes the
+/// child's sequence). This is collision-free -- each value in [0, sum) maps to a distinct
+/// (child, child output) -- and deterministic, the same way case mutations pick a cased form.
+class AlternationSubstitutionGenerator : public SubstitutionGenerator {
+public:
+    explicit AlternationSubstitutionGenerator(std::vector<SubstitutionGeneratorPtr> children);
+    ~AlternationSubstitutionGenerator() override = default;
+
+    std::string Generate(std::uint32_t seed, std::size_t sequence_number) const override;
+
+    numeric::BigInt GetCapacity() const override {
+        return capacity_;
+    }
+    std::size_t GetMaxLength() const override {
+        return max_length_;
+    }
+
+private:
+    std::vector<SubstitutionGeneratorPtr> children_;
+    // Cumulative child capacities (prefix sums) for block selection; uint64 for Permute, matching the
+    // special/emoji cumulative-cap generators.
+    std::vector<std::uint64_t> cumulative_caps_;
+    numeric::BigInt capacity_;
+    std::size_t max_length_;
+};
+
 //-------------------------------------------------------------
 // PatternGenerator
 //-------------------------------------------------------------

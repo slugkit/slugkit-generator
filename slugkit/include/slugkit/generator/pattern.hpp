@@ -27,7 +27,25 @@ namespace slugkit::generator {
 /// The pattern captures the pattern source and child selectors are string views
 /// into the source.
 struct Pattern {
-    using PatternElement = std::variant<Selector, NumberGen, SpecialCharGen, EmojiGen>;
+    /// @brief A single (non-alternating) placeholder.
+    using SimplePlaceholder = std::variant<Selector, NumberGen, SpecialCharGen, EmojiGen>;
+
+    /// @brief An alternation chooses one of several child placeholders deterministically, the same
+    /// way case mutations pick a cased form: its capacity is the sum of the children's capacities,
+    /// and a sequence value selects a child block and the offset within it.
+    /// @note Placeholder-level alternation only for now: the children are simple placeholders, not
+    /// nested alternations.
+    struct Alternation {
+        std::vector<SimplePlaceholder> alternatives;
+
+        /// @brief Canonical, re-parseable representation, e.g. "{noun}|{verb}".
+        [[nodiscard]] auto ToString() const -> std::string;
+        [[nodiscard]] auto GetHash() const -> std::int64_t;
+        [[nodiscard]] auto Complexity() const -> std::int32_t;
+        [[nodiscard]] auto IsNSFW() const -> bool;
+    };
+
+    using PatternElement = std::variant<Selector, NumberGen, SpecialCharGen, EmojiGen, Alternation>;
     using Placeholders = std::vector<PatternElement>;
     using TextChunks = std::vector<std::string_view>;
     using Substitutions = std::vector<std::string>;
@@ -92,7 +110,10 @@ public:
     using Substitutions = Pattern::Substitutions;
 
 public:
-    SlugFormatter(const Pattern& pattern);
+    /// @param unescape_text When true (generation), backslash escapes in the arbitrary text (e.g.
+    /// `\|`, `\{`) are resolved to their literal character. When false (canonical ToString), the
+    /// text is emitted verbatim so the result round-trips through the parser.
+    explicit SlugFormatter(const Pattern& pattern, bool unescape_text = true);
 
     /// @brief Format the pattern with the substitutions.
     /// @param substitutions The substitutions to use.
@@ -101,6 +122,7 @@ public:
 
 private:
     const Pattern& pattern_;
+    bool unescape_text_;
 };
 
 namespace literals {

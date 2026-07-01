@@ -633,4 +633,45 @@ UTEST(SlugFormatter, Multiple) {
     EXPECT_THROW(formatter({"test"}), SlugFormatError);
 }
 
+UTEST(PlaceholdersParser, Alternation) {
+    {
+        auto placeholders = ParsePlaceholders("{noun}|{verb}");
+        ASSERT_EQ(placeholders.size(), 1);
+        ASSERT_TRUE(std::holds_alternative<Pattern::Alternation>(placeholders[0]));
+        const auto& alternation = std::get<Pattern::Alternation>(placeholders[0]);
+        ASSERT_EQ(alternation.alternatives.size(), 2);
+        EXPECT_TRUE(std::holds_alternative<Selector>(alternation.alternatives[0]));
+        EXPECT_TRUE(std::holds_alternative<Selector>(alternation.alternatives[1]));
+    }
+    {
+        // Whitespace around the pipe is allowed; alternatives may be of mixed placeholder kinds.
+        auto placeholders = ParsePlaceholders("{noun} | {number:2d} | {emoji}");
+        ASSERT_EQ(placeholders.size(), 1);
+        const auto& alternation = std::get<Pattern::Alternation>(placeholders[0]);
+        ASSERT_EQ(alternation.alternatives.size(), 3);
+        EXPECT_TRUE(std::holds_alternative<Selector>(alternation.alternatives[0]));
+        EXPECT_TRUE(std::holds_alternative<NumberGen>(alternation.alternatives[1]));
+        EXPECT_TRUE(std::holds_alternative<EmojiGen>(alternation.alternatives[2]));
+    }
+    // Surrounding text keeps a single alternation placeholder.
+    EXPECT_EQ(ParsePlaceholders("pre-{noun}|{verb}-post").size(), 1);
+}
+
+UTEST(PlaceholdersParser, AlternationToStringRoundTrip) {
+    EXPECT_EQ(ParsePattern("{noun}|{verb}").ToString(), "{noun}|{verb}");
+    EXPECT_EQ(ParsePattern("pre-{noun}|{verb}|{adjective}-post").ToString(), "pre-{noun}|{verb}|{adjective}-post");
+}
+
+UTEST(PlaceholdersParser, PipeReservedAndEscaped) {
+    // A bare unescaped pipe is reserved: valid only as an alternation operator between placeholders.
+    EXPECT_THROW(ParsePlaceholders("a|b"), PatternSyntaxError);
+    EXPECT_THROW(ParsePlaceholders("|{noun}"), PatternSyntaxError);
+    EXPECT_THROW(ParsePlaceholders("{noun}|"), PatternSyntaxError);
+    // An escaped pipe is literal text: it formats to a plain pipe, and ToString preserves the escape.
+    auto pattern = ParsePattern("a\\|b");
+    EXPECT_EQ(pattern.placeholders.size(), 0);
+    EXPECT_EQ(pattern.Format({}), "a|b");
+    EXPECT_EQ(pattern.ToString(), "a\\|b");
+}
+
 }  // namespace slugkit::generator

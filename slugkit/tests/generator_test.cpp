@@ -417,4 +417,29 @@ UTEST(Generator, GenerateWithEmoji) {
     }
 }
 
+UTEST(PatternGenerator, Alternation) {
+    // Capacity is the sum of the children's capacities (noun=5, verb=10, adjective=7).
+    EXPECT_EQ(PatternGenerator(kDictionariesSet, "{noun}|{verb}"_pattern_ptr).GetCapacity(), 15);
+    EXPECT_EQ(PatternGenerator(kDictionariesSet, "{noun}|{adjective}"_pattern_ptr).GetCapacity(), 12);
+    EXPECT_EQ(PatternGenerator(kDictionariesSet, "{noun}|{verb}|{adjective}"_pattern_ptr).GetCapacity(), 22);
+    // Surrounding text keeps a single alternation placeholder.
+    EXPECT_EQ(PatternGenerator(kDictionariesSet, "x-{noun}|{verb}-y"_pattern_ptr).GetCapacity(), 15);
+
+    // Deterministic, collision-free over the capacity; every slug is one of the children's outputs.
+    PatternGenerator generator(kDictionariesSet, "{noun}|{verb}"_pattern_ptr);
+    auto seed_hash = PatternGenerator::SeedHash(kTestSeed);
+    std::set<std::string> nouns{"noun1", "noun2", "noun3", "noun4", "noun5"};
+    std::set<std::string> verbs;
+    for (int i = 1; i <= 10; ++i) {
+        verbs.insert("verb" + std::to_string(i));
+    }
+    std::set<std::string> seen;
+    for (std::uint64_t i = 0; i < 15; ++i) {
+        auto slug = generator(seed_hash, i);
+        EXPECT_TRUE(nouns.count(slug) == 1 || verbs.count(slug) == 1) << slug;
+        seen.insert(slug);
+    }
+    EXPECT_EQ(seen.size(), 15);
+}
+
 }  // namespace slugkit::generator
