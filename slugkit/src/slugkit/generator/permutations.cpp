@@ -148,7 +148,34 @@ auto Permute(std::uint64_t max_value, std::uint32_t hash, std::uint64_t sequence
     if (!(max_value & (max_value - 1))) {
         return PermutePowerOf2(max_value, hash, sequence, rounds);
     }
-    return LCGPermute(max_value, hash, sequence);
+    // LCGPermute is a valid bijection but a weak scrambler: consecutive sequence numbers differ in
+    // the output by ~`multiplier` (< 2^32, derived from the 32-bit hash). Once `max_value` exceeds
+    // 2^32 that difference is tiny relative to the range, so the high-order part of the output barely
+    // changes across consecutive sequences. This is visible e.g. in `{emoji:count=5 unique=true}`,
+    // where the first emoji (the most significant "digit" of the permuted index) stays fixed for
+    // hundreds of sequences. For large ranges use cycle-walking over the enclosing power of two with
+    // the Feistel permutation, which mixes all bits. Small ranges keep LCGPermute so existing IDs
+    // remain byte-identical.
+    if (max_value <= 0xFFFFFFFFull) {
+        return LCGPermute(max_value, hash, sequence);
+    }
+    // Cycle-walking format-preserving permutation: permute within [0, 2^bits) (the smallest power of
+    // two >= max_value) and re-permute until the result lands in [0, max_value). The Feistel map is a
+    // bijection over the power-of-two domain, so restricting it to the subrange is a bijection too.
+    // Expected iterations < 2 because 2^bits < 2 * max_value.
+    //
+    // The Feistel network is only a bijection over an ODD-width domain with an EVEN number of rounds
+    // (with odd rounds the unbalanced halves don't realign and it collapses to half the range). The
+    // enclosing domain here can be odd-width, so force an even round count to keep the map bijective
+    // regardless of the caller's `rounds` (the default, 4, is already even -> no change in practice).
+    std::uint32_t even_rounds = rounds + (rounds & 1u);
+    std::uint32_t bits = 64 - __builtin_clzll(max_value - 1);
+    std::uint64_t domain = bits >= 64 ? 0 : (1ull << bits);  // 0 selects the 2^64 domain in PermutePowerOf2
+    std::uint64_t value = sequence % max_value;
+    do {
+        value = PermutePowerOf2(domain, hash, value, even_rounds);
+    } while (value >= max_value);
+    return value;
 }
 
 //-------------------------------------------------------------

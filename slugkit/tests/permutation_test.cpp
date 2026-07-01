@@ -149,4 +149,47 @@ UTEST(PermutationGen, PermuteNonUniqueUniqueness) {
     );
 }
 
+// Regression: for ranges above 2^32 the permutation must mix the high bits, so consecutive sequence
+// numbers change the most-significant part of the output. Previously LCGPermute clustered them (the
+// output moved by only ~multiplier < 2^32 per step), which e.g. kept the first emoji of
+// {emoji:count=5 unique=true} fixed for hundreds of sequences.
+UTEST(PermutationGen, PermuteLargeRangeMixesHighBits) {
+    constexpr std::uint64_t kMaxValue = 2028900546777600ULL;  // UniquePermutationCount(1150, 5)
+    constexpr std::uint64_t kBucket = kMaxValue / 1150;       // width of the leading "digit"
+
+    std::set<std::uint64_t> high_digits;
+    for (std::uint64_t i = 0; i < 16; ++i) {
+        auto value = Permute(kMaxValue, "aaa", i);
+        EXPECT_LT(value, kMaxValue);
+        EXPECT_EQ(value, Permute(kMaxValue, "aaa", i));  // deterministic
+        high_digits.insert(value / kBucket);
+    }
+    // Before the fix this was 1 (the leading digit never changed); now it should be ~16.
+    EXPECT_GE(high_digits.size(), 8u);
+}
+
+// The cycle-walking permutation for large non-power-of-two ranges relies on PermutePowerOf2 being a
+// bijection over its 2^bits domain -- including ODD bit widths (the enclosing domain of the
+// emoji-unique capacity is 51 bits). The Feistel network is only bijective over an odd-width domain
+// with an EVEN round count, so this guards the default (kDefaultRounds = 4).
+UTEST(PermutationGen, PermutePowerOfTwoBijectionOddAndEven) {
+    for (std::uint32_t bits : {5u, 7u, 8u, 9u, 12u, 13u}) {
+        std::uint64_t domain = 1ull << bits;
+        CheckUniqueness<std::uint64_t>(domain, [domain](std::uint64_t i) {
+            return PermutePowerOf2(domain, "test", i);
+        });
+    }
+}
+
+UTEST(PermutationGen, PermuteLargeRangeSampledUniqueness) {
+    constexpr std::uint64_t kMaxValue = 5000000000ULL;  // > 2^32, not a power of two
+    std::set<std::uint64_t> values;
+    for (std::uint64_t i = 0; i < 2000; ++i) {
+        auto value = Permute(kMaxValue, "test", i, 4);
+        EXPECT_LT(value, kMaxValue);
+        values.insert(value);
+    }
+    EXPECT_EQ(values.size(), 2000u);  // collision-free over the sample (still a bijection)
+}
+
 }  // namespace slugkit::generator

@@ -106,6 +106,26 @@ int main(void) {
     char* bad = slk_generate_alloc(gen, "{", fixed_seed, 0, &err);
     CHECK(bad == NULL, "malformed pattern returns NULL");
 
+    /* Regression: {emoji:count=5 unique=true} has capacity > 2^32; consecutive sequences must vary
+     * in the FIRST emoji (a bug made the permutation cluster so the first emoji stayed fixed for
+     * hundreds of sequences). Compare the leading bytes of the first codepoint across sequences. */
+    {
+        const char* upat = "{emoji:count=5 unique=true}";
+        char* u0 = slk_generate_alloc(gen, upat, "aaa", 0, &err);
+        char* u1 = slk_generate_alloc(gen, upat, "aaa", 1, &err);
+        char* u2 = slk_generate_alloc(gen, upat, "aaa", 2, &err);
+        char* u0b = slk_generate_alloc(gen, upat, "aaa", 0, &err);
+        CHECK(u0 && u1 && u2 && u0b, "unique-emoji generation succeeds");
+        CHECK(u0 && u0b && strcmp(u0, u0b) == 0, "unique-emoji generation is deterministic");
+        /* first emoji differs across consecutive sequences (leading 4 bytes not all identical) */
+        CHECK(u0 && u1 && u2 && !(strncmp(u0, u1, 4) == 0 && strncmp(u1, u2, 4) == 0),
+              "unique-emoji first emoji varies across sequences");
+        slk_string_free(u0);
+        slk_string_free(u1);
+        slk_string_free(u2);
+        slk_string_free(u0b);
+    }
+
     /* --- multi-dictionary word patterns: load adverb + emoji dictionaries (n=2) --- */
     /* Golden values below (seed "foobar") are byte-identical across every language binding. */
     {
