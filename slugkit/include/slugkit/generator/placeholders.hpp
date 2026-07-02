@@ -3,11 +3,13 @@
 #include <slugkit/generator/constants.hpp>
 #include <slugkit/generator/types.hpp>
 
+#include <algorithm>
 #include <cstdint>
 #include <map>
 #include <optional>
 #include <string_view>
 #include <unordered_set>
+#include <vector>
 
 namespace slugkit::generator {
 
