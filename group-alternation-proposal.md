@@ -122,6 +122,9 @@ struct Pattern {
 The alternation's alternatives change from `SimplePlaceholder` to `Group`. Bare
 placeholders wrap into single-placeholder groups at parse time.
 
+`TextChunks` changes from `vector<string_view>` to `vector<std::string>` (owned)
+so lone/collapsed groups can be pulled up by concatenating boundary text (§9).
+
 ## 6. Generator
 
 ```cpp
@@ -164,15 +167,34 @@ No cross-gender pairs — exactly the desired constraint.
 
 Equivalent alternatives still collapse (they add no variance). The dedup key is
 `Group::GetHash` = combine(text chunks, each placeholder's `GetHash`). So
-`(foo)|(foo)` → `(foo)`, and `({a} {b})|({a} {b})` → one group. If all collapse to
-one, the element is not an alternation (see §9).
+`(foo)|(foo)` → `(foo)`, and `({a} {b})|({a} {b})` → one group. **When collapse
+leaves a single group, it is not an alternation at all — it is pulled up (§9),
+exactly like a lone group.**
 
-## 9. Lone group (no `|`)
+## 9. Lone group and single-collapse → pull up (decided)
 
-A group not part of an alternation adds no semantics — `({a} {b})` ≡ `{a} {b}`.
-**Recommendation:** the parser *inlines* a lone group's text + placeholders into
-the enclosing pattern (parentheses are transparent when not alternated). This
-avoids a redundant wrapper and keeps `ToString` clean. `(foo)` alone ≡ `foo`.
+A group not part of an alternation, or an alternation that collapses to one
+group, **adds no semantics** and is *pulled up*: its placeholders and text are
+inlined into the enclosing pattern, so parentheses are fully transparent.
+
+- `(foo)` ≡ `foo`
+- `({a} {b})` ≡ `{a} {b}`
+- `({a})|({a})` ≡ `{a}`  (collapse → single → pull up)
+
+"Pull up" means **exact** equivalence — same capacity *and* same output as the
+unparenthesized form (not merely the same capacity). That matters for the
+generator: a group kept as its own element would seed-step differently from the
+top level and produce different (still valid) slugs; inlining makes the placeholders
+top-level, so the seed stepping is identical.
+
+**Implementation consequence.** Inlining must merge the parent's boundary text
+with the group's boundary text — e.g. `pre-(x {a} y)-post` inlines to text
+`"pre-x "`, `{a}`, `" y-post"`, where `"pre-x "` splices the parent's `"pre-"`
+and the group's `"x "` (which are separated by `(` in the source and cannot share
+one `string_view`). Therefore **`Pattern::TextChunks` becomes owned `std::string`
+instead of `std::string_view`** (small copies; the pattern already owns the
+source; escaping/`ToString` are unaffected since the stored text is still the raw
+substring). This is the one structural change beyond the alternation code.
 
 ## 10. Disjointness validation (per-position refinement)
 
@@ -208,9 +230,9 @@ branch is provably disjoint without enumerating any cross-product.
 
 ## 12. Edge cases
 
-- `()` — empty group: capacity 1, empty output. Allow (equivalent to empty text)
-  or reject as useless — **reject** with a clear error (matches "useless
-  generator" checks elsewhere).
+- `()` — empty group (no placeholders, no text): **rejected** with a clear error
+  (decided), matching the "useless generator" checks elsewhere. (A text-only group
+  like `(foo)` is fine — it just pulls up to the literal `foo`.)
 - `(   )` whitespace-only — treated as literal text group of that whitespace.
 - Unbalanced `(` or `)` — parse error with column.
 - Nested `((…))` — parse error in v1 (flat only).
@@ -231,10 +253,14 @@ branch is provably disjoint without enumerating any cross-product.
    (capacity = Σ LCM, determinism, collision-free), disjointness (locked-tag
    example passes; a forgotten `-unisex` errors), plus host golden/c_abi checks.
 
-## 14. Risks / open questions
+## 14. Risks / resolved questions
 
+- **Lone group / single-collapse** → pull up (inline), exact equivalence.
+  `Pattern::TextChunks` becomes owned `std::string` to allow boundary-text
+  concatenation. *(decided)*
+- **Empty group `()`** → rejected. *(decided)*
 - **Different-shape disjointness** still needs bounded enumeration; very large
-  mismatched groups are skipped (documented, best-effort) — acceptable?
+  mismatched groups are skipped (documented, best-effort). *(accepted)*
 - **Capacity intuition**: authors may expect `product`-like growth; document that
   alternation capacity is the *sum* of branch LCMs.
 - **Verbosity**: the group form repeats tags per branch. A future "linked tag"
