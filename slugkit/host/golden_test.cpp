@@ -338,8 +338,15 @@ TEST(Generator, OptInTags) {
     EXPECT_EQ(generator.Generate("{adverb}", "foobar", 0), "lustfully");
     EXPECT_EQ(generator.EnabledOptIns(), (std::vector<std::string>{"nsfw"}));
 
-    // Clearing restores the default hidden behaviour.
+    // Clearing restores the default hidden behaviour. Reusing the same generator (whose shared
+    // filter cache already holds the enabled=3619 entry) proves the cache key accounts for the
+    // opt-in state: a stale entry would wrongly return 3619 here.
     generator.ClearOptIns();
+    EXPECT_EQ(generator.GetCapacity("{adverb}").capacity, 3615);
+
+    // Enabling a tag this dictionary does not have is inert: the adverb pool stays 3615 (and its
+    // cache key is unchanged), since only a dictionary's own opt-in tags affect its result.
+    generator.EnableOptIn("no-such-opt-in-tag");
     EXPECT_EQ(generator.GetCapacity("{adverb}").capacity, 3615);
 }
 #endif  // SLK_ADVERB_BIN_PATH

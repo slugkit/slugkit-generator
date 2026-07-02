@@ -9,19 +9,16 @@
 namespace slugkit::generator::binary {
 
 namespace {
-// Salt the filter-cache key with the set of enabled opt-in tags so that two requests differing
-// only in which opt-in tags are enabled (e.g. nsfw on vs off) never share a cached filtered
-// dictionary. The filter cache is shared across every generator using this dictionary, so the
-// enabled set -- a per-generator property -- must be part of the key, not just the selector.
-auto OptInSalt(const TagSet& enabled_opt_ins) -> std::uint64_t {
-    std::uint64_t hash = 1469598103934665603ULL;  // FNV-1a offset basis
-    for (auto tag : enabled_opt_ins) {
-        for (char ch : tag.GetUnderlying()) {
-            hash = (hash ^ static_cast<unsigned char>(ch)) * 1099511628211ULL;
-        }
-        hash = (hash ^ 0xFFu) * 1099511628211ULL;  // separator between tags
+// FNV-1a folding of a tag name into a running salt, used to key the filter cache by the set of
+// enabled opt-in tags that actually apply to a dictionary (see BinaryDictionary::Filter).
+constexpr std::uint64_t kFnvOffsetBasis = 1469598103934665603ULL;
+constexpr std::uint64_t kFnvPrime = 1099511628211ULL;
+
+auto FoldTag(std::uint64_t hash, std::string_view tag) -> std::uint64_t {
+    for (char ch : tag) {
+        hash = (hash ^ static_cast<unsigned char>(ch)) * kFnvPrime;
     }
-    return hash;
+    return (hash ^ 0xFFu) * kFnvPrime;  // separator so {"ab","c"} and {"a","bc"} differ
 }
 
 auto CombineHash(std::int64_t selector_hash, std::uint64_t salt) -> std::int64_t {
@@ -657,11 +654,24 @@ auto BinaryDictionary::operator[](IndexType index) const -> const WordEntry& {
 
 auto BinaryDictionary::Filter(const Selector& selector, const TagSet& enabled_opt_ins) const
     -> FilteredDictionaryPtr {
-    // Reuse the built filtered dictionary for identical selectors (same language/tags/size/case);
-    // building it (filter + max-length) is the expensive part, so caching keeps repeated patterns
-    // cheap under load. Keyed by the selector's identity hash, salted with the enabled opt-in set
-    // so requests differing only in enabled opt-ins get distinct cache entries.
-    const auto hash = CombineHash(selector.GetHash(), OptInSalt(enabled_opt_ins));
+    // Reuse the built filtered dictionary for identical requests (same language/tags/size/case
+    // AND the same set of applicable opt-in tags); building it (filter + max-length) is the
+    // expensive part, so caching keeps repeated patterns cheap under load.
+    //
+    // The filtered result depends on the opt-in set only through this dictionary's own opt-in
+    // tags that are enabled -- so the cache key is salted with exactly that set. Salting with
+    // only the applicable tags means (a) the cache is not fragmented by enabling opt-ins this
+    // dictionary doesn't have, and (b) a dictionary with no opt-in tags, or a request enabling
+    // none of them, keeps the same key it used before opt-ins existed (plain selector hash).
+    std::uint64_t salt = kFnvOffsetBasis;
+    bool has_applicable_opt_in = false;
+    for (auto opt_in_tag : opt_in_tags_) {
+        if (enabled_opt_ins.contains(opt_in_tag)) {
+            has_applicable_opt_in = true;
+            salt = FoldTag(salt, opt_in_tag.GetUnderlying());
+        }
+    }
+    const auto hash = has_applicable_opt_in ? CombineHash(selector.GetHash(), salt) : selector.GetHash();
     if (auto cached = filter_cache_->Get(hash)) {
         return *cached;
     }
