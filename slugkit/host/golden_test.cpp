@@ -224,6 +224,41 @@ TEST(PatternGenerator, AlternationCollapseAndDisjoint) {
     EXPECT_NO_THROW(PatternGenerator(dictionaries, "{noun}|{verb}"_pattern_ptr));
 }
 
+// Group alternation: parenthesised branches lock correlated choices; lone/collapsed groups pull up.
+TEST(PatternGenerator, GroupAlternation) {
+    auto dictionaries = MakeDictionarySet();
+    auto seed_hash = PatternGenerator::SeedHash(kTestSeed);
+
+    // Pull-up: a lone group is transparent -- same capacity AND same output as unparenthesised.
+    EXPECT_EQ(PatternGenerator(dictionaries, "({noun})"_pattern_ptr).GetCapacity(), 5);
+    EXPECT_EQ(PatternGenerator(dictionaries, "({adjective} {noun})"_pattern_ptr).GetCapacity(), 35);
+    EXPECT_EQ(PatternGenerator(dictionaries, "pre-({adjective} {noun})-post"_pattern_ptr).GetCapacity(), 35);
+    {
+        PatternGenerator grouped(dictionaries, "({adjective} {noun})"_pattern_ptr);
+        PatternGenerator plain(dictionaries, "{adjective} {noun}"_pattern_ptr);
+        for (std::uint64_t i = 0; i < 20; ++i) {
+            EXPECT_EQ(grouped(seed_hash, i), plain(seed_hash, i)) << "i=" << i;  // pull-up is exact
+        }
+    }
+
+    // Group alternation capacity is the sum of the branches' LCMs.
+    // LCM(noun=5, verb=10)=10; LCM(adjective=7, adverb=9)=63; total 73.
+    EXPECT_EQ(
+        PatternGenerator(dictionaries, "({noun} {verb})|({adjective} {adverb})"_pattern_ptr).GetCapacity(), 73
+    );
+    // Text-only branches.
+    EXPECT_EQ(PatternGenerator(dictionaries, "(foo)|(bar)"_pattern_ptr).GetCapacity(), 2);
+
+    // Disjoint branches are fine (noun*/verb* vs adjective*/adverb* never coincide).
+    EXPECT_NO_THROW(PatternGenerator(dictionaries, "({noun} {verb})|({adjective} {adverb})"_pattern_ptr));
+    // Overlap is a pattern error: at every aligned position the branches can coincide
+    // ({noun:+tag1} is a subset of {noun}; the second placeholder is identical).
+    EXPECT_THROW(
+        PatternGenerator(dictionaries, "({noun:+tag1} {adjective})|({noun} {adjective})"_pattern_ptr),
+        PatternSyntaxError
+    );
+}
+
 // End-to-end generator: committed full-slug expectations from generator_test.cpp (GenerateID).
 TEST(Generator, GenerateID) {
     Generator generator(MakeDictionarySet());

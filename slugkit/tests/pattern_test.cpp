@@ -700,4 +700,52 @@ UTEST(PlaceholdersParser, AlternationCollapsesEquivalentAlternatives) {
     EXPECT_EQ(ParsePattern("{noun}|{noun}").ToString(), "{noun}");
 }
 
+UTEST(PlaceholdersParser, GroupAlternation) {
+    {
+        auto placeholders = ParsePlaceholders("({a} {b})|({c} {d})");
+        ASSERT_EQ(placeholders.size(), 1);
+        ASSERT_TRUE(std::holds_alternative<Pattern::Alternation>(placeholders[0]));
+        const auto& alternation = std::get<Pattern::Alternation>(placeholders[0]);
+        ASSERT_EQ(alternation.alternatives.size(), 2);
+        EXPECT_EQ(alternation.alternatives[0].placeholders.size(), 2);
+        EXPECT_EQ(alternation.alternatives[1].placeholders.size(), 2);
+    }
+    {
+        // Text-only branches.
+        auto placeholders = ParsePlaceholders("(foo)|(bar)");
+        ASSERT_EQ(placeholders.size(), 1);
+        const auto& alternation = std::get<Pattern::Alternation>(placeholders[0]);
+        ASSERT_EQ(alternation.alternatives.size(), 2);
+        EXPECT_EQ(alternation.alternatives[0].placeholders.size(), 0);
+    }
+}
+
+UTEST(PlaceholdersParser, GroupPullUp) {
+    // A lone group is transparent (parentheses are pulled up).
+    {
+        auto placeholders = ParsePlaceholders("({noun})");
+        ASSERT_EQ(placeholders.size(), 1);
+        EXPECT_TRUE(std::holds_alternative<Selector>(placeholders[0]));  // not an alternation/group
+    }
+    EXPECT_EQ(ParsePlaceholders("pre-({adjective} {noun})-post").size(), 2);  // two top-level placeholders
+    EXPECT_EQ(ParsePlaceholders("(foo)").size(), 0);                          // pure literal text
+    // Round-trip: alternation keeps parens; lone/collapsed groups drop them.
+    EXPECT_EQ(ParsePattern("({adjective} {noun})|{verb}").ToString(), "({adjective} {noun})|{verb}");
+    EXPECT_EQ(ParsePattern("(foo)|(bar)").ToString(), "(foo)|(bar)");
+    EXPECT_EQ(ParsePattern("({noun})").ToString(), "{noun}");
+    EXPECT_EQ(ParsePattern("pre-({adjective} {noun})-post").ToString(), "pre-{adjective} {noun}-post");
+}
+
+UTEST(PlaceholdersParser, GroupErrorsAndEscaping) {
+    EXPECT_THROW(ParsePlaceholders("()"), PatternSyntaxError);        // empty group
+    EXPECT_THROW(ParsePlaceholders("(a|b)"), PatternSyntaxError);     // '|' inside a group
+    EXPECT_THROW(ParsePlaceholders("(({a}))"), PatternSyntaxError);   // nested group
+    EXPECT_THROW(ParsePlaceholders("{noun})"), PatternSyntaxError);   // unmatched ')'
+    // Escaped parentheses are literal text: they format to plain parens and round-trip.
+    auto pattern = ParsePattern("a\\(b\\)c");
+    EXPECT_EQ(pattern.placeholders.size(), 0);
+    EXPECT_EQ(pattern.Format({}), "a(b)c");
+    EXPECT_EQ(pattern.ToString(), "a\\(b\\)c");
+}
+
 }  // namespace slugkit::generator

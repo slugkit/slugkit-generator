@@ -235,6 +235,31 @@ private:
     std::size_t max_length_;
 };
 
+/// @brief Substitution generator for an alternation branch group `( ... )`: a flat sub-pattern of
+/// literal text interleaved with placeholders. Composes its placeholders exactly like the top-level
+/// pattern (seed-stepped, LCM capacity) and formats with the group's own text, so a lone/pulled-up
+/// group is byte-identical to writing its contents unparenthesised.
+class GroupSubstitutionGenerator : public SubstitutionGenerator {
+public:
+    GroupSubstitutionGenerator(std::vector<SubstitutionGeneratorPtr> generators, Pattern::TextChunks text_chunks);
+    ~GroupSubstitutionGenerator() override = default;
+
+    std::string Generate(std::uint32_t seed, std::size_t sequence_number) const override;
+
+    numeric::BigInt GetCapacity() const override {
+        return capacity_;
+    }
+    std::size_t GetMaxLength() const override {
+        return max_length_;
+    }
+
+private:
+    std::vector<SubstitutionGeneratorPtr> generators_;
+    Pattern::TextChunks text_chunks_;
+    numeric::BigInt capacity_;
+    std::size_t max_length_;
+};
+
 //-------------------------------------------------------------
 // PatternGenerator
 //-------------------------------------------------------------

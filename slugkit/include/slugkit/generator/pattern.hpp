@@ -30,15 +30,32 @@ struct Pattern {
     /// @brief A single (non-alternating) placeholder.
     using SimplePlaceholder = std::variant<Selector, NumberGen, SpecialCharGen, EmojiGen>;
 
-    /// @brief An alternation chooses one of several child placeholders deterministically, the same
-    /// way case mutations pick a cased form: its capacity is the sum of the children's capacities,
-    /// and a sequence value selects a child block and the offset within it.
-    /// @note Placeholder-level alternation only for now: the children are simple placeholders, not
-    /// nested alternations.
-    struct Alternation {
-        std::vector<SimplePlaceholder> alternatives;
+    /// @brief Owned literal-text chunks interleaved with placeholders. Owned (not string_view) so
+    /// that pulling up a lone/collapsed group can concatenate boundary text (see the group proposal).
+    using TextChunks = std::vector<std::string>;
 
-        /// @brief Canonical, re-parseable representation, e.g. "{noun}|{verb}".
+    /// @brief A flat sub-pattern: literal text interleaved with simple placeholders. Used as an
+    /// alternation branch (`(...)`). Invariant: text_chunks.size() == placeholders.size() + 1.
+    /// @note Flat for now: a group contains simple placeholders, not nested groups/alternations.
+    struct Group {
+        TextChunks text_chunks;
+        std::vector<SimplePlaceholder> placeholders;
+
+        /// @brief Canonical, re-parseable representation of the group's contents, e.g. "{adj} {noun}".
+        [[nodiscard]] auto ToString() const -> std::string;
+        [[nodiscard]] auto GetHash() const -> std::int64_t;
+        [[nodiscard]] auto Complexity() const -> std::int32_t;
+        [[nodiscard]] auto IsNSFW() const -> bool;
+    };
+
+    /// @brief An alternation chooses one of several branch groups deterministically, the same way
+    /// case mutations pick a cased form: its capacity is the sum of the branches' capacities, and a
+    /// sequence value selects a branch block and the offset within it.
+    /// @note An alternation always has >= 2 distinct branches; a single branch is pulled up.
+    struct Alternation {
+        std::vector<Group> alternatives;
+
+        /// @brief Canonical, re-parseable representation, e.g. "({a} {b})|{c}".
         [[nodiscard]] auto ToString() const -> std::string;
         [[nodiscard]] auto GetHash() const -> std::int64_t;
         [[nodiscard]] auto Complexity() const -> std::int32_t;
@@ -47,7 +64,6 @@ struct Pattern {
 
     using PatternElement = std::variant<Selector, NumberGen, SpecialCharGen, EmojiGen, Alternation>;
     using Placeholders = std::vector<PatternElement>;
-    using TextChunks = std::vector<std::string_view>;
     using Substitutions = std::vector<std::string>;
 
     const std::string pattern;
@@ -100,6 +116,14 @@ struct Pattern {
 auto ParsePlaceholders(std::string_view pattern) -> Pattern::Placeholders;
 
 auto ParsePattern(std::string_view pattern) -> Pattern;
+
+/// @brief Interleave literal text chunks with substitutions (text, sub, text, ..., text).
+/// Shared by SlugFormatter and the group substitution generator.
+/// @param unescape_text When true, backslash escapes in the text are resolved to their literal
+/// character (generation); when false the text is emitted verbatim (canonical ToString).
+/// @note Requires text_chunks.size() == substitutions.size() + 1.
+auto FormatChunks(const Pattern::TextChunks& text_chunks, const Pattern::Substitutions& substitutions,
+                  bool unescape_text = true) -> std::string;
 
 using PatternPtr = std::shared_ptr<Pattern>;
 
