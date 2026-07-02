@@ -124,7 +124,11 @@ public:
         return tags_table_->Tags();
     }
 
-    auto Filter(const Selector& selector) const -> FilteredDictionaryPtr;
+    /// @brief Filter the dictionary by a selector.
+    /// @param enabled_opt_ins Tags whose opt-in gate is lifted for this request (the "honest
+    /// opt-in" usage flag). A word carrying an opt-in tag is hidden unless that tag is either
+    /// requested explicitly via the selector's include tags or listed here.
+    auto Filter(const Selector& selector, const TagSet& enabled_opt_ins = {}) const -> FilteredDictionaryPtr;
 
     auto operator[](LanguageCodeView language) const -> const LanguageInfo&;
     auto operator[](Tag tag) const -> const TagEntry&;
@@ -154,6 +158,10 @@ private:
     const detail::TagsTable* tags_table_;
     const detail::WordData* word_data_;
     std::shared_ptr<FilterCache> filter_cache_;
+    // Names of tags flagged opt-in (TagEntry::OptIn()), viewing the mmap'd tag strings.
+    // Precomputed once so Filter subtracts only these (few) tags rather than rescanning the
+    // whole tags table (thousands of entries for the emoji dictionary) on every request.
+    std::vector<TagView> opt_in_tags_;
 };
 
 /// @brief A set of binary dictionaries keyed by kind, the binary counterpart of
@@ -175,7 +183,8 @@ public:
     /// @brief Filter by selector, dispatching on kind. Mirrors the in-memory DictionarySet:
     /// a selector with no language defaults to "en"; an unknown kind or language yields an
     /// empty result (rather than throwing).
-    [[nodiscard]] auto Filter(const Selector& selector) const -> FilteredDictionaryPtr;
+    [[nodiscard]] auto Filter(const Selector& selector, const TagSet& enabled_opt_ins = {}) const
+        -> FilteredDictionaryPtr;
 
     [[nodiscard]] auto Contains(std::string_view kind) const -> bool {
         return dictionaries_.find(std::string{kind}) != dictionaries_.end();

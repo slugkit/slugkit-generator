@@ -273,10 +273,22 @@ private:
 /// @param seed The seed to use
 class PatternGenerator {
 public:
-    PatternGenerator(const DictionarySet& dictionaries, PatternPtr pattern);
-    PatternGenerator(const DictionarySet& dictionaries, PatternPtr pattern, PatternSettings settings);
-    PatternGenerator(const binary::DictionarySet& dictionaries, PatternPtr pattern);
-    PatternGenerator(const binary::DictionarySet& dictionaries, PatternPtr pattern, PatternSettings settings);
+    // enabled_opt_ins: tags whose opt-in gate is lifted for this pattern (the "honest opt-in"
+    // usage flag). Empty (the default) hides every opt-in tag unless a selector requests it.
+    PatternGenerator(const DictionarySet& dictionaries, PatternPtr pattern, const TagSet& enabled_opt_ins = {});
+    PatternGenerator(
+        const DictionarySet& dictionaries,
+        PatternPtr pattern,
+        PatternSettings settings,
+        const TagSet& enabled_opt_ins = {}
+    );
+    PatternGenerator(const binary::DictionarySet& dictionaries, PatternPtr pattern, const TagSet& enabled_opt_ins = {});
+    PatternGenerator(
+        const binary::DictionarySet& dictionaries,
+        PatternPtr pattern,
+        PatternSettings settings,
+        const TagSet& enabled_opt_ins = {}
+    );
     ~PatternGenerator();
 
     /// @brief Generate a string from a pattern

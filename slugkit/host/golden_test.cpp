@@ -5,6 +5,7 @@
 // / property-stable slug output without userver. The mixed-case section mirrors the property-based
 // form introduced by PR #20.
 
+#include <slugkit/generator/binary_dictionary.hpp>
 #include <slugkit/generator/exceptions.hpp>
 #include <slugkit/generator/generator.hpp>
 #include <slugkit/generator/pattern_generator.hpp>
@@ -12,7 +13,11 @@
 
 #include <gtest/gtest.h>
 
+#include <cstddef>
+#include <fstream>
 #include <iostream>
+#include <iterator>
+#include <memory>
 #include <set>
 #include <string>
 #include <vector>
@@ -299,6 +304,52 @@ TEST(Generator, SelfConsistent) {
         EXPECT_FALSE(a.empty());
     }
 }
+
+#ifdef SLK_ADVERB_BIN_PATH
+namespace {
+// Load a compiled binary dictionary into a Generator. The file bytes are held alive by a shared
+// keepalive for the dictionary set's lifetime.
+binary::DictionarySet LoadBinaryAdverbs() {
+    std::ifstream file(SLK_ADVERB_BIN_PATH, std::ios::binary);
+    auto bytes = std::make_shared<std::vector<std::byte>>();
+    for (std::istreambuf_iterator<char> it(file), end; it != end; ++it) {
+        bytes->push_back(static_cast<std::byte>(*it));
+    }
+    binary::DictionarySet dictionaries;
+    dictionaries.Add(binary::DictionarySet::RawData{bytes->data(), bytes->size()}, bytes);
+    return dictionaries;
+}
+}  // namespace
+
+// Honest opt-ins (binary path): test-adv marks `nsfw` opt-in (4 adverbs). They are hidden by
+// default, selectable with an explicit `+nsfw`, and unhidden by the per-generator usage flag.
+TEST(Generator, OptInTags) {
+    Generator generator(LoadBinaryAdverbs());
+
+    // Default: the 4 nsfw adverbs are hidden -> pool is 3619 - 4 = 3615.
+    EXPECT_EQ(generator.GetCapacity("{adverb}").capacity, 3615);
+    // Explicit request still selects exactly the opt-in words.
+    EXPECT_EQ(generator.GetCapacity("{adverb:+nsfw}").capacity, 4);
+
+    // Enabling the tag lifts its gate: the pool returns to the full 3619 and the output matches
+    // what the engine produced before opt-in filtering existed.
+    generator.EnableOptIn("nsfw");
+    EXPECT_EQ(generator.GetCapacity("{adverb}").capacity, 3619);
+    EXPECT_EQ(generator.Generate("{adverb}", "foobar", 0), "lustfully");
+    EXPECT_EQ(generator.EnabledOptIns(), (std::vector<std::string>{"nsfw"}));
+
+    // Clearing restores the default hidden behaviour. Reusing the same generator (whose shared
+    // filter cache already holds the enabled=3619 entry) proves the cache key accounts for the
+    // opt-in state: a stale entry would wrongly return 3619 here.
+    generator.ClearOptIns();
+    EXPECT_EQ(generator.GetCapacity("{adverb}").capacity, 3615);
+
+    // Enabling a tag this dictionary does not have is inert: the adverb pool stays 3615 (and its
+    // cache key is unchanged), since only a dictionary's own opt-in tags affect its result.
+    generator.EnableOptIn("no-such-opt-in-tag");
+    EXPECT_EQ(generator.GetCapacity("{adverb}").capacity, 3615);
+}
+#endif  // SLK_ADVERB_BIN_PATH
 
 // Turkish probe: captures the utf8proc casing reference (no ICU parity assumed). Asserts only
 // determinism, and prints the produced bytes for the report.

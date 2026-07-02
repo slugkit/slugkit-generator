@@ -9,7 +9,9 @@
 #include <slugkit/compat/fast_pimpl.hpp>
 
 #include <map>
+#include <set>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace slugkit::generator {
@@ -32,6 +34,25 @@ public:
     ~Generator() noexcept;
 
     [[nodiscard]] auto RandomSeed() const -> std::string;
+
+    //@{
+    /// @name Opt-in tags ("honest opt-ins")
+    /// Tags flagged opt-in in the dictionary are hidden by default: a word carrying one is only
+    /// produced when a selector requests that tag explicitly (e.g. `{noun:+nsfw}`) or when the
+    /// tag has been enabled here. This is a per-generator usage flag, not part of the pattern
+    /// grammar. Enabling a tag lifts its gate without restricting output to it (unlike `+tag`).
+    /// Enabling changes which words a pattern can produce and therefore its capacity, so treat
+    /// these as configuration to be set before generation (not concurrently with it).
+
+    /// @brief Lift the opt-in gate for a single tag.
+    void EnableOptIn(std::string_view tag);
+    /// @brief Replace the set of enabled opt-in tags.
+    void SetEnabledOptIns(std::vector<std::string> tags);
+    /// @brief Disable all opt-in tags (restore the default: every opt-in tag hidden).
+    void ClearOptIns();
+    /// @brief The currently enabled opt-in tags (sorted).
+    [[nodiscard]] auto EnabledOptIns() const -> std::vector<std::string>;
+    //@}
 
     /// @brief Calculates the maximum capacity and settings for a given pattern.
     /// @param pattern The pattern to calculate the capacity for.
@@ -150,6 +171,11 @@ private:
 #endif
     struct Impl;
     slugkit::compat::FastPimpl<Impl, kPimplSize, kPimplAlign> impl_;
+
+    // Enabled opt-in tags (owning). Kept outside the pimpl so adding it never disturbs the
+    // per-toolchain pimpl sizing. A std::set node's string address is stable, so a TagSet view
+    // built from these entries stays valid for the duration of a filter call.
+    std::set<std::string> enabled_opt_ins_;
 };
 
 using DictionaryStatistics = std::vector<DictionaryStats>;

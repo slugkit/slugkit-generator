@@ -35,15 +35,16 @@ final class SlugkitTests: XCTestCase {
 
     func testMultiCapacity() throws {
         let cap = try multi().capacity(of: "{adverb}-{emoji}")
-        XCTAssertEqual(cap.value, "4176326")
+        // Opt-in `nsfw` (4 adverbs) hidden by default -> pool 3615, 3615 * 1154 = 4171710.
+        XCTAssertEqual(cap.value, "4171710")
         XCTAssertEqual(cap.maxLength, 22)
     }
 
     func testMultiGoldenPrefixes() throws {
         let gen = try multi()
-        XCTAssertTrue(try gen.generate("{adverb}-{emoji}", seed: "foobar", sequence: 0).hasPrefix("lustfully-"))
-        XCTAssertTrue(try gen.generate("{adverb}-{emoji}", seed: "foobar", sequence: 1).hasPrefix("abroad-"))
-        XCTAssertTrue(try gen.generate("{adverb}-{emoji}", seed: "foobar", sequence: 2).hasPrefix("maladroitly-"))
+        XCTAssertTrue(try gen.generate("{adverb}-{emoji}", seed: "foobar", sequence: 0).hasPrefix("impotently-"))
+        XCTAssertTrue(try gen.generate("{adverb}-{emoji}", seed: "foobar", sequence: 1).hasPrefix("speechlessly-"))
+        XCTAssertTrue(try gen.generate("{adverb}-{emoji}", seed: "foobar", sequence: 2).hasPrefix("diagonally-"))
     }
 
     func testMultiLengthAndNumberGolden() throws {
