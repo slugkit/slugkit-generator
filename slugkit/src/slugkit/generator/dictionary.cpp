@@ -123,7 +123,11 @@ auto Dictionary::empty() const -> bool {
     return pimpl_->words_->empty();
 }
 
-auto Dictionary::Filter(const Selector& selector) const -> FilteredDictionaryConstPtr {
+auto Dictionary::Filter(const Selector& selector, const TagSet& enabled_opt_ins) const
+    -> FilteredDictionaryConstPtr {
+    // The in-memory dictionary carries no per-tag opt-in metadata (unlike the binary dictionary),
+    // so the enabled opt-in set is accepted for API parity but has no effect here yet.
+    (void)enabled_opt_ins;
     auto kind = utils::text::ToLower(selector.kind, utils::text::kEnUsLocale);
     if (kind != pimpl_->kind_) {
         return {};
@@ -165,7 +169,7 @@ DictionarySet::DictionarySet(std::vector<Dictionary> dictionaries)
     }
 }
 
-FilteredDictionaryConstPtr DictionarySet::Filter(const Selector& selector) const {
+FilteredDictionaryConstPtr DictionarySet::Filter(const Selector& selector, const TagSet& enabled_opt_ins) const {
     auto key = utils::text::ToLower(selector.kind, utils::text::kEnUsLocale);
     // TODO maybe merge language-agnostic and language-specific dictionaries
     if (language_agnostic_kinds_.find(key) != language_agnostic_kinds_.end()) {
@@ -177,7 +181,7 @@ FilteredDictionaryConstPtr DictionarySet::Filter(const Selector& selector) const
             );
             auto dict = dictionaries_.find(lang_key);
             if (dict != dictionaries_.end()) {
-                return dict->second.Filter(selector);
+                return dict->second.Filter(selector, enabled_opt_ins);
             }
         }
     } else {
@@ -194,7 +198,7 @@ FilteredDictionaryConstPtr DictionarySet::Filter(const Selector& selector) const
     if (dict == dictionaries_.end()) {
         return {};
     }
-    return dict->second.Filter(selector);
+    return dict->second.Filter(selector, enabled_opt_ins);
 }
 
 }  // namespace slugkit::generator

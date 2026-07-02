@@ -18,7 +18,7 @@ final emoji = (await rootBundle.load('assets/emoji.bin')).buffer.asUint8List();
 final adverb = (await rootBundle.load('assets/test-adv.slugs')).buffer.asUint8List();
 
 final gen = Generator.fromMultiple([adverb, emoji]);
-final slug = gen.generate('{adverb}-{emoji}', 'foobar', 0);   // e.g. "lustfully-🐝"
+final slug = gen.generate('{adverb}-{emoji}', 'foobar', 0);   // e.g. "impotently-🐝"
 final cap  = gen.capacity('{adverb}-{emoji}');                // cap.value, cap.maxLength
 final many = gen.generateBatch('{adverb}-{emoji}', 'foobar', 0, 20);
 gen.dispose();

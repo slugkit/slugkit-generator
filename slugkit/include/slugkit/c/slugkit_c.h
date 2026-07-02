@@ -64,6 +64,21 @@ void slk_generator_destroy(slk_generator* gen);
 char* slk_random_seed(slk_generator* gen, char** err_out);
 
 /**
+ * Enable an opt-in tag ("honest opt-ins").
+ *
+ * Tags flagged opt-in in the dictionary (e.g. "nsfw") are hidden by default: a word carrying one
+ * is produced only when a selector requests that tag explicitly (e.g. "{noun:+nsfw}") or when the
+ * tag has been enabled here. Enabling lifts the tag's gate for this generator without restricting
+ * output to it. This is a per-generator usage flag, not part of the pattern grammar. It changes
+ * which words a pattern can produce (and its capacity), so set it before generating rather than
+ * concurrently with generation. Enabling is cumulative; use slk_generator_clear_opt_ins to reset.
+ */
+slk_status slk_generator_enable_opt_in(slk_generator* gen, const char* tag, char** err_out);
+
+/** Disable all opt-in tags (restore the default: every opt-in tag hidden). */
+slk_status slk_generator_clear_opt_ins(slk_generator* gen, char** err_out);
+
+/**
  * Compute the capacity of a pattern.
  * @param capacity_decimal_out on success receives a heap-allocated decimal string of the
  *        (arbitrary-precision) capacity. Free with slk_string_free. May be NULL to skip.

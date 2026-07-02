@@ -38,12 +38,13 @@ fun main(args: Array<String>) {
     // Golden values (seed "foobar") are byte-identical across all language bindings.
     Generator.fromBinaryDictionaries(listOf(adverb, emoji)).use { gen ->
         val cap = gen.capacity("{adverb}-{emoji}")
-        check(cap.value == "4176326") { "multi capacity=${cap.value}" }
+        // Opt-in `nsfw` (4 adverbs) hidden by default -> pool 3615, 3615 * 1154 = 4171710.
+        check(cap.value == "4171710") { "multi capacity=${cap.value}" }
         check(cap.maxLength == 22) { "multi maxLength=${cap.maxLength}" }
 
-        check(gen.generate("{adverb}-{emoji}", "foobar", 0).startsWith("lustfully-")) { "seq0 prefix" }
-        check(gen.generate("{adverb}-{emoji}", "foobar", 1).startsWith("abroad-")) { "seq1 prefix" }
-        check(gen.generate("{adverb}-{emoji}", "foobar", 2).startsWith("maladroitly-")) { "seq2 prefix" }
+        check(gen.generate("{adverb}-{emoji}", "foobar", 0).startsWith("impotently-")) { "seq0 prefix" }
+        check(gen.generate("{adverb}-{emoji}", "foobar", 1).startsWith("speechlessly-")) { "seq1 prefix" }
+        check(gen.generate("{adverb}-{emoji}", "foobar", 2).startsWith("diagonally-")) { "seq2 prefix" }
 
         check(gen.generate("{adverb:<=5}-{number:3d}", "foobar", 0) == "ago-887") { "num seq0" }
         check(gen.generate("{adverb:<=5}-{number:3d}", "foobar", 1) == "aloud-774") { "num seq1" }

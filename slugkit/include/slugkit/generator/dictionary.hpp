@@ -111,8 +111,11 @@ public:
     /// Will return an empty dictionary if the selector is empty or if the selector's kind is not the same as the
     /// dictionary's kind.
     /// @param selector The selector to use for filtering.
+    /// @param enabled_opt_ins Opt-in tags lifted for this request (the "honest opt-in" usage
+    /// flag). Accepted for signature parity with the binary dictionary; the in-memory dictionary
+    /// carries no opt-in tag metadata today, so it is currently a no-op here.
     /// @return The filtered dictionary.
-    FilteredDictionaryConstPtr Filter(const Selector& selector) const;
+    FilteredDictionaryConstPtr Filter(const Selector& selector, const TagSet& enabled_opt_ins = {}) const;
     FilteredDictionaryConstPtr Filter(const EmojiGen::TagsType& include_tags, const EmojiGen::TagsType& exclude_tags)
         const;
 
@@ -140,7 +143,7 @@ class DictionarySet {
 public:
     DictionarySet(std::vector<Dictionary> dictionaries);
 
-    FilteredDictionaryConstPtr Filter(const Selector& selector) const;
+    FilteredDictionaryConstPtr Filter(const Selector& selector, const TagSet& enabled_opt_ins = {}) const;
 
     auto size() const -> std::size_t {
         return dictionaries_.size();

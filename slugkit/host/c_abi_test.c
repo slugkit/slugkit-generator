@@ -144,17 +144,19 @@ int main(void) {
         if (mg != NULL) {
             char* mc = NULL;
             int32_t mml = 0;
+            /* Default capacity hides opt-in tags: test-adv marks `nsfw` opt-in (4 adverbs), so the
+             * adverb pool is 3619 - 4 = 3615 here. 3615 * 1154 emoji = 4171710. */
             slk_capacity(mg, "{adverb}-{emoji}", &mc, &mml, &err);
-            CHECK(mc && strcmp(mc, "4176326") == 0 && mml == 22, "capacity({adverb}-{emoji}) == 4176326");
+            CHECK(mc && strcmp(mc, "4171710") == 0 && mml == 22, "capacity({adverb}-{emoji}) == 4171710 (nsfw hidden)");
             slk_string_free(mc);
 
             /* {adverb}-{emoji}: adverb prefix is ASCII and deterministic (emoji suffix varies by build's font, not bytes) */
             char* w0 = slk_generate_alloc(mg, "{adverb}-{emoji}", "foobar", 0, &err);
             char* w1 = slk_generate_alloc(mg, "{adverb}-{emoji}", "foobar", 1, &err);
             char* w2 = slk_generate_alloc(mg, "{adverb}-{emoji}", "foobar", 2, &err);
-            CHECK(w0 && strncmp(w0, "lustfully-", 10) == 0, "{adverb}-{emoji} seq0 starts 'lustfully-'");
-            CHECK(w1 && strncmp(w1, "abroad-", 7) == 0, "{adverb}-{emoji} seq1 starts 'abroad-'");
-            CHECK(w2 && strncmp(w2, "maladroitly-", 12) == 0, "{adverb}-{emoji} seq2 starts 'maladroitly-'");
+            CHECK(w0 && strncmp(w0, "impotently-", 11) == 0, "{adverb}-{emoji} seq0 starts 'impotently-'");
+            CHECK(w1 && strncmp(w1, "speechlessly-", 13) == 0, "{adverb}-{emoji} seq1 starts 'speechlessly-'");
+            CHECK(w2 && strncmp(w2, "diagonally-", 11) == 0, "{adverb}-{emoji} seq2 starts 'diagonally-'");
             slk_string_free(w0);
             slk_string_free(w1);
             slk_string_free(w2);
@@ -173,7 +175,7 @@ int main(void) {
             /* Placeholder alternation: capacity is the sum of the children (adverb + emoji). */
             char* ac = NULL;
             slk_capacity(mg, "{adverb}|{emoji}", &ac, NULL, &err);
-            CHECK(ac && strcmp(ac, "4773") == 0, "capacity({adverb}|{emoji}) == 4773 (3619 adverbs + 1154 emoji)");
+            CHECK(ac && strcmp(ac, "4769") == 0, "capacity({adverb}|{emoji}) == 4769 (3615 adverbs + 1154 emoji)");
             slk_string_free(ac);
             /* Escaped pipe is a literal pipe in the output. */
             char* esc = slk_generate_alloc(mg, "x\\|y", "s", 0, &err);
@@ -185,7 +187,7 @@ int main(void) {
             /* Equivalent alternatives collapse: {adverb}|{adverb} has the capacity of one {adverb}. */
             char* cc = NULL;
             slk_capacity(mg, "{adverb}|{adverb}", &cc, NULL, &err);
-            CHECK(cc && strcmp(cc, "3619") == 0, "{adverb}|{adverb} collapses to capacity 3619");
+            CHECK(cc && strcmp(cc, "3615") == 0, "{adverb}|{adverb} collapses to capacity 3615");
             slk_string_free(cc);
             /* Overlapping alternatives ({adverb} is a superset of {adverb:+pos}) are a pattern error. */
             char* ov = slk_generate_alloc(mg, "{adverb:+pos}|{adverb}", "s", 0, &err);
@@ -202,10 +204,10 @@ int main(void) {
             char* ep = slk_generate_alloc(mg, "a\\(b\\)c", "s", 0, &err);
             CHECK(ep && strcmp(ep, "a(b)c") == 0, "escaped parens `a\\(b\\)c` -> `a(b)c`");
             slk_string_free(ep);
-            /* Group alternation capacity = sum of branch LCMs: LCM(3619,1154)*2 = 8352652. */
+            /* Group alternation capacity = sum of branch LCMs: LCM(3615,1154)*2 = 8343420 (nsfw hidden). */
             char* gc = NULL;
             slk_capacity(mg, "({adverb} {emoji})|({emoji} {adverb})", &gc, NULL, &err);
-            CHECK(gc && strcmp(gc, "8352652") == 0, "group alternation capacity is the sum of branch LCMs");
+            CHECK(gc && strcmp(gc, "8343420") == 0, "group alternation capacity is the sum of branch LCMs");
             slk_string_free(gc);
             /* Per-position overlap error: same second placeholder, first is a superset. */
             char* go = slk_generate_alloc(mg, "({adverb:+pos} {emoji})|({adverb} {emoji})", "s", 0, &err);
@@ -216,7 +218,7 @@ int main(void) {
             /* But an empty branch is an explicit "or nothing" option (capacity +1). */
             char* ec = NULL;
             slk_capacity(mg, "({adverb})|()", &ec, NULL, &err);
-            CHECK(ec && strcmp(ec, "3620") == 0, "empty alternation branch adds 1 to capacity");
+            CHECK(ec && strcmp(ec, "3616") == 0, "empty alternation branch adds 1 to capacity");
             slk_string_free(ec);
             int saw_empty = 0, saw_foo = 0;
             for (int s = 0; s < 4; s++) {
@@ -226,6 +228,34 @@ int main(void) {
                 slk_string_free(g);
             }
             CHECK(saw_empty && saw_foo, "(foo)|() produces both `foo` and the empty string");
+
+            /* --- honest opt-ins --- */
+            /* test-adv marks `nsfw` opt-in. By default those 4 adverbs are hidden (pool 3615),
+             * but an explicit `+nsfw` still selects exactly them. */
+            char* onc = NULL;
+            slk_capacity(mg, "{adverb}", &onc, NULL, &err);
+            CHECK(onc && strcmp(onc, "3615") == 0, "opt-in nsfw adverbs hidden by default (capacity 3615)");
+            slk_string_free(onc);
+            char* nc = NULL;
+            slk_capacity(mg, "{adverb:+nsfw}", &nc, NULL, &err);
+            CHECK(nc && strcmp(nc, "4") == 0, "explicit {adverb:+nsfw} still selects the 4 opt-in adverbs");
+            slk_string_free(nc);
+            /* Enabling the opt-in tag lifts the gate: the pool returns to the full 3619 and the
+             * output matches what the generator produced before opt-in filtering existed. */
+            CHECK(slk_generator_enable_opt_in(mg, "nsfw", &err) == SLK_OK, "slk_generator_enable_opt_in(nsfw) ok");
+            char* enc = NULL;
+            slk_capacity(mg, "{adverb}", &enc, NULL, &err);
+            CHECK(enc && strcmp(enc, "3619") == 0, "enabling nsfw restores full adverb pool (capacity 3619)");
+            slk_string_free(enc);
+            char* ew0 = slk_generate_alloc(mg, "{adverb}", "foobar", 0, &err);
+            CHECK(ew0 && strcmp(ew0, "lustfully") == 0, "enabled nsfw: {adverb} seq0 == 'lustfully'");
+            slk_string_free(ew0);
+            /* Clearing restores the default hidden behaviour. */
+            CHECK(slk_generator_clear_opt_ins(mg, &err) == SLK_OK, "slk_generator_clear_opt_ins ok");
+            char* cnc = NULL;
+            slk_capacity(mg, "{adverb}", &cnc, NULL, &err);
+            CHECK(cnc && strcmp(cnc, "3615") == 0, "clearing opt-ins hides nsfw again (capacity 3615)");
+            slk_string_free(cnc);
 
             slk_generator_destroy(mg);
         }

@@ -9,6 +9,27 @@
 namespace slugkit::generator::binary {
 
 namespace {
+// Salt the filter-cache key with the set of enabled opt-in tags so that two requests differing
+// only in which opt-in tags are enabled (e.g. nsfw on vs off) never share a cached filtered
+// dictionary. The filter cache is shared across every generator using this dictionary, so the
+// enabled set -- a per-generator property -- must be part of the key, not just the selector.
+auto OptInSalt(const TagSet& enabled_opt_ins) -> std::uint64_t {
+    std::uint64_t hash = 1469598103934665603ULL;  // FNV-1a offset basis
+    for (auto tag : enabled_opt_ins) {
+        for (char ch : tag.GetUnderlying()) {
+            hash = (hash ^ static_cast<unsigned char>(ch)) * 1099511628211ULL;
+        }
+        hash = (hash ^ 0xFFu) * 1099511628211ULL;  // separator between tags
+    }
+    return hash;
+}
+
+auto CombineHash(std::int64_t selector_hash, std::uint64_t salt) -> std::int64_t {
+    auto value = static_cast<std::uint64_t>(selector_hash);
+    value ^= salt + 0x9e3779b97f4a7c15ULL + (value << 6) + (value >> 2);
+    return static_cast<std::int64_t>(value);
+}
+
 auto CheckPointer(const std::byte* base, std::string_view name, std::int64_t alignment = 4) -> void {
     if (base == nullptr) {
         throw DictionaryDataError(fmt::format("Invalid {}: base is nullptr", name));
@@ -595,6 +616,14 @@ BinaryDictionary::BinaryDictionary(RawData data)
     filter_cache_ = std::make_shared<FilterCache>(kFilterCacheWays, kFilterCacheWaySize);
 
     Validate();
+
+    // Collect opt-in tags once (post-validation, so the tags table is known-good). Filter
+    // subtracts these unless the tag is requested explicitly or enabled for the request.
+    for (const auto& tag_entry : *tags_table_) {
+        if (tag_entry.OptIn()) {
+            opt_in_tags_.push_back(tag_entry.Name());
+        }
+    }
 }
 
 auto BinaryDictionary::Validate() const -> void {
@@ -626,17 +655,26 @@ auto BinaryDictionary::operator[](IndexType index) const -> const WordEntry& {
     return word_data_->At(offset);
 }
 
-auto BinaryDictionary::Filter(const Selector& selector) const -> FilteredDictionaryPtr {
+auto BinaryDictionary::Filter(const Selector& selector, const TagSet& enabled_opt_ins) const
+    -> FilteredDictionaryPtr {
     // Reuse the built filtered dictionary for identical selectors (same language/tags/size/case);
     // building it (filter + max-length) is the expensive part, so caching keeps repeated patterns
-    // cheap under load. Keyed by the selector's identity hash, same as the in-memory path.
-    const auto hash = selector.GetHash();
+    // cheap under load. Keyed by the selector's identity hash, salted with the enabled opt-in set
+    // so requests differing only in enabled opt-ins get distinct cache entries.
+    const auto hash = CombineHash(selector.GetHash(), OptInSalt(enabled_opt_ins));
     if (auto cached = filter_cache_->Get(hash)) {
         return *cached;
     }
     auto index_sequence = language_table_->Filter(selector.language, selector.size_limit);
     auto indices = tags_table_->Filter(index_sequence, selector.include_tags, selector.exclude_tags);
-    // TODO opt-in tags
+    // Honest opt-ins: hide words carrying an opt-in tag unless that tag was requested explicitly
+    // (selector include tags) or its opt-in gate was lifted for this request (enabled_opt_ins).
+    for (auto opt_in_tag : opt_in_tags_) {
+        if (selector.include_tags.contains(opt_in_tag) || enabled_opt_ins.contains(opt_in_tag)) {
+            continue;
+        }
+        indices = indices - (*tags_table_)[opt_in_tag].Filter();
+    }
     auto filtered = std::make_shared<FilteredDictionary>(indices, index_table_, word_data_, selector.GetCase());
     filter_cache_->Put(hash, filtered);
     return filtered;
@@ -652,7 +690,8 @@ void DictionarySet::Add(RawData data, std::shared_ptr<void> keepalive) {
     dictionaries_.insert_or_assign(std::move(kind), std::move(dictionary));
 }
 
-auto DictionarySet::Filter(const Selector& selector) const -> FilteredDictionaryPtr {
+auto DictionarySet::Filter(const Selector& selector, const TagSet& enabled_opt_ins) const
+    -> FilteredDictionaryPtr {
     auto kind = utils::text::ToLower(selector.kind, utils::text::kEnUsLocale);
     auto it = dictionaries_.find(kind);
     if (it == dictionaries_.end()) {
@@ -678,7 +717,7 @@ auto DictionarySet::Filter(const Selector& selector) const -> FilteredDictionary
     } else if (languages.find(*effective.language) == languages.end()) {
         return {};
     }
-    return dictionary.Filter(effective);
+    return dictionary.Filter(effective, enabled_opt_ins);
 }
 
 }  // namespace slugkit::generator::binary

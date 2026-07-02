@@ -107,6 +107,40 @@ char* slk_random_seed(slk_generator* gen, char** err_out) {
     }
 }
 
+slk_status slk_generator_enable_opt_in(slk_generator* gen, const char* tag, char** err_out) {
+    if (gen == nullptr || tag == nullptr) {
+        SetErr(err_out, "slk_generator_enable_opt_in: null argument");
+        return SLK_ERR_INVALID_ARG;
+    }
+    try {
+        gen->gen.EnableOptIn(std::string_view{tag});
+        return SLK_OK;
+    } catch (const std::exception& e) {
+        SetErr(err_out, e.what());
+        return SLK_ERR_INTERNAL;
+    } catch (...) {
+        SetErr(err_out, "unknown error");
+        return SLK_ERR_INTERNAL;
+    }
+}
+
+slk_status slk_generator_clear_opt_ins(slk_generator* gen, char** err_out) {
+    if (gen == nullptr) {
+        SetErr(err_out, "slk_generator_clear_opt_ins: null generator");
+        return SLK_ERR_INVALID_ARG;
+    }
+    try {
+        gen->gen.ClearOptIns();
+        return SLK_OK;
+    } catch (const std::exception& e) {
+        SetErr(err_out, e.what());
+        return SLK_ERR_INTERNAL;
+    } catch (...) {
+        SetErr(err_out, "unknown error");
+        return SLK_ERR_INTERNAL;
+    }
+}
+
 slk_status slk_capacity(slk_generator* gen, const char* pattern, char** capacity_decimal_out, int32_t* max_len_out,
                         char** err_out) {
     if (gen == nullptr || pattern == nullptr) {

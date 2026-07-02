@@ -434,6 +434,25 @@ auto EmojiSelector(const EmojiGen& emoji_gen) -> Selector {
     return selector;
 }
 
+// Adapts a dictionary set together with the request's enabled opt-in tags into something the build
+// helpers can call `.Filter(selector)` on. This lets the "honest opt-in" usage flag ride along
+// every filter call without threading it through each helper's signature: the build code keeps
+// writing `dictionaries.Filter(selector)`, and the opt-in set is applied underneath.
+template <typename DictSet>
+struct OptInFilter {
+    const DictSet& dictionaries;
+    const TagSet& enabled_opt_ins;
+
+    auto Filter(const Selector& selector) const {
+        return dictionaries.Filter(selector, enabled_opt_ins);
+    }
+};
+
+template <typename DictSet>
+auto WithOptIns(const DictSet& dictionaries, const TagSet& enabled_opt_ins) -> OptInFilter<DictSet> {
+    return OptInFilter<DictSet>{dictionaries, enabled_opt_ins};
+}
+
 // Build a generator for one simple (non-alternating) placeholder. Used for alternation children.
 // Unlike the top-level path, selectors here use the plain dictionary size (no prime/LCM
 // maximization, which is a flat-composition heuristic; children compose by sum) and are not stored
@@ -630,36 +649,41 @@ struct PatternGenerator::Impl {
     PatternSettings settings;
 
     // Constructor for the case when settings are not calculated yet for the pattern
-    Impl(const DictionarySet& dictionaries, PatternPtr pattern)
+    Impl(const DictionarySet& dictionaries, PatternPtr pattern, const TagSet& enabled_opt_ins)
         : pattern{pattern}
         , generators{}
-        , settings{CalculateSettings(dictionaries)} {
+        , settings{CalculateSettings(WithOptIns(dictionaries, enabled_opt_ins))} {
         //
     }
 
     // Constructor for the case when settings are provided
-    Impl(const DictionarySet& dictionaries, PatternPtr pattern, PatternSettings settings)
+    Impl(const DictionarySet& dictionaries, PatternPtr pattern, PatternSettings settings, const TagSet& enabled_opt_ins)
         : pattern{pattern}
         , generators{}
         , settings{settings} {
-        InitGenerators(dictionaries);
+        InitGenerators(WithOptIns(dictionaries, enabled_opt_ins));
     }
 
     // Binary dictionary set overloads: the binary dictionaries reproduce the in-memory
     // dictionaries' lexicographic order, so the same settings/init logic applies and the
     // generated slugs are byte-identical.
-    Impl(const binary::DictionarySet& dictionaries, PatternPtr pattern)
+    Impl(const binary::DictionarySet& dictionaries, PatternPtr pattern, const TagSet& enabled_opt_ins)
         : pattern{pattern}
         , generators{}
-        , settings{CalculateSettings(dictionaries)} {
+        , settings{CalculateSettings(WithOptIns(dictionaries, enabled_opt_ins))} {
         //
     }
 
-    Impl(const binary::DictionarySet& dictionaries, PatternPtr pattern, PatternSettings settings)
+    Impl(
+        const binary::DictionarySet& dictionaries,
+        PatternPtr pattern,
+        PatternSettings settings,
+        const TagSet& enabled_opt_ins
+    )
         : pattern{pattern}
         , generators{}
         , settings{settings} {
-        InitGenerators(dictionaries);
+        InitGenerators(WithOptIns(dictionaries, enabled_opt_ins));
     }
 
     // This function has a side effect of initializing the generators
@@ -797,24 +821,38 @@ struct PatternGenerator::Impl {
     }
 };
 
-PatternGenerator::PatternGenerator(const DictionarySet& dictionaries, PatternPtr pattern)
-    : impl_{dictionaries, pattern} {
+PatternGenerator::PatternGenerator(
+    const DictionarySet& dictionaries,
+    PatternPtr pattern,
+    const TagSet& enabled_opt_ins
+)
+    : impl_{dictionaries, pattern, enabled_opt_ins} {
 }
 
-PatternGenerator::PatternGenerator(const DictionarySet& dictionaries, PatternPtr pattern, PatternSettings settings)
-    : impl_{dictionaries, pattern, settings} {
-}
-
-PatternGenerator::PatternGenerator(const binary::DictionarySet& dictionaries, PatternPtr pattern)
-    : impl_{dictionaries, pattern} {
+PatternGenerator::PatternGenerator(
+    const DictionarySet& dictionaries,
+    PatternPtr pattern,
+    PatternSettings settings,
+    const TagSet& enabled_opt_ins
+)
+    : impl_{dictionaries, pattern, settings, enabled_opt_ins} {
 }
 
 PatternGenerator::PatternGenerator(
     const binary::DictionarySet& dictionaries,
     PatternPtr pattern,
-    PatternSettings settings
+    const TagSet& enabled_opt_ins
 )
-    : impl_{dictionaries, pattern, settings} {
+    : impl_{dictionaries, pattern, enabled_opt_ins} {
+}
+
+PatternGenerator::PatternGenerator(
+    const binary::DictionarySet& dictionaries,
+    PatternPtr pattern,
+    PatternSettings settings,
+    const TagSet& enabled_opt_ins
+)
+    : impl_{dictionaries, pattern, settings, enabled_opt_ins} {
 }
 
 PatternGenerator::~PatternGenerator() = default;

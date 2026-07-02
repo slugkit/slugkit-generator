@@ -73,16 +73,18 @@ void main() {
     test('capacity of {adverb}-{emoji}', () {
       final g = openMulti();
       final cap = g.capacity('{adverb}-{emoji}');
-      expect(cap.value, '4176326');
+      // Opt-in tags are hidden by default: test-adv marks `nsfw` opt-in (4 adverbs), so the
+      // adverb pool is 3615 and 3615 * 1154 emoji = 4171710.
+      expect(cap.value, '4171710');
       expect(cap.maxLength, 22);
       g.dispose();
     });
 
     test('{adverb}-{emoji} golden prefixes', () {
       final g = openMulti();
-      expect(g.generate('{adverb}-{emoji}', 'foobar', 0), startsWith('lustfully-'));
-      expect(g.generate('{adverb}-{emoji}', 'foobar', 1), startsWith('abroad-'));
-      expect(g.generate('{adverb}-{emoji}', 'foobar', 2), startsWith('maladroitly-'));
+      expect(g.generate('{adverb}-{emoji}', 'foobar', 0), startsWith('impotently-'));
+      expect(g.generate('{adverb}-{emoji}', 'foobar', 1), startsWith('speechlessly-'));
+      expect(g.generate('{adverb}-{emoji}', 'foobar', 2), startsWith('diagonally-'));
       g.dispose();
     });
 
