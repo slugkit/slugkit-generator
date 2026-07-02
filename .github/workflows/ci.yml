@@ -1,0 +1,101 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  # Userver-free (standalone) build: the compat-shim + utf8proc core that ships to
+  # mobile. Builds golden_test + c_abi_test and runs them via ctest, on both the
+  # Linux/gcc+libstdc++ and macOS/clang+libc++ toolchains.
+  host-tests:
+    name: host tests (no userver) — ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            cmake g++ libfmt-dev libboost-dev libutf8proc-dev libgtest-dev
+
+      - name: Install dependencies (macOS)
+        if: runner.os == 'macOS'
+        run: brew install fmt boost utf8proc googletest
+
+      - name: Configure
+        run: >-
+          cmake -S slugkit/host -B build/host
+          ${{ runner.os == 'macOS' && '-DCMAKE_PREFIX_PATH=/opt/homebrew' || '' }}
+
+      - name: Build
+        run: cmake --build build/host --parallel
+
+      - name: Test
+        run: ctest --test-dir build/host --output-on-failure
+
+  # The Python dictionary compiler: install it, recompile the committed test
+  # fixtures from their YAML sources, and assert the binaries are byte-identical
+  # (catches a stale committed .bin or a non-deterministic compiler change).
+  compiler:
+    name: dictionary compiler
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install compile-dict
+        run: pip install -e slugkit/py/tools
+
+      - name: Recompile fixtures and verify they match the committed binaries
+        run: |
+          set -euo pipefail
+          compile-dict slugkit/tests/data/multilang.yaml -o /tmp/multilang.yaml
+          compile-dict slugkit/tests/data/verbatim.yaml  -o /tmp/verbatim.yaml
+          cmp /tmp/multilang.colour.bin slugkit/tests/data/multilang.colour.bin
+          cmp /tmp/verbatim.corpus.bin  slugkit/tests/data/verbatim.corpus.bin
+
+  # Full userver build + UTEST suite, inside the prebuilt userver dev container
+  # (same image the monorepo builds with). ci/CMakeLists.txt is a thin entry point
+  # that finds the container's userver and builds the library + tests standalone.
+  # Requires the repo to be able to pull ghcr.io/slugkit/userver-build-amd64.
+  userver-tests:
+    name: userver tests
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/slugkit/userver-build-amd64:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    env:
+      CC: clang
+      CXX: clang++
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure
+        run: cmake -S ci -B build/userver -DCMAKE_BUILD_TYPE=Debug
+
+      - name: Build
+        run: cmake --build build/userver --parallel
+
+      - name: Test
+        run: ctest --test-dir build/userver --output-on-failure
