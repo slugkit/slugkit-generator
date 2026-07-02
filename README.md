@@ -4,11 +4,12 @@ A high-performance C++ library for generating aesthetically pleasing, determinis
 
 ## Features
 
-- **Pattern-Based Generation**: Flexible template system supporting dictionary selectors, number generators, and special characters
-- **Dictionary Integration**: Load and filter word dictionaries with language and tag-based constraints
+- **Pattern-Based Generation**: Dictionary selectors, number/special/emoji generators, plus alternation and grouping for choice and correlated selection
+- **Dictionary Integration**: Load and filter word dictionaries with language and tag-based constraints, including hidden opt-in tags
 - **Deterministic Output**: Seed-based generation ensures reproducible results
 - **High Performance**: Optimised C++ implementation with *about*-millisecond generation times (25ns - 3µs, depending on pattern complexity)
-- **Minimal Dependencies**: Core library depends only on `userver::core` for text utilities and strong typedefs
+- **Minimal Dependencies**: Builds against `userver::core`, or fully **userver-free** as a standalone library (`-DSLUGKIT_USE_USERVER=OFF`) for embedding and mobile
+- **C ABI & Mobile Bindings**: A stable C ABI (`slugkit/c/slugkit_c.h`) with Swift, Kotlin, Dart, and Flutter bindings
 - **Optional Serialisation**: JSON/YAML support available as separate headers
 
 ## Quick Start
@@ -144,10 +145,45 @@ SlugKit uses a powerful pattern language that supports multiple element types:
 - `{emoji:count=2-4}` - Variable count between 2-4 emoji
 - `{emoji:+face count=2 unique=true}` - 2 unique face emoji
 
+### Alternation
+
+Use `|` to choose one of several alternatives. Capacity is the **sum** of the branches, and generation stays deterministic and collision-free across the whole set.
+
+- `{adjective}|{noun}` - an adjective **or** a noun
+- `{noun}|{verb}|{number:3d}` - one of three
+- `x-{adjective}|{noun}-y` - surrounding text applies to the whole alternation
+
+Branches whose outputs would coincide are a pattern error (e.g. `{noun}|{noun}`, or `{adverb}|{adverb:+pos}` where one branch is a superset of the other). Byte-identical branches collapse rather than double-count.
+
+### Groups & Correlated Choices
+
+Parentheses group a run of placeholders and literal text into a single unit. Alternating groups locks correlated choices together, so aligned placeholders vary in step rather than independently:
+
+- `({name:+given+male} {name:+surname+male})|({name:+given+female} {name:+surname+female})` - a consistently-gendered full name
+- `(foo)|(bar)` - pure-text branches
+- `({adverb})|()` - an **optional** element: an adverb *or* nothing
+
+The empty branch `()` is an explicit "or nothing" option worth one unit of capacity. A lone group is transparent — `({noun})` is exactly `{noun}` — and a standalone `()` is rejected (it is only meaningful alongside other branches). Groups are flat: no nested groups or alternations. To use `(`, `)` or `|` as literal text, escape them (`\(`, `\|`).
+
+### Opt-in Tags
+
+A tag may be flagged **opt-in** in the dictionary (e.g. `nsfw`). Words carrying an opt-in tag are hidden by default; they appear only when the tag is requested explicitly — `{noun:+nsfw}` — or enabled on the generator as a runtime usage flag:
+
+```cpp
+generator.EnableOptIn("nsfw");   // un-hides nsfw words for this generator; ClearOptIns() restores the default
+```
+
+Enabling a tag un-hides its words without restricting output to them (unlike `+tag`). This is a usage flag, not part of the pattern grammar.
+
 ### Pattern Grammar (EBNF)
 
 ```ebnf
-pattern           := ARBITRARY, { placeholder, ARBITRARY }, [ global_settings ];
+pattern           := ARBITRARY, { element, ARBITRARY }, [ global_settings ];
+element           := alternation | group | placeholder;
+alternation       := group_or_ph, ('|', group_or_ph)+;   {* >= 2 distinct branches after collapse *}
+group_or_ph       := group | placeholder;
+group             := '(', group_body, ')';               {* '()' is valid only as an alternation branch *}
+group_body        := ARBITRARY, { placeholder, ARBITRARY };  {* flat: no nested groups or alternation *}
 placeholder       := '{', (selector | number_gen | special_char_gen | emoji_gen), '}';
 selector          := kind ['@' lang], [':', [tags], [length_constraint], [options]];
 global_settings   := '[' ['@' lang], [tags], [length_constraint], [options] ']';
@@ -183,12 +219,13 @@ DIGIT             := '0'..'9';
 ALPHA             := 'a'..'z' | 'A'..'Z';
 ALNUM             := ALPHA | DIGIT;
 
-ARBITRARY         := { CHAR_NO_BRACE | ESCAPED_CHAR };
-CHAR_NO_BRACE     := ? any character except '{', '}', '\' ?;
+ARBITRARY         := { CHAR_NO_RESERVED | ESCAPED_CHAR };
+CHAR_NO_RESERVED  := ? any character except '{', '}', '(', ')', '|', '\' ?;
 
-ESCAPED_CHAR      := escape_symbol, ('{' | '}' | escape_symbol);
+ESCAPED_CHAR      := escape_symbol, ('{' | '}' | '(' | ')' | '|' | escape_symbol);
 
-{* We want to escape curly braces and the ecsape symbol itself *}
+{* Reserved characters (braces, group parens, the alternation bar) and the escape
+   symbol itself must be escaped to appear as literal text *}
 escape_symbol     := '\';
 ```
 
@@ -378,13 +415,14 @@ The permutation system supports:
 
 - C++20 compatible compiler
 - CMake 3.20+
-- [userver](https://userver.tech) framework (core components only)
+- [userver](https://userver.tech) framework (core components only) — **optional**; omit it with `-DSLUGKIT_USE_USERVER=OFF` for a standalone, dependency-light build (uses `utf8proc` + `fmt` instead)
 
 ### Build Instructions
 
-> [!Caution]
-> Standalone build is not there yet, slugkit directory is supposed to be added
-> to a bigger CMake project with `add_subdirectory`
+> [!NOTE]
+> The library is consumed via `add_subdirectory`. It builds against userver by default;
+> set `-DSLUGKIT_USE_USERVER=OFF` for a userver-free build — this is what the C ABI and
+> the Swift/Kotlin/Dart/Flutter bindings are built on.
 
 ```bash
 mkdir build
@@ -404,11 +442,10 @@ make && make test
 
 ## Dependencies
 
-- **Core library**: `userver::core` (text utilities only)
-- **Optional serialisation**: JSON/YAML that comes with userver (`userver::core`)
+- **Core library (default)**: `userver::core` (text utilities only)
+- **Standalone build** (`SLUGKIT_USE_USERVER=OFF`): no userver — uses `utf8proc` (Unicode casing) and `fmt`. This is what the C ABI and mobile bindings are built on.
+- **Optional serialisation**: JSON/YAML via userver formats
 - **Tests**: Google Test framework
-
-A version without userver dependencies may be provided in future releases or feel free to send me a pull request.
 
 ## Use Cases
 
@@ -425,7 +462,7 @@ Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for gui
 ### Planned Features
 
 - [ ] Benchmarking suite
-- [ ] userver-independent variant
+- [x] userver-independent variant (`SLUGKIT_USE_USERVER=OFF`) + C ABI and Swift/Kotlin/Dart/Flutter bindings
 
 ## Licence
 
