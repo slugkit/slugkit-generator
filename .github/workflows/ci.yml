@@ -96,7 +96,9 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Configure
-        run: cmake -S ci -B build/userver -DCMAKE_BUILD_TYPE=Debug
+        # Release matches how userver is built/installed in the prebuilt image; its CMake config
+        # only ships the release targets file (a Debug configure looks for userver-targets_d.cmake).
+        run: cmake -S ci -B build/userver -DCMAKE_BUILD_TYPE=Release
 
       - name: Build
         run: cmake --build build/userver --parallel
