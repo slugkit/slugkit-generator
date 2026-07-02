@@ -640,8 +640,11 @@ UTEST(PlaceholdersParser, Alternation) {
         ASSERT_TRUE(std::holds_alternative<Pattern::Alternation>(placeholders[0]));
         const auto& alternation = std::get<Pattern::Alternation>(placeholders[0]);
         ASSERT_EQ(alternation.alternatives.size(), 2);
-        EXPECT_TRUE(std::holds_alternative<Selector>(alternation.alternatives[0]));
-        EXPECT_TRUE(std::holds_alternative<Selector>(alternation.alternatives[1]));
+        // Alternatives are Groups; a bare placeholder is a single-placeholder group with no text.
+        ASSERT_EQ(alternation.alternatives[0].placeholders.size(), 1);
+        ASSERT_EQ(alternation.alternatives[1].placeholders.size(), 1);
+        EXPECT_TRUE(std::holds_alternative<Selector>(alternation.alternatives[0].placeholders[0]));
+        EXPECT_TRUE(std::holds_alternative<Selector>(alternation.alternatives[1].placeholders[0]));
     }
     {
         // Whitespace around the pipe is allowed; alternatives may be of mixed placeholder kinds.
@@ -649,9 +652,9 @@ UTEST(PlaceholdersParser, Alternation) {
         ASSERT_EQ(placeholders.size(), 1);
         const auto& alternation = std::get<Pattern::Alternation>(placeholders[0]);
         ASSERT_EQ(alternation.alternatives.size(), 3);
-        EXPECT_TRUE(std::holds_alternative<Selector>(alternation.alternatives[0]));
-        EXPECT_TRUE(std::holds_alternative<NumberGen>(alternation.alternatives[1]));
-        EXPECT_TRUE(std::holds_alternative<EmojiGen>(alternation.alternatives[2]));
+        EXPECT_TRUE(std::holds_alternative<Selector>(alternation.alternatives[0].placeholders[0]));
+        EXPECT_TRUE(std::holds_alternative<NumberGen>(alternation.alternatives[1].placeholders[0]));
+        EXPECT_TRUE(std::holds_alternative<EmojiGen>(alternation.alternatives[2].placeholders[0]));
     }
     // Surrounding text keeps a single alternation placeholder.
     EXPECT_EQ(ParsePlaceholders("pre-{noun}|{verb}-post").size(), 1);
