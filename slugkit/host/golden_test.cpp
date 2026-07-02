@@ -257,6 +257,21 @@ TEST(PatternGenerator, GroupAlternation) {
         PatternGenerator(dictionaries, "({noun:+tag1} {adjective})|({noun} {adjective})"_pattern_ptr),
         PatternSyntaxError
     );
+
+    // An empty branch `()` is an explicit "or nothing" option (capacity +1) among other branches.
+    {
+        PatternGenerator optional_noun(dictionaries, "({noun})|()"_pattern_ptr);
+        EXPECT_EQ(optional_noun.GetCapacity(), 6);  // 5 nouns + the empty option
+        std::set<std::string> seen;
+        for (std::uint64_t i = 0; i < 6; ++i) {
+            seen.insert(optional_noun(seed_hash, i));
+        }
+        EXPECT_EQ(seen.count(""), 1u);  // the empty string is produced
+        EXPECT_EQ(seen.size(), 6u);     // collision-free: 5 nouns + ""
+    }
+    // A standalone or all-empty alternation is rejected.
+    EXPECT_THROW(ParsePattern("()"), PatternSyntaxError);
+    EXPECT_THROW(ParsePattern("()|()"), PatternSyntaxError);
 }
 
 // End-to-end generator: committed full-slug expectations from generator_test.cpp (GenerateID).

@@ -737,10 +737,13 @@ UTEST(PlaceholdersParser, GroupPullUp) {
 }
 
 UTEST(PlaceholdersParser, GroupErrorsAndEscaping) {
-    EXPECT_THROW(ParsePlaceholders("()"), PatternSyntaxError);        // empty group
+    EXPECT_THROW(ParsePlaceholders("()"), PatternSyntaxError);        // standalone empty group
+    EXPECT_THROW(ParsePlaceholders("()|()"), PatternSyntaxError);     // all-empty collapses to standalone
     EXPECT_THROW(ParsePlaceholders("(a|b)"), PatternSyntaxError);     // '|' inside a group
     EXPECT_THROW(ParsePlaceholders("(({a}))"), PatternSyntaxError);   // nested group
     EXPECT_THROW(ParsePlaceholders("{noun})"), PatternSyntaxError);   // unmatched ')'
+    // But an empty branch is allowed as an explicit "or nothing" option in an alternation.
+    EXPECT_EQ(ParsePlaceholders("({noun})|()").size(), 1);
     // Escaped parentheses are literal text: they format to plain parens and round-trip.
     auto pattern = ParsePattern("a\\(b\\)c");
     EXPECT_EQ(pattern.placeholders.size(), 0);

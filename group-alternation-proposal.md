@@ -230,9 +230,12 @@ branch is provably disjoint without enumerating any cross-product.
 
 ## 12. Edge cases
 
-- `()` — empty group (no placeholders, no text): **rejected** with a clear error
-  (decided), matching the "useless generator" checks elsewhere. (A text-only group
-  like `(foo)` is fine — it just pulls up to the literal `foo`.)
+- `()` — empty group (no placeholders, no text): allowed **only as an alternation
+  branch** (an explicit "or nothing" option, e.g. `({adverb})|()`, capacity +1). A
+  standalone or all-empty `()` (including `()|()`, which collapses to one) is
+  rejected. Its generator is the ordinary 0-placeholder group: capacity 1, length
+  0, output `""` — no dedicated empty-generator type. (A text-only group like
+  `(foo)` is fine — it pulls up to the literal `foo`.)
 - `(   )` whitespace-only — treated as literal text group of that whitespace.
 - Unbalanced `(` or `)` — parse error with column.
 - Nested `((…))` — parse error in v1 (flat only).
