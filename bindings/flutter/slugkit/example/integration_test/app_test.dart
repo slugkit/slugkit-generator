@@ -10,14 +10,20 @@ void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   late Generator gen;
+  late Generator colourGen;
 
   setUpAll(() async {
     final emoji = (await rootBundle.load('assets/emoji.bin')).buffer.asUint8List();
     final adverb = (await rootBundle.load('assets/test-adv.slugs')).buffer.asUint8List();
+    final colour = (await rootBundle.load('assets/multilang.colour.bin')).buffer.asUint8List();
     gen = Generator.fromMultiple([adverb, emoji]);
+    colourGen = Generator.fromMultiple([colour]);
   });
 
-  tearDownAll(() => gen.dispose());
+  tearDownAll(() {
+    gen.dispose();
+    colourGen.dispose();
+  });
 
   test('engine version and seed', () {
     expect(gen.version, isNotEmpty);
@@ -50,5 +56,23 @@ void main() {
 
   test('malformed pattern throws', () {
     expect(() => gen.generate('{', 'foobar', 0), throwsA(isA<SlugkitException>()));
+  });
+
+  // Multi-language: one binary dictionary (kind "colour") with distinct en/fr/de pools.
+  test('multi-language selection', () {
+    expect(colourGen.capacity('{colour@en}').value, '3');
+    expect(colourGen.capacity('{colour@fr}').value, '2');
+    expect(colourGen.capacity('{colour@de}').value, '4');
+    // No language defaults to English.
+    expect(colourGen.capacity('{colour}').value, '3');
+    expect(colourGen.generate('{colour}', 'foobar', 0),
+        colourGen.generate('{colour@en}', 'foobar', 0));
+    // A French colour is French.
+    expect(['rouge', 'vert'], contains(colourGen.generate('{colour@fr}', 'foobar', 0)));
+    // Two languages combine: LCM(3,4)=12.
+    expect(colourGen.capacity('{colour@en}-{colour@de}').value, '12');
+    // An absent language is rejected.
+    expect(() => colourGen.generate('{colour@es}', 'foobar', 0),
+        throwsA(isA<SlugkitException>()));
   });
 }

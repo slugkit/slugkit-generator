@@ -261,6 +261,55 @@ int main(void) {
         }
     }
 
+    /* --- multi-language dictionary: one binary dict (kind "colour") with distinct en/fr/de pools --- */
+    {
+        size_t lc = 0;
+        unsigned char* col = read_file(SLK_MULTILANG_BIN_PATH, &lc);
+        CHECK(col != NULL, "read multilang colour dictionary");
+        char* lerr = NULL;
+        slk_generator* lg = slk_generator_create_one(col, lc, &lerr);
+        CHECK(lg != NULL, "create generator from multilang dictionary");
+        free(col);
+        if (lg != NULL) {
+            /* Each language selects its own pool and size (en=3, fr=2, de=4). */
+            char* ce = NULL; char* cf = NULL; char* cd = NULL; char* c0 = NULL;
+            slk_capacity(lg, "{colour@en}", &ce, NULL, &err);
+            slk_capacity(lg, "{colour@fr}", &cf, NULL, &err);
+            slk_capacity(lg, "{colour@de}", &cd, NULL, &err);
+            slk_capacity(lg, "{colour}", &c0, NULL, &err);  /* no language -> defaults to en */
+            CHECK(ce && strcmp(ce, "3") == 0, "capacity({colour@en}) == 3");
+            CHECK(cf && strcmp(cf, "2") == 0, "capacity({colour@fr}) == 2");
+            CHECK(cd && strcmp(cd, "4") == 0, "capacity({colour@de}) == 4");
+            CHECK(c0 && strcmp(c0, "3") == 0, "capacity({colour}) defaults to en == 3");
+            slk_string_free(ce); slk_string_free(cf); slk_string_free(cd); slk_string_free(c0);
+
+            /* {colour} (default) is byte-identical to {colour@en}. */
+            char* d0 = slk_generate_alloc(lg, "{colour}", "foobar", 0, &err);
+            char* e0 = slk_generate_alloc(lg, "{colour@en}", "foobar", 0, &err);
+            CHECK(d0 && e0 && strcmp(d0, e0) == 0, "{colour} == {colour@en}");
+            slk_string_free(d0); slk_string_free(e0);
+
+            /* A French colour is French, not English. */
+            char* fr0 = slk_generate_alloc(lg, "{colour@fr}", "foobar", 0, &err);
+            CHECK(fr0 && (strcmp(fr0, "rouge") == 0 || strcmp(fr0, "vert") == 0),
+                  "{colour@fr} yields a French colour");
+            slk_string_free(fr0);
+
+            /* Two languages of one kind combine: LCM(3, 4) = 12. */
+            char* cc = NULL;
+            slk_capacity(lg, "{colour@en}-{colour@de}", &cc, NULL, &err);
+            CHECK(cc && strcmp(cc, "12") == 0, "capacity({colour@en}-{colour@de}) == LCM(3,4) == 12");
+            slk_string_free(cc);
+
+            /* A language the dictionary does not carry is an error. */
+            char* es = slk_generate_alloc(lg, "{colour@es}", "foobar", 0, &err);
+            CHECK(es == NULL, "absent language {colour@es} is rejected");
+            slk_string_free(es);
+
+            slk_generator_destroy(lg);
+        }
+    }
+
     slk_string_free(a);
     slk_string_free(b);
     slk_string_free(cap);

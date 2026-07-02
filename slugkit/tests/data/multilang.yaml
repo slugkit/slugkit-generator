@@ -1,0 +1,22 @@
+# Small multi-language dictionary fixture for exercising `{kind@lang}` selection on a compiled
+# binary dictionary. One kind ("colour") with three languages holding DISTINCT word sets and
+# distinct sizes (en=3, fr=2, de=4), so language selection is observable in both the pool and the
+# capacity. Compiled with the Python tool:
+#   compile-dict slugkit/tests/data/multilang.yaml -o slugkit/tests/data/multilang.yaml
+# which writes multilang.colour.bin (checked in).
+colour:
+  version: 1.0.0
+  description: Colour names in several languages
+  words:
+    en:
+      red: []
+      green: []
+      blue: []
+    fr:
+      rouge: []
+      vert: []
+    de:
+      rot: []
+      gelb: []
+      blau: []
+      grau: []
