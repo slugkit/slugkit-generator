@@ -67,10 +67,12 @@ struct PatternParser {
                 selector.language = language;
             }
         }
-        // Global settings propagate into alternation children (which are simple placeholders).
+        // Global settings propagate into alternation branches' placeholders.
         void operator()(Pattern::Alternation& alternation) const {
-            for (auto& child : alternation.alternatives) {
-                std::visit(*this, child);
+            for (auto& group : alternation.alternatives) {
+                for (auto& placeholder : group.placeholders) {
+                    std::visit(*this, placeholder);
+                }
             }
         }
         void operator()(auto&&) const {
@@ -84,10 +86,12 @@ struct PatternParser {
                 selector.include_tags.insert(tag);
             }
         }
-        // Global settings propagate into alternation children (which are simple placeholders).
+        // Global settings propagate into alternation branches' placeholders.
         void operator()(Pattern::Alternation& alternation) const {
-            for (auto& child : alternation.alternatives) {
-                std::visit(*this, child);
+            for (auto& group : alternation.alternatives) {
+                for (auto& placeholder : group.placeholders) {
+                    std::visit(*this, placeholder);
+                }
             }
         }
         void operator()(auto&&) const {
@@ -101,10 +105,12 @@ struct PatternParser {
                 selector.exclude_tags.insert(tag);
             }
         }
-        // Global settings propagate into alternation children (which are simple placeholders).
+        // Global settings propagate into alternation branches' placeholders.
         void operator()(Pattern::Alternation& alternation) const {
-            for (auto& child : alternation.alternatives) {
-                std::visit(*this, child);
+            for (auto& group : alternation.alternatives) {
+                for (auto& placeholder : group.placeholders) {
+                    std::visit(*this, placeholder);
+                }
             }
         }
         void operator()(auto&&) const {
@@ -118,10 +124,12 @@ struct PatternParser {
                 selector.size_limit = size_limit;
             }
         }
-        // Global settings propagate into alternation children (which are simple placeholders).
+        // Global settings propagate into alternation branches' placeholders.
         void operator()(Pattern::Alternation& alternation) const {
-            for (auto& child : alternation.alternatives) {
-                std::visit(*this, child);
+            for (auto& group : alternation.alternatives) {
+                for (auto& placeholder : group.placeholders) {
+                    std::visit(*this, placeholder);
+                }
             }
         }
         void operator()(auto&&) const {
@@ -132,7 +140,9 @@ struct PatternParser {
 
     constexpr static char kEscapeChar = '\\';
     constexpr static char kAlternationChar = '|';
-    constexpr static std::string_view kEscapedChars = "\\{}[]|";
+    constexpr static char kGroupOpen = '(';
+    constexpr static char kGroupClose = ')';
+    constexpr static std::string_view kEscapedChars = "\\{}[]|()";
     constexpr static std::string_view kNumberKeyword = "number";
     constexpr static std::string_view kNumKeword = "num";
     constexpr static std::string_view kSpecialCharKeyword = "special";
@@ -211,7 +221,8 @@ struct PatternParser {
     }
 
     bool IsArbitraryText(char c) const {
-        return c != '{' && c != '}' && c != '[' && c != ']' && c != kEscapeChar && c != kAlternationChar;
+        return c != '{' && c != '}' && c != '[' && c != ']' && c != kEscapeChar && c != kAlternationChar &&
+               c != kGroupOpen && c != kGroupClose;
     }
 
     void SkipArbitraryText() {
@@ -529,10 +540,86 @@ struct PatternParser {
         );
     }
 
-    // Hash of a simple placeholder over its full predicate (kind, tags, options, language, size
-    // limit, ...), used to detect equivalent alternatives.
-    static std::int64_t AlternativeHash(const Pattern::SimplePlaceholder& alternative) {
-        return std::visit([](auto&& arg) { return arg.GetHash(); }, alternative);
+    // Consume arbitrary text (and escapes) into `pending`, keeping escapes raw so the canonical form
+    // round-trips and generation un-escapes. Stops at any reserved character.
+    void AccumulateText(std::string& pending) {
+        while (!IsEof()) {
+            char c = Peek();
+            if (IsArbitraryText(c)) {
+                pending.push_back(c);
+                Next();
+                continue;
+            }
+            if (c != kEscapeChar) {
+                break;  // a reserved char handled by the caller
+            }
+            Next();  // consume '\'
+            if (IsEof()) {
+                throw PatternSyntaxError(
+                    fmt::format("Pattern parse error: unexpected end of pattern at column {}", GetCurrentColumn())
+                );
+            }
+            char escaped = Peek();
+            if (kEscapedChars.find(escaped) == std::string_view::npos) {
+                throw PatternSyntaxError(
+                    fmt::format("Pattern parse error: invalid escape `\\{}` at column {}", escaped, GetCurrentColumn())
+                );
+            }
+            pending.push_back(kEscapeChar);  // keep raw; FormatChunks un-escapes at generation time
+            pending.push_back(escaped);
+            Next();
+        }
+    }
+
+    // Parse a group body (between '(' and ')'): text interleaved with placeholders. Flat -- no nested
+    // groups/alternations; `(`, `|`, `[`, `]` inside must be escaped. Does not consume the ')'.
+    Pattern::Group ParseGroupBody() {
+        Pattern::Group group;
+        std::string pending;
+        while (true) {
+            AccumulateText(pending);
+            if (IsEof() || Match(kGroupClose)) {
+                break;
+            }
+            if (Match('{')) {
+                Next();
+                group.text_chunks.push_back(std::move(pending));
+                pending.clear();
+                group.placeholders.push_back(ParseElement());
+                Expect('}');
+            } else {
+                throw PatternSyntaxError(fmt::format(
+                    "Pattern parse error: unexpected `{}` inside group at column {}; escape it for a literal",
+                    Peek(),
+                    GetCurrentColumn()
+                ));
+            }
+        }
+        group.text_chunks.push_back(std::move(pending));  // trailing text; text.size() == ph.size() + 1
+        return group;
+    }
+
+    // Parse one alternation branch: a parenthesised group `( ... )`, or a bare placeholder `{ ... }`
+    // wrapped as a single-placeholder group with no surrounding text.
+    Pattern::Group ParseAlternationElement() {
+        if (Match(kGroupOpen)) {
+            Next();  // consume '('
+            auto group = ParseGroupBody();
+            Expect(kGroupClose);
+            if (group.placeholders.empty() && group.text_chunks.size() == 1 && group.text_chunks[0].empty()) {
+                throw PatternSyntaxError(
+                    fmt::format("Pattern parse error: empty group `()` at column {}", GetCurrentColumn())
+                );
+            }
+            return group;
+        }
+        Expect('{');
+        Pattern::Group group;
+        group.text_chunks.emplace_back();  // leading ""
+        group.placeholders.push_back(ParseElement());
+        Expect('}');
+        group.text_chunks.emplace_back();  // trailing ""
+        return group;
     }
 
     Pattern::SimplePlaceholder ParseElement() {
@@ -600,94 +687,89 @@ struct PatternParser {
 
     Pattern::Placeholders operator()(Pattern::TextChunks& text_chunks) {
         Pattern::Placeholders result;
-        auto arbitrary_start = pos_;
-        auto arbitrary_text_end = pattern_.end();
+        std::string pending;  // arbitrary text (raw, escapes kept) awaiting the next element
+
+        // Push an element (placeholder or alternation) preceded by the accumulated pending text.
+        // Keeps text_chunks.size() == result.size() until the trailing chunk is pushed at EOF.
+        auto push_element = [&](Pattern::PatternElement&& element) {
+            text_chunks.push_back(pending);
+            pending.clear();
+            result.push_back(std::move(element));
+        };
+        // Pull a group up into the enclosing pattern: parentheses are transparent, so the group's
+        // text and placeholders are inlined, boundary text merging with `pending`. Exact equivalence
+        // to writing the group's contents unparenthesised.
+        auto pull_up = [&](Pattern::Group&& group) {
+            pending += group.text_chunks.front();
+            for (std::size_t i = 0; i < group.placeholders.size(); ++i) {
+                text_chunks.push_back(pending);
+                pending = group.text_chunks[i + 1];
+                result.push_back(ToPatternElement(std::move(group.placeholders[i])));
+            }
+        };
+
         while (!IsEof()) {
-            SkipArbitraryText();
+            AccumulateText(pending);
             if (IsEof()) {
-                text_chunks.push_back(std::string_view(arbitrary_start, pos_));
                 break;
             }
-            if (Match('{')) {
-                // We push arbitrary text before the placeholder to the text chunks.
-                // Empty text chunks are also pushed.
-                // Postcondition: text_chunks.size() == result.size() + 1.
-                text_chunks.push_back(std::string_view(arbitrary_start, pos_));
-                Next();
-                auto element = ParseElement();
-                Expect('}');
-                // Alternation: `{a}|{b}|...` (whitespace allowed around `|`). A run of pipe-separated
-                // placeholders becomes a single Alternation element.
-                auto element_end = pos_;
+            if (Match('{') || Match(kGroupOpen)) {
+                // Alternation run: `elem (| elem)*`, each branch a group `(...)` or bare placeholder.
+                std::vector<Pattern::Group> branches;
+                branches.push_back(ParseAlternationElement());
+                auto run_end = pos_;
                 SkipWhitespace();
-                if (Match(kAlternationChar)) {
-                    std::vector<Pattern::SimplePlaceholder> alternatives;
-                    alternatives.push_back(std::move(element));
-                    do {
-                        Next();  // consume '|'
-                        SkipWhitespace();
-                        Expect('{');
-                        alternatives.push_back(ParseElement());
-                        Expect('}');
-                        element_end = pos_;
-                        SkipWhitespace();
-                    } while (Match(kAlternationChar));
-                    pos_ = element_end;  // trailing whitespace after the last alternative is text
-                    // Collapse equivalent alternatives (same predicate incl. tags/options): they add
-                    // no variance and would otherwise double the capacity and let the same output
-                    // appear from more than one branch. Order is preserved (first occurrence wins).
-                    std::vector<Pattern::SimplePlaceholder> distinct;
-                    for (auto& alternative : alternatives) {
-                        auto hash = AlternativeHash(alternative);
-                        bool duplicate = false;
-                        for (const auto& kept : distinct) {
-                            if (kept.index() == alternative.index() && AlternativeHash(kept) == hash) {
-                                duplicate = true;
-                                break;
-                            }
-                        }
-                        if (!duplicate) {
-                            distinct.push_back(std::move(alternative));
-                        }
-                    }
-                    if (distinct.size() == 1) {
-                        // All alternatives were equivalent; it is a plain placeholder, not an alternation.
-                        result.push_back(ToPatternElement(std::move(distinct.front())));
-                    } else {
-                        result.push_back(Pattern::Alternation{std::move(distinct)});
-                    }
-                } else {
-                    pos_ = element_end;  // no alternation; the skipped whitespace is arbitrary text
-                    result.push_back(ToPatternElement(std::move(element)));
+                while (Match(kAlternationChar)) {
+                    Next();  // consume '|'
+                    SkipWhitespace();
+                    branches.push_back(ParseAlternationElement());
+                    run_end = pos_;
+                    SkipWhitespace();
                 }
-                arbitrary_start = pos_;
+                pos_ = run_end;  // trailing whitespace after the run is arbitrary text
+
+                // Collapse equivalent branches (same text + same placeholder predicates, via
+                // Group::GetHash): they add no variance. Order preserved (first occurrence wins).
+                std::vector<Pattern::Group> distinct;
+                for (auto& branch : branches) {
+                    auto hash = branch.GetHash();
+                    bool duplicate = false;
+                    for (const auto& kept : distinct) {
+                        if (kept.GetHash() == hash) {
+                            duplicate = true;
+                            break;
+                        }
+                    }
+                    if (!duplicate) {
+                        distinct.push_back(std::move(branch));
+                    }
+                }
+
+                if (distinct.size() == 1) {
+                    // Lone group / all-equivalent alternation: pull up (parentheses are transparent).
+                    pull_up(std::move(distinct.front()));
+                } else {
+                    push_element(Pattern::Alternation{std::move(distinct)});
+                }
             } else if (Match('[')) {
-                arbitrary_text_end = pos_;
                 Next();
                 ParseGlobalSettings(result);
                 Expect(']');
                 SkipWhitespace();
-                // Expect EOF
                 if (!IsEof()) {
                     throw PatternSyntaxError(
                         fmt::format("Pattern parse error: unexpected character at column {}", GetCurrentColumn())
                     );
                 }
-            } else if (Match(kEscapeChar)) {
-                Next();
-                if (IsEof()) {
-                    throw PatternSyntaxError(
-                        fmt::format("Pattern parse error: unexpected end of pattern at column {}", GetCurrentColumn())
-                    );
-                }
-                ExpectOneOf(kEscapedChars);
-                // The escape (backslash + char) stays in the arbitrary-text run and is resolved at
-                // format time (SlugFormatter un-escapes `\X` -> `X`).
             } else if (Match(kAlternationChar)) {
                 throw PatternSyntaxError(fmt::format(
                     "Pattern parse error: unexpected `|` at column {}; alternation must be between "
-                    "placeholders (`{{a}}|{{b}}`); escape as `\\|` for a literal pipe",
+                    "placeholders or groups; escape as `\\|` for a literal pipe",
                     GetCurrentColumn()
+                ));
+            } else if (Match(kGroupClose)) {
+                throw PatternSyntaxError(fmt::format(
+                    "Pattern parse error: unmatched `)` at column {}; escape as `\\)` for a literal", GetCurrentColumn()
                 ));
             } else {
                 throw PatternSyntaxError(
@@ -695,9 +777,7 @@ struct PatternParser {
                 );
             }
         }
-        if (text_chunks.size() == result.size()) {
-            text_chunks.push_back(std::string_view(arbitrary_start, arbitrary_text_end));
-        }
+        text_chunks.push_back(std::move(pending));  // final chunk; text_chunks.size()==result.size()+1
         return result;
     }
 };

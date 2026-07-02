@@ -458,4 +458,32 @@ UTEST(PatternGenerator, AlternationCollapseAndDisjoint) {
     EXPECT_NO_THROW(PatternGenerator(kDictionariesSet, "{noun}|{verb}"_pattern_ptr));
 }
 
+UTEST(PatternGenerator, GroupAlternation) {
+    auto seed_hash = PatternGenerator::SeedHash(kTestSeed);
+
+    // Pull-up: a lone group is transparent -- same capacity AND same output as unparenthesised.
+    EXPECT_EQ(PatternGenerator(kDictionariesSet, "({noun})"_pattern_ptr).GetCapacity(), 5);
+    EXPECT_EQ(PatternGenerator(kDictionariesSet, "({adjective} {noun})"_pattern_ptr).GetCapacity(), 35);
+    EXPECT_EQ(PatternGenerator(kDictionariesSet, "pre-({adjective} {noun})-post"_pattern_ptr).GetCapacity(), 35);
+    {
+        PatternGenerator grouped(kDictionariesSet, "({adjective} {noun})"_pattern_ptr);
+        PatternGenerator plain(kDictionariesSet, "{adjective} {noun}"_pattern_ptr);
+        for (std::uint64_t i = 0; i < 20; ++i) {
+            EXPECT_EQ(grouped(seed_hash, i), plain(seed_hash, i));  // pull-up is exact
+        }
+    }
+
+    // Group alternation capacity is the sum of the branches' LCMs:
+    // LCM(noun=5, verb=10)=10; LCM(adjective=7, adverb=9)=63; total 73.
+    EXPECT_EQ(PatternGenerator(kDictionariesSet, "({noun} {verb})|({adjective} {adverb})"_pattern_ptr).GetCapacity(), 73);
+    EXPECT_EQ(PatternGenerator(kDictionariesSet, "(foo)|(bar)"_pattern_ptr).GetCapacity(), 2);
+
+    // Disjoint branches are fine; overlapping ones are a pattern error (subset at every position).
+    EXPECT_NO_THROW(PatternGenerator(kDictionariesSet, "({noun} {verb})|({adjective} {adverb})"_pattern_ptr));
+    EXPECT_THROW(
+        PatternGenerator(kDictionariesSet, "({noun:+tag1} {adjective})|({noun} {adjective})"_pattern_ptr),
+        PatternSyntaxError
+    );
+}
+
 }  // namespace slugkit::generator

@@ -8,8 +8,9 @@
 #include <slugkit/utils/text.hpp>
 
 #include <cstdint>
+#include <optional>
 #include <stdexcept>
-#include <unordered_map>
+#include <unordered_set>
 
 namespace slugkit::generator {
 
@@ -362,6 +363,39 @@ std::string AlternationSubstitutionGenerator::Generate(std::uint32_t seed, std::
 }
 
 //-------------------------------------------------------------
+// GroupSubstitutionGenerator
+//-------------------------------------------------------------
+GroupSubstitutionGenerator::GroupSubstitutionGenerator(
+    std::vector<SubstitutionGeneratorPtr> generators,
+    Pattern::TextChunks text_chunks
+)
+    : generators_{std::move(generators)}
+    , text_chunks_{std::move(text_chunks)}
+    , capacity_{1}
+    , max_length_{0} {
+    for (const auto& chunk : text_chunks_) {
+        max_length_ += chunk.size();
+    }
+    for (const auto& generator : generators_) {
+        // Placeholders inside a group compose like the top-level pattern: LCM capacity.
+        capacity_ = lcm(capacity_, generator->GetCapacity());
+        max_length_ += generator->GetMaxLength();
+    }
+}
+
+std::string GroupSubstitutionGenerator::Generate(std::uint32_t seed, std::size_t sequence_number) const {
+    // Same composition as PatternGenerator::Impl::Generate: seed-step each placeholder, format with
+    // the group's own text chunks (un-escaping literal escapes at generation time).
+    std::vector<std::string> substitutions;
+    substitutions.reserve(generators_.size());
+    for (const auto& generator : generators_) {
+        seed += kSeedStep;
+        substitutions.push_back(generator->Generate(seed, sequence_number));
+    }
+    return FormatChunks(text_chunks_, substitutions, /*unescape_text=*/true);
+}
+
+//-------------------------------------------------------------
 // PatternGenerator::Impl
 //-------------------------------------------------------------
 namespace {
@@ -437,34 +471,120 @@ auto BuildSimpleGenerator(const DictSet& dictionaries, const Pattern::SimplePlac
     return MakeEmojiGenerator(emoji_dict, emoji_gen);
 }
 
-// Final validation sweep for an alternation: the alternatives' output sets must be pairwise
-// disjoint, otherwise the alternation is not collision-free (two branches could produce the same
-// string -- e.g. a word that is both a noun and a verb, or `{adverb}` overlapping the subset
-// `{adverb:+pos}`). Enumerate each child's outputs and require no string appears twice. Children
-// whose output space is too large to enumerate (big number generators, large mixed-case selectors)
-// are skipped -- their outputs are effectively distinct in practice.
+// Enumerate a generator's full output set, or nullopt if it is too large to enumerate.
+auto EnumerateOutputs(const SubstitutionGenerator& generator) -> std::optional<std::unordered_set<std::string>> {
+    constexpr std::uint64_t kMaxEnumerate = 100000;
+    if (generator.GetCapacity() > numeric::BigInt(kMaxEnumerate)) {
+        return std::nullopt;
+    }
+    auto count = static_cast<std::uint64_t>(generator.GetCapacity());
+    std::unordered_set<std::string> outputs;
+    outputs.reserve(count);
+    for (std::uint64_t s = 0; s < count; ++s) {
+        outputs.insert(generator.Generate(0, s));
+    }
+    return outputs;
+}
+
+bool SetsOverlap(const std::unordered_set<std::string>& a, const std::unordered_set<std::string>& b) {
+    const auto& small = a.size() <= b.size() ? a : b;
+    const auto& large = a.size() <= b.size() ? b : a;
+    for (const auto& value : small) {
+        if (large.count(value) != 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+enum class Disjointness { kDisjoint, kOverlap, kUnknown };
+
+// Do two placeholders' output sets overlap? kUnknown if either is too large to enumerate.
+template <typename DictSet>
+auto PlaceholderDisjointness(
+    const DictSet& dictionaries,
+    const Pattern::SimplePlaceholder& a,
+    const Pattern::SimplePlaceholder& b
+) -> Disjointness {
+    auto set_a = EnumerateOutputs(*BuildSimpleGenerator(dictionaries, a));
+    auto set_b = EnumerateOutputs(*BuildSimpleGenerator(dictionaries, b));
+    if (!set_a || !set_b) {
+        return Disjointness::kUnknown;
+    }
+    return SetsOverlap(*set_a, *set_b) ? Disjointness::kOverlap : Disjointness::kDisjoint;
+}
+
+std::string UnescapeChunk(const std::string& chunk) {
+    std::string result;
+    for (std::size_t i = 0; i < chunk.size(); ++i) {
+        if (chunk[i] == '\\' && i + 1 < chunk.size()) {
+            result.push_back(chunk[++i]);
+        } else {
+            result.push_back(chunk[i]);
+        }
+    }
+    return result;
+}
+
+// Can two branch groups produce the same slug? Same-shape branches use the per-position refinement
+// (a product of positions is empty iff any factor is empty), which only enumerates each placeholder
+// (cheap) rather than the whole cross-product. Different-shape branches fall back to bounded
+// full-output enumeration. Pairs that are too large to decide are treated as non-overlapping.
+template <typename DictSet>
+bool GroupsOverlap(
+    const DictSet& dictionaries,
+    const Pattern::Group& g1,
+    const SubstitutionGenerator& gen1,
+    const Pattern::Group& g2,
+    const SubstitutionGenerator& gen2
+) {
+    if (g1.placeholders.size() == g2.placeholders.size()) {
+        for (std::size_t k = 0; k < g1.text_chunks.size(); ++k) {
+            if (UnescapeChunk(g1.text_chunks[k]) != UnescapeChunk(g2.text_chunks[k])) {
+                return false;  // differing literal text separates the branches
+            }
+        }
+        bool any_unknown = false;
+        for (std::size_t i = 0; i < g1.placeholders.size(); ++i) {
+            switch (PlaceholderDisjointness(dictionaries, g1.placeholders[i], g2.placeholders[i])) {
+                case Disjointness::kDisjoint:
+                    return false;  // this position separates the branches
+                case Disjointness::kUnknown:
+                    any_unknown = true;
+                    break;
+                case Disjointness::kOverlap:
+                    break;
+            }
+        }
+        return !any_unknown;  // all positions overlap (text equal) -> overlap; unknown -> best-effort allow
+    }
+    // Different shape: bounded full-output enumeration.
+    auto set1 = EnumerateOutputs(gen1);
+    auto set2 = EnumerateOutputs(gen2);
+    if (!set1 || !set2) {
+        return false;
+    }
+    return SetsOverlap(*set1, *set2);
+}
+
+// Validation sweep: alternation branches must be pairwise disjoint, else the alternation is not
+// collision-free (two branches producing the same slug -- a word that is both a noun and a verb, or
+// a superset like `{adverb}` overlapping `{adverb:+pos}`).
+template <typename DictSet>
 void CheckAlternativesDisjoint(
+    const DictSet& dictionaries,
     const std::vector<SubstitutionGeneratorPtr>& children,
     const Pattern::Alternation& alternation
 ) {
-    constexpr std::uint64_t kMaxEnumerate = 100000;
-    auto describe = [&alternation](std::size_t index) {
-        return std::visit([](auto&& arg) { return "{" + arg.ToString() + "}"; }, alternation.alternatives[index]);
-    };
-    std::unordered_map<std::string, std::size_t> seen;
-    for (std::size_t i = 0; i < children.size(); ++i) {
-        if (children[i]->GetCapacity() > numeric::BigInt(kMaxEnumerate)) {
-            continue;
-        }
-        auto count = static_cast<std::uint64_t>(children[i]->GetCapacity());
-        for (std::uint64_t s = 0; s < count; ++s) {
-            auto [it, inserted] = seen.try_emplace(children[i]->Generate(0, s), i);
-            if (!inserted && it->second != i) {
+    for (std::size_t i = 0; i < alternation.alternatives.size(); ++i) {
+        for (std::size_t j = i + 1; j < alternation.alternatives.size(); ++j) {
+            if (GroupsOverlap(
+                    dictionaries, alternation.alternatives[i], *children[i], alternation.alternatives[j], *children[j]
+                )) {
                 throw PatternSyntaxError(fmt::format(
-                    "Alternation alternatives {} and {} overlap: both can produce `{}`",
-                    describe(it->second),
-                    describe(i),
-                    it->first
+                    "Alternation branches `{}` and `{}` overlap: they can produce the same slug",
+                    alternation.alternatives[i].ToString(),
+                    alternation.alternatives[j].ToString()
                 ));
             }
         }
@@ -472,15 +592,31 @@ void CheckAlternativesDisjoint(
 }
 
 template <typename DictSet>
+auto BuildGroupGenerator(const DictSet& dictionaries, const Pattern::Group& group) -> SubstitutionGeneratorPtr {
+    // A bare single placeholder with no surrounding text is exactly that placeholder -- build it
+    // directly (no group wrapper), so placeholder alternation `{a}|{b}` keeps its seed stepping and
+    // stays byte-identical to before groups existed.
+    if (group.placeholders.size() == 1 && group.text_chunks[0].empty() && group.text_chunks[1].empty()) {
+        return BuildSimpleGenerator(dictionaries, group.placeholders[0]);
+    }
+    std::vector<SubstitutionGeneratorPtr> generators;
+    generators.reserve(group.placeholders.size());
+    for (const auto& placeholder : group.placeholders) {
+        generators.push_back(BuildSimpleGenerator(dictionaries, placeholder));
+    }
+    return std::make_unique<GroupSubstitutionGenerator>(std::move(generators), group.text_chunks);
+}
+
+template <typename DictSet>
 auto BuildAlternationGenerator(const DictSet& dictionaries, const Pattern::Alternation& alternation, bool validate)
     -> SubstitutionGeneratorPtr {
     std::vector<SubstitutionGeneratorPtr> children;
     children.reserve(alternation.alternatives.size());
-    for (const auto& alternative : alternation.alternatives) {
-        children.push_back(BuildSimpleGenerator(dictionaries, alternative));
+    for (const auto& branch : alternation.alternatives) {
+        children.push_back(BuildGroupGenerator(dictionaries, branch));
     }
     if (validate) {
-        CheckAlternativesDisjoint(children, alternation);
+        CheckAlternativesDisjoint(dictionaries, children, alternation);
     }
     return std::make_unique<AlternationSubstitutionGenerator>(std::move(children));
 }

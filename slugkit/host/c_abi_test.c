@@ -191,6 +191,29 @@ int main(void) {
             char* ov = slk_generate_alloc(mg, "{adverb:+pos}|{adverb}", "s", 0, &err);
             CHECK(ov == NULL, "overlapping alternatives (superset) are rejected");
 
+            /* --- group alternation --- */
+            /* Pull-up: a lone group is transparent (same output as unparenthesised). */
+            char* pg = slk_generate_alloc(mg, "({adverb})", "s", 0, &err);
+            char* pp = slk_generate_alloc(mg, "{adverb}", "s", 0, &err);
+            CHECK(pg && pp && strcmp(pg, pp) == 0, "lone group `({adverb})` == `{adverb}`");
+            slk_string_free(pg);
+            slk_string_free(pp);
+            /* Escaped parens are literal. */
+            char* ep = slk_generate_alloc(mg, "a\\(b\\)c", "s", 0, &err);
+            CHECK(ep && strcmp(ep, "a(b)c") == 0, "escaped parens `a\\(b\\)c` -> `a(b)c`");
+            slk_string_free(ep);
+            /* Group alternation capacity = sum of branch LCMs: LCM(3619,1154)*2 = 8352652. */
+            char* gc = NULL;
+            slk_capacity(mg, "({adverb} {emoji})|({emoji} {adverb})", &gc, NULL, &err);
+            CHECK(gc && strcmp(gc, "8352652") == 0, "group alternation capacity is the sum of branch LCMs");
+            slk_string_free(gc);
+            /* Per-position overlap error: same second placeholder, first is a superset. */
+            char* go = slk_generate_alloc(mg, "({adverb:+pos} {emoji})|({adverb} {emoji})", "s", 0, &err);
+            CHECK(go == NULL, "overlapping group branches are rejected (per-position)");
+            /* Empty group is rejected. */
+            char* eg = slk_generate_alloc(mg, "()", "s", 0, &err);
+            CHECK(eg == NULL, "empty group `()` is rejected");
+
             slk_generator_destroy(mg);
         }
     }

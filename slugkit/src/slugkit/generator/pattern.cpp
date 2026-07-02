@@ -37,38 +37,88 @@ std::string Pattern::ToString() const {
     return SlugFormatter(*this, /*unescape_text=*/false)(substitutions);
 }
 
+std::string Pattern::Group::ToString() const {
+    // Canonical inner content: text and placeholders interleaved. Text is kept verbatim (escapes
+    // preserved so it re-parses); each placeholder is wrapped in braces.
+    std::string result;
+    for (std::size_t i = 0; i < placeholders.size(); ++i) {
+        result += text_chunks[i];
+        std::visit([&result](auto&& arg) { result += fmt::format("{{{}}}", arg.ToString()); }, placeholders[i]);
+    }
+    result += text_chunks.back();
+    return result;
+}
+
+std::int64_t Pattern::Group::GetHash() const {
+    std::size_t seed = 0;
+    for (const auto& chunk : text_chunks) {
+        boost::hash_combine(seed, FNV1aHash(chunk));
+    }
+    for (const auto& placeholder : placeholders) {
+        std::visit([&seed](auto&& arg) { boost::hash_combine(seed, arg.GetHash()); }, placeholder);
+    }
+    return seed;
+}
+
+std::int32_t Pattern::Group::Complexity() const {
+    std::int32_t cost = 0;
+    for (const auto& placeholder : placeholders) {
+        std::visit([&cost](auto&& arg) { cost += arg.Complexity(); }, placeholder);
+    }
+    return cost;
+}
+
+bool Pattern::Group::IsNSFW() const {
+    for (const auto& placeholder : placeholders) {
+        if (std::holds_alternative<Selector>(placeholder) && std::get<Selector>(placeholder).IsNSFW()) {
+            return true;
+        }
+    }
+    return false;
+}
+
 std::string Pattern::Alternation::ToString() const {
     std::string result;
     bool first = true;
-    for (const auto& alt : alternatives) {
+    for (const auto& branch : alternatives) {
         if (!first) {
             result += '|';
         }
         first = false;
-        std::visit([&result](auto&& arg) { result += fmt::format("{{{}}}", arg.ToString()); }, alt);
+        // A single bare placeholder renders without parentheses ({noun}); anything else (multiple
+        // placeholders, or literal text around them) is parenthesised.
+        const bool bare = branch.placeholders.size() == 1 && branch.text_chunks[0].empty() &&
+                          branch.text_chunks[1].empty();
+        if (bare) {
+            result += branch.ToString();
+        } else {
+            result += '(';
+            result += branch.ToString();
+            result += ')';
+        }
     }
     return result;
 }
 
 std::int64_t Pattern::Alternation::GetHash() const {
     std::size_t seed = 0;
-    for (const auto& alt : alternatives) {
-        std::visit([&seed](auto&& arg) { boost::hash_combine(seed, arg.GetHash()); }, alt);
+    for (const auto& branch : alternatives) {
+        boost::hash_combine(seed, branch.GetHash());
     }
     return seed;
 }
 
 std::int32_t Pattern::Alternation::Complexity() const {
     std::int32_t cost = 0;
-    for (const auto& alt : alternatives) {
-        std::visit([&cost](auto&& arg) { cost += arg.Complexity(); }, alt);
+    for (const auto& branch : alternatives) {
+        cost += branch.Complexity();
     }
     return cost;
 }
 
 bool Pattern::Alternation::IsNSFW() const {
-    for (const auto& alt : alternatives) {
-        if (std::holds_alternative<Selector>(alt) && std::get<Selector>(alt).IsNSFW()) {
+    for (const auto& branch : alternatives) {
+        if (branch.IsNSFW()) {
             return true;
         }
     }
@@ -157,6 +207,27 @@ void AppendText(std::string& result, std::string_view chunk, bool unescape) {
 
 }  // namespace
 
+std::string FormatChunks(const Pattern::TextChunks& text_chunks, const Pattern::Substitutions& substitutions,
+                         bool unescape_text) {
+    // Invariant: text_chunks.size() == substitutions.size() + 1. Shared by SlugFormatter (whole
+    // pattern) and the group substitution generator (a group's sub-pattern).
+    std::size_t reserve = 0;
+    for (const auto& chunk : text_chunks) {
+        reserve += chunk.size();
+    }
+    for (const auto& substitution : substitutions) {
+        reserve += substitution.size();
+    }
+    std::string result;
+    result.reserve(reserve);
+    for (std::size_t i = 0; i < substitutions.size(); ++i) {
+        AppendText(result, text_chunks[i], unescape_text);
+        result += substitutions[i];
+    }
+    AppendText(result, text_chunks.back(), unescape_text);
+    return result;
+}
+
 SlugFormatter::SlugFormatter(const Pattern& pattern, bool unescape_text)
     : pattern_(pattern)
     , unescape_text_(unescape_text) {
@@ -168,30 +239,7 @@ std::string SlugFormatter::operator()(Substitutions substitutions) const {
             fmt::format("Expected {} substitutions, got {}", pattern_.placeholders.size(), substitutions.size())
         );
     }
-
-    auto subsitutions_length = std::accumulate(
-        substitutions.begin(),
-        substitutions.end(),
-        std::size_t(0),
-        [](std::size_t sum, const std::string& substitution) { return sum + substitution.size(); }
-    );
-    auto arbitrary_text_length = pattern_.ArbitraryTextLength();
-
-    std::string result;
-    result.reserve(arbitrary_text_length + subsitutions_length);
-
-    auto text_chunk_iter = pattern_.text_chunks.begin();
-    auto substitution_iter = substitutions.begin();
-
-    while (substitution_iter != substitutions.end()) {
-        AppendText(result, *text_chunk_iter, unescape_text_);
-        text_chunk_iter++;
-        result.append(*substitution_iter);
-        substitution_iter++;
-    }
-    AppendText(result, *text_chunk_iter, unescape_text_);
-
-    return result;
+    return FormatChunks(pattern_.text_chunks, substitutions, unescape_text_);
 }
 
 namespace literals {
