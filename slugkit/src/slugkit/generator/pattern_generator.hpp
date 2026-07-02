@@ -310,13 +310,15 @@ public:
     static std::uint32_t SeedHash(std::string_view seed);
 
 private:
-    // Impl size differs by toolchain/stdlib (userver/gcc+libstdc++ vs standalone clang+libc++),
-    // so the pimpl storage is sized per build.
+    // Impl size differs by toolchain/stdlib. The standalone (non-userver) FastPimpl treats the
+    // constant as an upper bound (static_assert Size >= sizeof(Impl)), so it must cover the
+    // largest standalone stdlib: libstdc++ (Linux) Impl is 160 bytes, libc++ (macOS/mobile) fits
+    // within that. The userver build uses strict equality and its own value.
 #ifdef SLUGKIT_USE_USERVER
     static constexpr std::size_t kPimplSize = 160UL;
     static constexpr std::size_t kPimplAlign = 16UL;
 #else
-    static constexpr std::size_t kPimplSize = 144UL;
+    static constexpr std::size_t kPimplSize = 160UL;
     static constexpr std::size_t kPimplAlign = 16UL;
 #endif
     struct Impl;
