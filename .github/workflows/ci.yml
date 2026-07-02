@@ -95,6 +95,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # The image bundles userver + fmt + boost but not utf8proc (a pure-C dep of utils/text.cpp).
+      - name: Install utf8proc
+        run: apt-get update && apt-get install -y --no-install-recommends libutf8proc-dev
+
       - name: Configure
         # Release matches how userver is built/installed in the prebuilt image; its CMake config
         # only ships the release targets file (a Debug configure looks for userver-targets_d.cmake).
