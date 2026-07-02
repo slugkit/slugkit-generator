@@ -9,14 +9,12 @@
 #include <slugkit/generator/exceptions.hpp>
 #include <slugkit/generator/generator.hpp>
 #include <slugkit/generator/pattern_generator.hpp>
+#include <slugkit/utils/memory_mapped_file.hpp>
 #include <slugkit/utils/text.hpp>
 
 #include <gtest/gtest.h>
 
-#include <cstddef>
-#include <fstream>
 #include <iostream>
-#include <iterator>
 #include <memory>
 #include <set>
 #include <string>
@@ -307,16 +305,12 @@ TEST(Generator, SelfConsistent) {
 
 #ifdef SLK_ADVERB_BIN_PATH
 namespace {
-// Load a compiled binary dictionary into a Generator. The file bytes are held alive by a shared
-// keepalive for the dictionary set's lifetime.
-binary::DictionarySet LoadBinaryAdverbs() {
-    std::ifstream file(SLK_ADVERB_BIN_PATH, std::ios::binary);
-    auto bytes = std::make_shared<std::vector<std::byte>>();
-    for (std::istreambuf_iterator<char> it(file), end; it != end; ++it) {
-        bytes->push_back(static_cast<std::byte>(*it));
-    }
+// Load a compiled binary dictionary into a set. The memory-mapped file is the keepalive: it owns
+// the bytes and is retained by the set, so the mapping outlives the dictionaries that view it.
+binary::DictionarySet LoadBinaryDictionary(const char* path) {
+    auto mapping = std::make_shared<utils::MemoryMappedFile>(path);
     binary::DictionarySet dictionaries;
-    dictionaries.Add(binary::DictionarySet::RawData{bytes->data(), bytes->size()}, bytes);
+    dictionaries.Add(mapping->data(), mapping);
     return dictionaries;
 }
 }  // namespace
@@ -324,7 +318,7 @@ binary::DictionarySet LoadBinaryAdverbs() {
 // Honest opt-ins (binary path): test-adv marks `nsfw` opt-in (4 adverbs). They are hidden by
 // default, selectable with an explicit `+nsfw`, and unhidden by the per-generator usage flag.
 TEST(Generator, OptInTags) {
-    Generator generator(LoadBinaryAdverbs());
+    Generator generator(LoadBinaryDictionary(SLK_ADVERB_BIN_PATH));
 
     // Default: the 4 nsfw adverbs are hidden -> pool is 3619 - 4 = 3615.
     EXPECT_EQ(generator.GetCapacity("{adverb}").capacity, 3615);
