@@ -1,0 +1,15 @@
+# A verbatim dictionary fixture: `case_mutation: false` disables lower/upper/title generation, so
+# words are stored and emitted exactly as written. The chosen words have distinctive casing that
+# lower/upper/title would corrupt (iPhone, eBay, LaTeX) plus a multi-word phrase. Compiled with:
+#   compile-dict slugkit/tests/data/verbatim.yaml -o slugkit/tests/data/verbatim.yaml
+# which writes verbatim.corpus.bin (checked in).
+corpus:
+  version: 1.0.0
+  description: Verbatim copy corpus (case mutation disabled)
+  case_mutation: false
+  words:
+    en:
+      iPhone: []
+      eBay: []
+      LaTeX: []
+      "Game Over": []

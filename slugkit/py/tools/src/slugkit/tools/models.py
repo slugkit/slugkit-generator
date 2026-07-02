@@ -41,8 +41,16 @@ class DictionaryData(BaseModel):
     
     version: str = Field(..., description="The version of the dictionary")
     description: Optional[str] = Field(None, description="Description of the dictionary")
+    case_mutation: bool = Field(
+        True,
+        description=(
+            "Whether to generate lower/upper/title case variants for each word. "
+            "Set false for a verbatim dictionary (e.g. a fixed copy corpus for a game): "
+            "words are stored as-is and every selector case yields the original text."
+        ),
+    )
     words: Dict[str, Dict[str, List[str]]] = Field(
-        ..., 
+        ...,
         description="Mapping of language codes to word data objects"
     )
     tags: Optional[Dict[str, TagData]] = Field(

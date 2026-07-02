@@ -41,6 +41,14 @@ public:
         total_ += BlockSize(word);
     }
 
+    /// @brief Append a word that has exactly one cased form (block size 1) -- a verbatim word with
+    /// no case variants. Keeps mixed-case selection collision-free for such words (one slot that
+    /// maps back to the word itself, with no case toggling applied).
+    void AddUnitWord() {
+        prefix_.push_back(total_);
+        total_ += 1;
+    }
+
     /// @brief Build the layout from @p count words, where @c at(i) returns the lower-case bytes
     /// of word @c i in generation order. Convenience for random-access (in-memory) dictionaries.
     template <typename WordAt>

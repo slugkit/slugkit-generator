@@ -303,7 +303,7 @@ TEST(Generator, SelfConsistent) {
     }
 }
 
-#if defined(SLK_ADVERB_BIN_PATH) || defined(SLK_MULTILANG_BIN_PATH)
+#if defined(SLK_ADVERB_BIN_PATH) || defined(SLK_MULTILANG_BIN_PATH) || defined(SLK_VERBATIM_BIN_PATH)
 namespace {
 // Load a compiled binary dictionary into a set. The memory-mapped file is the keepalive: it owns
 // the bytes and is retained by the set, so the mapping outlives the dictionaries that view it.
@@ -383,6 +383,28 @@ TEST(Generator, MultiLanguageSelection) {
     EXPECT_THROW(generator.GetCapacity("{colour@es}"), PatternSyntaxError);
 }
 #endif  // SLK_MULTILANG_BIN_PATH
+
+#ifdef SLK_VERBATIM_BIN_PATH
+// Verbatim dictionary (compiled with `case_mutation: false`): words are stored and emitted exactly
+// as written, whatever case the selector requests. Useful for a fixed copy corpus (e.g. a game).
+TEST(Generator, VerbatimDictionary) {
+    Generator generator(LoadBinaryDictionary(SLK_VERBATIM_BIN_PATH));
+    const std::set<std::string> kWords{"iPhone", "eBay", "LaTeX", "Game Over"};
+
+    // Every selector case yields the words verbatim -- lower/upper/title/mixed all preserve the
+    // original casing rather than re-casing it (which would give iphone / IPHONE / Iphone). The
+    // capacity is the word count for all of them, including mixed (one form per word, not
+    // 2^letters), so the set is exact and collision-free.
+    for (const char* pattern : {"{corpus}", "{Corpus}", "{CORPUS}", "{cOrpus}"}) {
+        EXPECT_EQ(generator.GetCapacity(pattern).capacity, 4) << pattern;
+        std::set<std::string> seen;
+        for (std::size_t i = 0; i < 4; ++i) {
+            seen.insert(generator.Generate(pattern, "foobar", i));
+        }
+        EXPECT_EQ(seen, kWords) << pattern;
+    }
+}
+#endif  // SLK_VERBATIM_BIN_PATH
 
 // Turkish probe: captures the utf8proc casing reference (no ICU parity assumed). Asserts only
 // determinism, and prints the produced bytes for the report.
