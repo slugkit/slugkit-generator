@@ -4,7 +4,7 @@ Python utilities for building and managing SlugKit dictionaries.
 
 ## Overview
 
-`slugkit.tools` provides Pydantic models for creating, loading, and manipulating YAML dictionary files used by the SlugKit C++ generator. These dictionaries will be compiled into binary formats (memory-mapped or fully-loaded) for efficient use in production.
+`slugkit.tools` provides the **`compile-dict`** command-line tool plus Pydantic models for creating, loading, and manipulating YAML dictionary files used by the SlugKit C++ generator. `compile-dict` turns dictionary YAML into the binary `.bin` format the generator memory-maps for efficient use in production.
 
 ## Installation
 
@@ -21,7 +21,26 @@ Or using uv:
 uv pip install -e libs/generator/slugkit/py/tools
 ```
 
-## Quick Start
+## Compiling dictionaries
+
+Installing the package provides the `compile-dict` command, which compiles dictionary YAML into the binary `.bin` files the C++ generator loads:
+
+```bash
+# Compile a file; writes one <base>.<kind>.bin per kind found in the YAML
+compile-dict nouns.yaml -o nouns.yaml            # -> nouns.noun.bin, nouns.verb.bin, ...
+
+# Split a large dictionary across several files, merged per kind
+compile-dict geo.part1.yaml geo.part2.yaml -o geo.yaml   # -> geo.city.bin, ...
+```
+
+| Argument | Meaning |
+|----------|---------|
+| `input_files` (1+) | Dictionary YAML file(s). Multiple inputs are **merged per kind**, so one dictionary's source can be split across files (e.g. `geo.part1.yaml` + `geo.part2.yaml`). |
+| `-o, --output <base>` | Output base path. Each *kind* in the input is written to its own file, named `<base with .yaml stripped>.<kind>.bin` — **one binary per kind**, containing all of that kind's languages. |
+
+Load the resulting `.bin` files with the generator's `binary::DictionarySet` (or the C ABI / Swift·Kotlin·Dart·Flutter bindings): add one file per kind. The on-disk layout is described in [`docs/binary_dictionary_format.md`](../../../docs/binary_dictionary_format.md).
+
+## Quick Start (Python API)
 
 ```python
 from slugkit.tools import DictionaryFile, DictionaryData
@@ -46,38 +65,56 @@ dictionary_file.to_yaml("updated.yaml")
 
 ## YAML Format
 
-Dictionary YAML files support multiple dictionaries per file:
+Each top-level key is a **kind** (`noun`, `verb`, `colour`, `corpus`, …); a single file may hold several. A kind maps each language to a `word → [tags]` table:
 
 ```yaml
 noun:
-  version: "1.0.0"
-  description: "Common English nouns"
+  version: "1.0.0"                 # required
+  description: "Common English nouns"  # optional
+  case_mutation: true              # optional, default true (see below)
   words:
-    en:
-      apple: [fruit, food]
+    en:                            # language code (ISO 639-1), or "" for language-agnostic
+      apple: [fruit, food]         # word -> list of tags (may be empty: [])
       banana: [fruit, food, tropical]
     fr:
       pomme: [fruit, food]
       banane: [fruit, food, tropical]
-  tags:
+  tags:                            # optional; per-tag metadata
     fruit:
       name: Fruit
       description: A sweet edible plant structure
-      opt_in: false
+      opt_in: false               # default false
+```
 
-verb:
+### Dictionary fields
+
+| Field | Required | Default | Meaning |
+|-------|----------|---------|---------|
+| `version` | yes | — | Non-empty version string, stored in the binary header. |
+| `description` | no | `null` | Human-readable description. |
+| `case_mutation` | no | `true` | Whether to precompute lower/upper/title case variants. Set `false` for a verbatim dictionary (below). |
+| `words` | yes | — | `language → { word → [tags] }`. A word's tag list may be empty. |
+| `tags` | no | `{}` | Metadata for the tags used above (`name`, `description`, `opt_in`). Tags need not be declared to be used, but declaring them sets `opt_in`. |
+
+### Tags and opt-in
+
+A tag can be marked **`opt_in: true`**. Words carrying an opt-in tag are **hidden by default** in the generator: they appear only when a selector requests that tag explicitly (`{noun:+nsfw}`) or the tag is enabled at runtime (`Generator::EnableOptIn`). Use it for content like `nsfw` that should be off unless asked for.
+
+### Verbatim dictionaries (`case_mutation: false`)
+
+By default each word is stored with precomputed lowercase, uppercase and title-case variants, and the selector's kind-case picks one (`{noun}`, `{NOUN}`, `{Noun}`, `{nOun}`). Set `case_mutation: false` to store words **exactly as written** and emit them verbatim for *any* selector case — useful for a fixed copy corpus (e.g. a game) where casing is meaningful:
+
+```yaml
+corpus:
   version: "1.0.0"
-  description: "Common English verbs"
+  case_mutation: false
   words:
     en:
-      run: [action, movement]
-      walk: [action, movement]
-  tags:
-    action:
-      name: Action
-      description: Action verbs
-      opt_in: false
+      iPhone: []
+      "Game Over": []
 ```
+
+Here `{corpus}`, `{Corpus}` and `{CORPUS}` all yield `iPhone` / `Game Over` unchanged (mixed-case counts each word as a single form).
 
 ## Models
 
@@ -151,19 +188,18 @@ Similar pattern - iterate through your BabelNet data and use `add_word()` and `a
 
 ## Integration with C++ Generator
 
-These YAML dictionaries are designed to be compiled into binary dictionaries for the C++ SlugKit generator:
+Compile these YAML dictionaries into binary `.bin` files with `compile-dict` (see [Compiling dictionaries](#compiling-dictionaries)), then load them with the C++ generator:
 
-- **Memory-mapped dictionaries**: Efficient loading of large datasets
-- **Fully-loaded dictionaries**: Complete dictionaries in memory
-- **Language-specific access**: Fast lookup by language code (ISO 639-1)
-- **Tag-based filtering**: Efficient filtering by tags
+- **Memory-mapped**: the generator maps the `.bin` files rather than copying them
+- **Language-specific access**: fast lookup by language code (ISO 639-1)
+- **Tag-based filtering**: efficient filtering by tags, including hidden opt-in tags
 
-The exact binary format is TBD.
+The on-disk layout is documented in [`docs/binary_dictionary_format.md`](../../../docs/binary_dictionary_format.md).
 
 ## Language Codes
 
 - Use ISO 639-1 two-letter codes: `en`, `fr`, `es`, `de`, etc.
-- Use `agnostic` for language-agnostic content (e.g., domain names, TLDs)
+- Use the **empty string** `""` for language-agnostic content (e.g. domain names, TLDs). A selector with no `@lang` resolves to `en` when present, otherwise falls back to the agnostic (`""`) words.
 
 ## Development
 
