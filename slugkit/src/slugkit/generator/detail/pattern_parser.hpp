@@ -601,17 +601,18 @@ struct PatternParser {
 
     // Parse one alternation branch: a parenthesised group `( ... )`, or a bare placeholder `{ ... }`
     // wrapped as a single-placeholder group with no surrounding text.
+    // True for `()`: no placeholders and no literal text. Meaningful only as an alternation branch
+    // (an explicit empty option); rejected standalone.
+    static bool IsEmptyGroup(const Pattern::Group& group) {
+        return group.placeholders.empty() && group.text_chunks.size() == 1 && group.text_chunks[0].empty();
+    }
+
     Pattern::Group ParseAlternationElement() {
         if (Match(kGroupOpen)) {
             Next();  // consume '('
             auto group = ParseGroupBody();
             Expect(kGroupClose);
-            if (group.placeholders.empty() && group.text_chunks.size() == 1 && group.text_chunks[0].empty()) {
-                throw PatternSyntaxError(
-                    fmt::format("Pattern parse error: empty group `()` at column {}", GetCurrentColumn())
-                );
-            }
-            return group;
+            return group;  // an empty group is allowed here; validity depends on the alternation (below)
         }
         Expect('{');
         Pattern::Group group;
@@ -747,6 +748,14 @@ struct PatternParser {
 
                 if (distinct.size() == 1) {
                     // Lone group / all-equivalent alternation: pull up (parentheses are transparent).
+                    // A lone `()` is meaningless (an empty option needs siblings), so reject it.
+                    if (IsEmptyGroup(distinct.front())) {
+                        throw PatternSyntaxError(fmt::format(
+                            "Pattern parse error: empty group `()` at column {}; it is only valid as an "
+                            "alternation branch alongside others (e.g. `({{adverb}})|()`)",
+                            GetCurrentColumn()
+                        ));
+                    }
                     pull_up(std::move(distinct.front()));
                 } else {
                     push_element(Pattern::Alternation{std::move(distinct)});

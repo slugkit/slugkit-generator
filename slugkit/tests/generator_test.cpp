@@ -484,6 +484,20 @@ UTEST(PatternGenerator, GroupAlternation) {
         PatternGenerator(kDictionariesSet, "({noun:+tag1} {adjective})|({noun} {adjective})"_pattern_ptr),
         PatternSyntaxError
     );
+
+    // An empty branch `()` is an explicit "or nothing" option (capacity +1); standalone `()` is not.
+    {
+        PatternGenerator optional_noun(kDictionariesSet, "({noun})|()"_pattern_ptr);
+        EXPECT_EQ(optional_noun.GetCapacity(), 6);
+        std::set<std::string> seen;
+        for (std::uint64_t i = 0; i < 6; ++i) {
+            seen.insert(optional_noun(seed_hash, i));
+        }
+        EXPECT_EQ(seen.count(""), 1u);  // the empty option is produced
+        EXPECT_EQ(seen.size(), 6u);
+    }
+    EXPECT_THROW(ParsePattern("()"), PatternSyntaxError);
+    EXPECT_THROW(ParsePattern("()|()"), PatternSyntaxError);
 }
 
 }  // namespace slugkit::generator

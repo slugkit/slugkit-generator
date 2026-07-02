@@ -210,9 +210,22 @@ int main(void) {
             /* Per-position overlap error: same second placeholder, first is a superset. */
             char* go = slk_generate_alloc(mg, "({adverb:+pos} {emoji})|({adverb} {emoji})", "s", 0, &err);
             CHECK(go == NULL, "overlapping group branches are rejected (per-position)");
-            /* Empty group is rejected. */
+            /* Standalone empty group is rejected. */
             char* eg = slk_generate_alloc(mg, "()", "s", 0, &err);
-            CHECK(eg == NULL, "empty group `()` is rejected");
+            CHECK(eg == NULL, "standalone empty group `()` is rejected");
+            /* But an empty branch is an explicit "or nothing" option (capacity +1). */
+            char* ec = NULL;
+            slk_capacity(mg, "({adverb})|()", &ec, NULL, &err);
+            CHECK(ec && strcmp(ec, "3620") == 0, "empty alternation branch adds 1 to capacity");
+            slk_string_free(ec);
+            int saw_empty = 0, saw_foo = 0;
+            for (int s = 0; s < 4; s++) {
+                char* g = slk_generate_alloc(mg, "(foo)|()", "s", s, &err);
+                if (g && g[0] == 0) saw_empty = 1;
+                if (g && strcmp(g, "foo") == 0) saw_foo = 1;
+                slk_string_free(g);
+            }
+            CHECK(saw_empty && saw_foo, "(foo)|() produces both `foo` and the empty string");
 
             slk_generator_destroy(mg);
         }
