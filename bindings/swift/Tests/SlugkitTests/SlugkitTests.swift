@@ -27,6 +27,17 @@ final class SlugkitTests: XCTestCase {
         return try Data(contentsOf: genRoot.appendingPathComponent("slugkit/tests/data/test-adv.slugs"))
     }
 
+    /// A small multi-language dictionary (kind "colour") with distinct en/fr/de pools.
+    private func colourDictionary() throws -> Data {
+        let genRoot = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()  // SlugkitTests
+            .deletingLastPathComponent()  // Tests
+            .deletingLastPathComponent()  // swift
+            .deletingLastPathComponent()  // bindings
+            .deletingLastPathComponent()  // generator root
+        return try Data(contentsOf: genRoot.appendingPathComponent("slugkit/tests/data/multilang.colour.bin"))
+    }
+
     /// Multi-dictionary (adverb + emoji, n=2). Golden values (seed "foobar") are byte-identical
     /// across all language bindings.
     private func multi() throws -> Generator {
@@ -58,6 +69,26 @@ final class SlugkitTests: XCTestCase {
         var slugs: [String] = []
         try multi().generate("{adverb}-{emoji}", seed: "foobar", sequence: 0, count: 20) { slugs.append($0) }
         XCTAssertEqual(Set(slugs).count, 20)
+    }
+
+    /// Multi-language selection is built into the binary dictionary: kind "colour" holds distinct
+    /// en/fr/de pools, and {colour@lang} selects within it.
+    func testMultiLanguageSelection() throws {
+        let gen = try Generator(binaryDictionary: try colourDictionary())
+        XCTAssertEqual(try gen.capacity(of: "{colour@en}").value, "3")
+        XCTAssertEqual(try gen.capacity(of: "{colour@fr}").value, "2")
+        XCTAssertEqual(try gen.capacity(of: "{colour@de}").value, "4")
+        // No language defaults to English -- same capacity and byte-identical output.
+        XCTAssertEqual(try gen.capacity(of: "{colour}").value, "3")
+        XCTAssertEqual(try gen.generate("{colour}", seed: "foobar", sequence: 0),
+                       try gen.generate("{colour@en}", seed: "foobar", sequence: 0))
+        // A French colour is French.
+        let fr = try gen.generate("{colour@fr}", seed: "foobar", sequence: 0)
+        XCTAssertTrue(fr == "rouge" || fr == "vert")
+        // Two languages combine: LCM(3, 4) = 12.
+        XCTAssertEqual(try gen.capacity(of: "{colour@en}-{colour@de}").value, "12")
+        // An absent language is an error.
+        XCTAssertThrowsError(try gen.generate("{colour@es}", seed: "foobar", sequence: 0))
     }
 
     func testVersion() throws {

@@ -67,7 +67,8 @@ find_package(GTest REQUIRED)
 
 add_executable(golden_test ${CMAKE_CURRENT_SOURCE_DIR}/golden_test.cpp)
 target_compile_definitions(golden_test PRIVATE
-    SLK_ADVERB_BIN_PATH="${SLUGKIT_DIR}/tests/data/test-adv.slugs")
+    SLK_ADVERB_BIN_PATH="${SLUGKIT_DIR}/tests/data/test-adv.slugs"
+    SLK_MULTILANG_BIN_PATH="${SLUGKIT_DIR}/tests/data/multilang.colour.bin")
 target_link_libraries(golden_test PRIVATE
     slugkit-generator-host
     GTest::gtest
@@ -80,6 +81,7 @@ add_executable(c_abi_test ${CMAKE_CURRENT_SOURCE_DIR}/c_abi_test.c)
 set_target_properties(c_abi_test PROPERTIES LINKER_LANGUAGE CXX)
 target_compile_definitions(c_abi_test PRIVATE
     SLK_EMOJI_BIN_PATH="${SLUGKIT_DIR}/tests/data/emoji.bin"
-    SLK_ADVERB_BIN_PATH="${SLUGKIT_DIR}/tests/data/test-adv.slugs")
+    SLK_ADVERB_BIN_PATH="${SLUGKIT_DIR}/tests/data/test-adv.slugs"
+    SLK_MULTILANG_BIN_PATH="${SLUGKIT_DIR}/tests/data/multilang.colour.bin")
 target_link_libraries(c_abi_test PRIVATE slugkit-generator-host)
 add_test(NAME c_abi_test COMMAND c_abi_test)

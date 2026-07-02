@@ -17,12 +17,16 @@ void main() {
       '../../slugkit/tests/data/emoji.bin';
   final adverbPath = Platform.environment['SLUGKIT_ADVERB_BIN'] ??
       '../../slugkit/tests/data/test-adv.slugs';
+  final colourPath = Platform.environment['SLUGKIT_MULTILANG_BIN'] ??
+      '../../slugkit/tests/data/multilang.colour.bin';
   final dict = File(emojiPath).readAsBytesSync();
   final adverb = File(adverbPath).readAsBytesSync();
+  final colour = File(colourPath).readAsBytesSync();
 
   Generator open() => Generator.fromBytes(dict, libraryPath: libPath);
   Generator openMulti() =>
       Generator.fromMultiple([adverb, dict], libraryPath: libPath);
+  Generator openColour() => Generator.fromBytes(colour, libraryPath: libPath);
 
   test('version is non-empty', () {
     final g = open();
@@ -100,6 +104,44 @@ void main() {
       final g = openMulti();
       final slugs = g.generateBatch('{adverb}-{emoji}', 'foobar', 0, 20);
       expect(slugs.toSet().length, 20);
+      g.dispose();
+    });
+  });
+
+  // Multi-language: one binary dictionary (kind "colour") with distinct en/fr/de pools.
+  group('multi-language selection', () {
+    test('each language has its own pool and size', () {
+      final g = openColour();
+      expect(g.capacity('{colour@en}').value, '3');
+      expect(g.capacity('{colour@fr}').value, '2');
+      expect(g.capacity('{colour@de}').value, '4');
+      g.dispose();
+    });
+
+    test('no language defaults to English', () {
+      final g = openColour();
+      expect(g.capacity('{colour}').value, '3');
+      expect(g.generate('{colour}', 'foobar', 0),
+          g.generate('{colour@en}', 'foobar', 0));
+      g.dispose();
+    });
+
+    test('a French colour is French', () {
+      final g = openColour();
+      expect(['rouge', 'vert'], contains(g.generate('{colour@fr}', 'foobar', 0)));
+      g.dispose();
+    });
+
+    test('two languages combine: LCM(3,4)=12', () {
+      final g = openColour();
+      expect(g.capacity('{colour@en}-{colour@de}').value, '12');
+      g.dispose();
+    });
+
+    test('absent language is rejected', () {
+      final g = openColour();
+      expect(() => g.generate('{colour@es}', 'foobar', 0),
+          throwsA(isA<SlugkitException>()));
       g.dispose();
     });
   });

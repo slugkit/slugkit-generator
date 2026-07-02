@@ -303,7 +303,7 @@ TEST(Generator, SelfConsistent) {
     }
 }
 
-#ifdef SLK_ADVERB_BIN_PATH
+#if defined(SLK_ADVERB_BIN_PATH) || defined(SLK_MULTILANG_BIN_PATH)
 namespace {
 // Load a compiled binary dictionary into a set. The memory-mapped file is the keepalive: it owns
 // the bytes and is retained by the set, so the mapping outlives the dictionaries that view it.
@@ -314,7 +314,9 @@ binary::DictionarySet LoadBinaryDictionary(const char* path) {
     return dictionaries;
 }
 }  // namespace
+#endif
 
+#ifdef SLK_ADVERB_BIN_PATH
 // Honest opt-ins (binary path): test-adv marks `nsfw` opt-in (4 adverbs). They are hidden by
 // default, selectable with an explicit `+nsfw`, and unhidden by the per-generator usage flag.
 TEST(Generator, OptInTags) {
@@ -344,6 +346,43 @@ TEST(Generator, OptInTags) {
     EXPECT_EQ(generator.GetCapacity("{adverb}").capacity, 3615);
 }
 #endif  // SLK_ADVERB_BIN_PATH
+
+#ifdef SLK_MULTILANG_BIN_PATH
+// Multi-language selection is built into the binary dictionary: one kind ("colour") holds distinct
+// en/fr/de word sets in its language table, and `{kind@lang}` selects within it.
+TEST(Generator, MultiLanguageSelection) {
+    Generator generator(LoadBinaryDictionary(SLK_MULTILANG_BIN_PATH));
+
+    // Each language exposes its own pool and size (en=3, fr=2, de=4).
+    EXPECT_EQ(generator.GetCapacity("{colour@en}").capacity, 3);
+    EXPECT_EQ(generator.GetCapacity("{colour@fr}").capacity, 2);
+    EXPECT_EQ(generator.GetCapacity("{colour@de}").capacity, 4);
+
+    // No language on the selector defaults to English -- same capacity and byte-identical output.
+    EXPECT_EQ(generator.GetCapacity("{colour}").capacity, 3);
+    for (std::size_t i = 0; i < 5; ++i) {
+        EXPECT_EQ(generator.Generate("{colour}", "foobar", i), generator.Generate("{colour@en}", "foobar", i));
+    }
+
+    // Generated words come only from the requested language's pool, collision-free over capacity.
+    auto pool = [&](const char* pattern, std::size_t capacity) {
+        std::set<std::string> seen;
+        for (std::size_t i = 0; i < capacity; ++i) {
+            seen.insert(generator.Generate(pattern, "foobar", i));
+        }
+        return seen;
+    };
+    EXPECT_EQ(pool("{colour@en}", 3), (std::set<std::string>{"red", "green", "blue"}));
+    EXPECT_EQ(pool("{colour@fr}", 2), (std::set<std::string>{"rouge", "vert"}));
+    EXPECT_EQ(pool("{colour@de}", 4), (std::set<std::string>{"rot", "gelb", "blau", "grau"}));
+
+    // Two languages of the same kind combine independently in one pattern: LCM(3, 4) = 12.
+    EXPECT_EQ(generator.GetCapacity("{colour@en}-{colour@de}").capacity, 12);
+
+    // A language the dictionary does not carry is a pattern error (no matching words).
+    EXPECT_THROW(generator.GetCapacity("{colour@es}"), PatternSyntaxError);
+}
+#endif  // SLK_MULTILANG_BIN_PATH
 
 // Turkish probe: captures the utf8proc casing reference (no ICU parity assumed). Asserts only
 // determinism, and prints the produced bytes for the report.
