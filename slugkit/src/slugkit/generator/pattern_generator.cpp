@@ -113,16 +113,27 @@ std::string BinarySelectorSubstitutionGenerator::Generate(std::uint32_t seed, st
     if (dictionary_->GetCase() == CaseType::kMixed) {
         auto [word_index, case_index] = dictionary_->DecomposeMixed(static_cast<std::uint64_t>(index));
         const auto& entry = (*dictionary_)[IndexType(static_cast<IndexType::UnderlyingType>(word_index))];
+        // Verbatim words have a single form (unit block, case_index == 0): emit the original
+        // text without applying a case mask, which would otherwise re-case the fixed phrase.
+        if (entry.IsVerbatim()) {
+            return std::string{entry.Lowercase()};
+        }
         auto word = entry.Lowercase();
         auto mask = utils::text::ExpandCaseMask(word, case_index);
         return utils::text::MixedCase(word, utils::text::kEnUsLocale, mask);
     }
     const auto& entry = (*dictionary_)[IndexType(static_cast<IndexType::UnderlyingType>(index))];
+    // The upper/title variants are empty for a verbatim word (and, more generally, for any word
+    // compiled without that case). Fall back to the base slot, which holds the word as written.
     switch (dictionary_->GetCase()) {
-        case CaseType::kUpper:
-            return std::string{entry.Uppercase()};
-        case CaseType::kTitle:
-            return std::string{entry.Titlecase()};
+        case CaseType::kUpper: {
+            auto uppercase = entry.Uppercase();
+            return std::string{uppercase.empty() ? entry.Lowercase() : uppercase};
+        }
+        case CaseType::kTitle: {
+            auto titlecase = entry.Titlecase();
+            return std::string{titlecase.empty() ? entry.Lowercase() : titlecase};
+        }
         case CaseType::kNone:
         case CaseType::kLower:
         case CaseType::kMixed:  // handled above

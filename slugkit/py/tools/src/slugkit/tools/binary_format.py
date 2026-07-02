@@ -296,11 +296,19 @@ class TagsTable:
 
 
 class WordEntry:
-    def __init__(self, word: str, offset: int):
+    def __init__(self, word: str, offset: int, case_mutation: bool = True):
         self.offset = offset
-        self.lower = word.lower().encode("utf-8")
-        self.upper = word.upper().encode("utf-8")
-        self.title = word.title().encode("utf-8")
+        if case_mutation:
+            self.lower = word.lower().encode("utf-8")
+            self.upper = word.upper().encode("utf-8")
+            self.title = word.title().encode("utf-8")
+        else:
+            # Verbatim: store the word exactly as written in the base slot and leave the
+            # upper/title variants empty. The reader falls back to the base slot for any
+            # requested case, so a fixed corpus is emitted as-is (no re-casing).
+            self.lower = word.encode("utf-8")
+            self.upper = b""
+            self.title = b""
 
     def write(self, buffer: BinaryIO) -> bytes:
         # TODO optimize by writing only the needed data
@@ -352,7 +360,7 @@ class WordsData:
                 length_buckets.setdefault(len(word), []).append(index)
                 for tag in tags:
                     self.tags_table.add_index(tag, index)
-                entry = WordEntry(word, offset)
+                entry = WordEntry(word, offset, self.dictionary_data.case_mutation)
                 self.word_entries.append(entry)
                 index += 1
                 offset += entry.size()

@@ -78,7 +78,9 @@ All integers are written as little-endian
 
 ### Word
 
-A word contains precomputed lowercase, uppercase and title variants of the word. If a transfomation is equal to some other, e.g. lc == uc, uppercase offset/size may point to the same data
+A word contains precomputed lowercase, uppercase and title variants of the word. If a transfomation is equal to some other, e.g. lc == uc, uppercase offset/size may point to the same data.
+
+A **verbatim** word (from a dictionary compiled with `case_mutation: false`) stores the original text in the lowercase slot and leaves `UC_SIZE` and `TITLE_SIZE` at `0`. Readers fall back to the lowercase slot for any requested case, so the word is emitted exactly as written (and counts as a single form in mixed case).
 
 * `LC_START` (2 bytes, uint16_t) -> start of lower case word string, from word string data begin
 * `LC_SIZE` (2 bytes, uint16_t) -> size of lower case word string

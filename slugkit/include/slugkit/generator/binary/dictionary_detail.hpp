@@ -949,6 +949,13 @@ public:
         return titlecase_.value(&data_start_);
     }
 
+    /// @brief True for a word compiled with case mutation disabled: it carries no upper/title
+    /// variants, and the base (lowercase) slot holds the original text used verbatim for every
+    /// requested case.
+    [[nodiscard]] auto IsVerbatim() const noexcept -> bool {
+        return uppercase_.size() == 0 && titlecase_.size() == 0;
+    }
+
     [[nodiscard]] auto Size() const noexcept -> SizeType {
         return GetSize();
     }

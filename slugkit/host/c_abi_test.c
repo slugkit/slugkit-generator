@@ -310,6 +310,32 @@ int main(void) {
         }
     }
 
+    /* --- verbatim dictionary: kind "corpus" compiled with case_mutation:false --- */
+    {
+        size_t lv = 0;
+        unsigned char* corp = read_file(SLK_VERBATIM_BIN_PATH, &lv);
+        CHECK(corp != NULL, "read verbatim corpus dictionary");
+        char* verr = NULL;
+        slk_generator* vg = slk_generator_create_one(corp, lv, &verr);
+        CHECK(vg != NULL, "create generator from verbatim dictionary");
+        free(corp);
+        if (vg != NULL) {
+            /* Every selector case preserves the original text and reports capacity 4 (mixed too:
+             * one form per word, not 2^letters). seq0 of every case is the verbatim "iPhone". */
+            const char* patterns[4] = {"{corpus}", "{Corpus}", "{CORPUS}", "{cOrpus}"};
+            for (int p = 0; p < 4; p++) {
+                char* vc = NULL;
+                slk_capacity(vg, patterns[p], &vc, NULL, &err);
+                CHECK(vc && strcmp(vc, "4") == 0, "verbatim capacity == 4 for every case");
+                slk_string_free(vc);
+                char* vw = slk_generate_alloc(vg, patterns[p], "foobar", 0, &err);
+                CHECK(vw && strcmp(vw, "iPhone") == 0, "verbatim seq0 == 'iPhone' (casing preserved)");
+                slk_string_free(vw);
+            }
+            slk_generator_destroy(vg);
+        }
+    }
+
     slk_string_free(a);
     slk_string_free(b);
     slk_string_free(cap);

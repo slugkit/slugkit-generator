@@ -588,7 +588,14 @@ void FilteredDictionary::BuildMixedIndex() {
     mixed_index_.Reserve(size());
     indices_.for_each([&](IndexType logical_index) {
         const auto offset = (*index_table_)[logical_index];
-        mixed_index_.AddWord(word_data_->At(offset).Lowercase());
+        const auto& entry = word_data_->At(offset);
+        // A verbatim word (no case variants) has a single form; give it a unit block so
+        // mixed-case selection stays collision-free instead of 2^letters aliased copies.
+        if (entry.IsVerbatim()) {
+            mixed_index_.AddUnitWord();
+        } else {
+            mixed_index_.AddWord(entry.Lowercase());
+        }
     });
 }
 
