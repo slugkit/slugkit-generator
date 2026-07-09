@@ -396,7 +396,8 @@ void TestFilteredBySize(std::span<const std::byte> data) {
     BinaryDictionary dictionary(data);
     auto filtered_dictionary = dictionary.Filter("adverb:<10"_selector);
     EXPECT_FALSE(filtered_dictionary->empty());
-    EXPECT_EQ(filtered_dictionary->size(), 3340);
+    // `nsfw` is opt-in and hidden by default: 3340 minus the 8 short nsfw adverbs (en + fr).
+    EXPECT_EQ(filtered_dictionary->size(), 3332);
 }
 
 UTEST(BinaryDictionary, InMemoryTestFilteredBySize) {
@@ -412,7 +413,8 @@ void TestFilteredByLangSize(std::span<const std::byte> data) {
     BinaryDictionary dictionary(data);
     auto filtered_dictionary = dictionary.Filter("adverb@en:<10"_selector);
     EXPECT_FALSE(filtered_dictionary->empty());
-    EXPECT_EQ(filtered_dictionary->size(), 1670);
+    // `nsfw` is opt-in and hidden by default: 1670 minus the 4 short nsfw adverbs (en).
+    EXPECT_EQ(filtered_dictionary->size(), 1666);
 }
 
 // Enumerating filtered positions 0..size-1 must map (via the filtered index sequence) to
@@ -421,7 +423,7 @@ void TestFilteredByLangSize(std::span<const std::byte> data) {
 void TestFilteredEnumeration(std::span<const std::byte> data) {
     BinaryDictionary dictionary(data);
     auto filtered = dictionary.Filter("adverb@en:<10"_selector);
-    ASSERT_EQ(filtered->size(), 1670u);
+    ASSERT_EQ(filtered->size(), 1666u);  // 1670 minus the 4 hidden opt-in (nsfw) adverbs
     EXPECT_EQ((*filtered)[0_idx].Lowercase(), "aback");
     EXPECT_EQ((*filtered)[IndexType(filtered->size() - 1)].Lowercase(), "zigzag");
 
