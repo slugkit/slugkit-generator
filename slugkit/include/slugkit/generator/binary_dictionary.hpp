@@ -124,6 +124,12 @@ public:
         return tags_table_->Tags();
     }
 
+    /// @brief The tags flagged opt-in in this dictionary (TagEntry::OptIn()). Lets an in-memory
+    /// dictionary built from the same data mirror this dictionary's opt-in filtering.
+    [[nodiscard]] auto OptInTags() const -> TagSet {
+        return TagSet(opt_in_tags_.begin(), opt_in_tags_.end());
+    }
+
     /// @brief Filter the dictionary by a selector.
     /// @param enabled_opt_ins Tags whose opt-in gate is lifted for this request (the "honest
     /// opt-in" usage flag). A word carrying an opt-in tag is hidden unless that tag is either

@@ -88,7 +88,16 @@ class Dictionary {
     using WordContainerPtr = FilteredDictionary::WordContainerPtr;
 
 public:
-    Dictionary(std::string_view kind, LanguageCodeView language, std::vector<Word> words, bool use_cache = true);
+    /// @param opt_in_tags Tags flagged opt-in for this dictionary: a word carrying one is hidden
+    /// unless the tag is requested (selector include tags) or enabled per-request. Mirrors the
+    /// binary dictionary's opt-in metadata so the two backends filter identically.
+    Dictionary(
+        std::string_view kind,
+        LanguageCodeView language,
+        std::vector<Word> words,
+        std::set<Tag> opt_in_tags = {},
+        bool use_cache = true
+    );
 
     Dictionary(const Dictionary& other) noexcept;
     Dictionary(Dictionary&& other) noexcept;
@@ -112,8 +121,8 @@ public:
     /// dictionary's kind.
     /// @param selector The selector to use for filtering.
     /// @param enabled_opt_ins Opt-in tags lifted for this request (the "honest opt-in" usage
-    /// flag). Accepted for signature parity with the binary dictionary; the in-memory dictionary
-    /// carries no opt-in tag metadata today, so it is currently a no-op here.
+    /// flag). A word carrying one of this dictionary's opt-in tags is hidden unless that tag is
+    /// requested via the selector's include tags or listed here.
     /// @return The filtered dictionary.
     FilteredDictionaryConstPtr Filter(const Selector& selector, const TagSet& enabled_opt_ins = {}) const;
     FilteredDictionaryConstPtr Filter(const EmojiGen::TagsType& include_tags, const EmojiGen::TagsType& exclude_tags)
@@ -137,6 +146,11 @@ private:
 
     struct Impl;
     slugkit::compat::FastPimpl<Impl, kPimplSize, kPimplAlign> pimpl_;
+
+    // This dictionary's opt-in tag names (owning). Kept outside the pimpl so it never disturbs the
+    // per-toolchain pimpl sizing; Filter augments the selector's exclude tags with the ones that
+    // are neither requested nor enabled, so the existing tag-exclude path hides them.
+    std::set<Tag> opt_in_tags_;
 };
 
 /// @brief A set of dictionaries that can be used to generate human-readable IDs.

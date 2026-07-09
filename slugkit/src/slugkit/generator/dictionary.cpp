@@ -88,8 +88,15 @@ struct Dictionary::Impl {
     }
 };
 
-Dictionary::Dictionary(std::string_view kind, LanguageCodeView language, std::vector<Word> words, bool use_cache)
-    : pimpl_{kind, language, std::move(words), use_cache} {
+Dictionary::Dictionary(
+    std::string_view kind,
+    LanguageCodeView language,
+    std::vector<Word> words,
+    std::set<Tag> opt_in_tags,
+    bool use_cache
+)
+    : pimpl_{kind, language, std::move(words), use_cache}
+    , opt_in_tags_{std::move(opt_in_tags)} {
 }
 
 Dictionary::Dictionary(const Dictionary& other) noexcept = default;
@@ -125,9 +132,6 @@ auto Dictionary::empty() const -> bool {
 
 auto Dictionary::Filter(const Selector& selector, const TagSet& enabled_opt_ins) const
     -> FilteredDictionaryConstPtr {
-    // The in-memory dictionary carries no per-tag opt-in metadata (unlike the binary dictionary),
-    // so the enabled opt-in set is accepted for API parity but has no effect here yet.
-    (void)enabled_opt_ins;
     auto kind = utils::text::ToLower(selector.kind, utils::text::kEnUsLocale);
     if (kind != pimpl_->kind_) {
         return {};
@@ -136,7 +140,20 @@ auto Dictionary::Filter(const Selector& selector, const TagSet& enabled_opt_ins)
         return {};
     }
 
-    return pimpl_->Filter(selector);
+    if (opt_in_tags_.empty()) {
+        return pimpl_->Filter(selector);
+    }
+    // Honest opt-ins: hide words carrying an opt-in tag that is neither requested (selector include
+    // tags) nor enabled for this request. Adding those tags to the selector's excludes reuses the
+    // existing tag-exclude path and yields the same word set the binary dictionary produces.
+    Selector effective = selector;
+    for (const auto& tag : opt_in_tags_) {
+        TagView tag_view{std::string_view{tag.GetUnderlying()}};
+        if (!selector.include_tags.contains(tag_view) && !enabled_opt_ins.contains(tag_view)) {
+            effective.exclude_tags.insert(tag_view);
+        }
+    }
+    return pimpl_->Filter(effective);
 }
 
 auto Dictionary::Filter(const EmojiGen::TagsType& include_tags, const EmojiGen::TagsType& exclude_tags) const
