@@ -49,6 +49,23 @@ jobs:
       - name: Test
         run: ctest --test-dir build/host --output-on-failure
 
+      # Build the shipped userver-free CLI the way an end user would (SLUGKIT_USE_USERVER=OFF),
+      # then smoke-test it against a committed dictionary. Proves the standalone CLI stays buildable
+      # and runnable on both toolchains. CLI11 is fetched via FetchContent.
+      - name: Build the standalone slugkit CLI
+        run: >-
+          cmake -S slugkit -B build/cli
+          -DSLUGKIT_USE_USERVER=OFF -DSLUGKIT_GENERATOR_BUILD_CLI=ON
+          ${{ runner.os == 'macOS' && '-DCMAKE_PREFIX_PATH=/opt/homebrew' || '' }}
+          && cmake --build build/cli --target slugkit --parallel
+
+      - name: Smoke-test the CLI
+        run: |
+          out=$(./build/cli/cli/slugkit -b slugkit/tests/data/test-adv.slugs \
+                  -p '{adverb@en}-{number:3d}' -c 3 -s foobar -q)
+          echo "$out"
+          test "$(printf '%s\n' "$out" | head -1)" = "impotently-887"
+
   # The Python dictionary compiler: install it, recompile the committed test
   # fixtures from their YAML sources, and assert the binaries are byte-identical
   # (catches a stale committed .bin or a non-deterministic compiler change).

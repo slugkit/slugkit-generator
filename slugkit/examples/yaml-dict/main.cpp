@@ -4,36 +4,36 @@
 #include <userver/engine/run_standalone.hpp>
 #include <userver/formats/yaml.hpp>
 
-#include <boost/program_options.hpp>
+#include <CLI/CLI.hpp>
+#include <fmt/format.h>
 
 #include <fstream>
 #include <iostream>
+#include <memory>
+#include <string>
 
-#include <fmt/format.h>
+// Example: generate slugs directly from a YAML dictionary. YAML loading goes through userver's
+// formats, so this example only builds in the userver build (SLUGKIT_USE_USERVER=ON). For a
+// userver-free workflow, compile the YAML to a binary dictionary with the `compile-dict` tool and
+// use the standalone `slugkit` CLI.
 
 int main(int argc, char* argv[]) try {
-    namespace po = boost::program_options;
-    po::options_description desc("YAML Dictionary Generator");
-    // clang-format off
-    desc.add_options()
-        ("help,h", "produce help message")
-        ("file,f", po::value<std::string>()->required(), "file to read")
-        ("pattern,p", po::value<std::string>()->required(), "pattern to use")
-        ("count,c", po::value<std::size_t>()->default_value(1), "number of slugs to generate")
-        ("sequence,n", po::value<std::size_t>()->default_value(0), "sequence number")
-        ("seed,s", po::value<std::string>(), "seed for the generator. If not provided, a random seed will be used")
-    ;
-    // clang-format on
+    CLI::App app{"yaml-dict -- generate slugs from a YAML dictionary (userver build)"};
 
-    po::variables_map vm;
-    po::store(po::parse_command_line(argc, argv, desc), vm);
-    if (vm.count("help")) {
-        std::cout << desc << std::endl;
-        return 0;
-    }
-    po::notify(vm);
+    std::string file_name;
+    std::string pattern;
+    std::string seed;
+    std::size_t count = 1;
+    std::size_t sequence = 0;
 
-    auto file_name = vm["file"].as<std::string>();
+    app.add_option("-f,--file", file_name, "YAML dictionary file")->required()->check(CLI::ExistingFile);
+    app.add_option("-p,--pattern", pattern, "Pattern to generate")->required();
+    app.add_option("-c,--count", count, "Number of slugs to generate")->capture_default_str();
+    app.add_option("-n,--sequence", sequence, "Starting sequence number")->capture_default_str();
+    app.add_option("-s,--seed", seed, "Seed (random if omitted)");
+
+    CLI11_PARSE(app, argc, argv);
+
     std::ifstream file(file_name);
     if (!file.is_open()) {
         throw std::runtime_error(fmt::format("Failed to open file: {}", file_name));
@@ -41,21 +41,13 @@ int main(int argc, char* argv[]) try {
 
     auto dictionary_set = slugkit::generator::DictionarySet::Parse<userver::formats::yaml::Value>(file);
     slugkit::generator::Generator generator(std::move(dictionary_set));
-
-    auto pattern = vm["pattern"].as<std::string>();
-    auto sequence = vm["sequence"].as<std::size_t>();
-    std::string seed;
-    if (vm.count("seed")) {
-        seed = vm["seed"].as<std::string>();
-    } else {
+    if (seed.empty()) {
         seed = generator.RandomSeed();
     }
-    auto count = vm["count"].as<std::size_t>();
 
     userver::engine::RunStandalone([&] {
         auto pattern_ptr = std::make_shared<slugkit::generator::Pattern>(pattern);
         std::cerr << "Pattern complexity: " << pattern_ptr->Complexity() << "\n---\n";
-        // Run the generator in a standalone userver context
         if (count == 1) {
             std::cout << generator(pattern_ptr, seed, sequence) << '\n';
         } else {
