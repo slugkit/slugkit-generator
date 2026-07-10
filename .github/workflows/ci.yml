@@ -87,8 +87,10 @@ jobs:
           set -euo pipefail
           compile-dict slugkit/tests/data/multilang.yaml -o /tmp/multilang.yaml
           compile-dict slugkit/tests/data/verbatim.yaml  -o /tmp/verbatim.yaml
+          compile-dict slugkit/tests/data/tags.yaml      -o /tmp/tags.yaml
           cmp /tmp/multilang.colour.bin slugkit/tests/data/multilang.colour.bin
           cmp /tmp/verbatim.corpus.bin  slugkit/tests/data/verbatim.corpus.bin
+          cmp /tmp/tags.gem.bin         slugkit/tests/data/tags.gem.bin
 
   # Full userver build + UTEST suite, inside a PREBUILT userver dev container: userver is already
   # compiled and installed in the image, so find_package(userver) resolves it and nothing rebuilds

@@ -1,0 +1,26 @@
+# Fixture for exclusive tag-match (`-*`) tests: a kind whose words carry varied tag sets, so
+# untagged / exactly-one-tag / exactly-two-tags queries all have non-empty results. Compiled with:
+#   compile-dict slugkit/tests/data/tags.yaml -o slugkit/tests/data/tags.yaml   -> tags.gem.bin
+gem:
+  version: 1.0.0
+  description: Gems with colour/quality tags (for -* tests)
+  words:
+    en:
+      ruby: [red, precious]
+      garnet: [red]
+      emerald: [green, precious]
+      jade: [green]
+      quartz: []
+  tags:
+    red:
+      name: Red
+      description: A red gem
+      opt_in: false
+    green:
+      name: Green
+      description: A green gem
+      opt_in: false
+    precious:
+      name: Precious
+      description: A precious gem
+      opt_in: false

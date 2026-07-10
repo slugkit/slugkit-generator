@@ -442,6 +442,7 @@ auto EmojiSelector(const EmojiGen& emoji_gen) -> Selector {
     selector.kind = constants::kEmojiKind;
     selector.include_tags = emoji_gen.include_tags;
     selector.exclude_tags = emoji_gen.exclude_tags;
+    selector.no_other_tags = emoji_gen.no_other_tags;
     return selector;
 }
 

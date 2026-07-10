@@ -336,6 +336,40 @@ int main(void) {
         }
     }
 
+    /* --- exclusive tag match `-*` (kind "gem": ruby[red,precious] garnet[red] emerald[green,precious]
+     *     jade[green] quartz[]) --- */
+    {
+        size_t lg = 0;
+        unsigned char* gem = read_file(SLK_TAGGED_BIN_PATH, &lg);
+        CHECK(gem != NULL, "read gem (tagged) dictionary");
+        char* gerr = NULL;
+        slk_generator* gg = slk_generator_create_one(gem, lg, &gerr);
+        CHECK(gg != NULL, "create generator from gem dictionary");
+        free(gem);
+        if (gg != NULL) {
+            struct { const char* pat; const char* cap; } cases[] = {
+                {"{gem}", "5"},
+                {"{gem:-*}", "1"},               /* untagged: quartz */
+                {"{gem:+red}", "2"},             /* any red: ruby, garnet */
+                {"{gem:+red-*}", "1"},           /* only red: garnet */
+                {"{gem:+red+precious-*}", "1"},  /* exactly {red,precious}: ruby */
+            };
+            for (int i = 0; i < 5; i++) {
+                char* c = NULL;
+                slk_capacity(gg, cases[i].pat, &c, NULL, &err);
+                CHECK(c && strcmp(c, cases[i].cap) == 0, cases[i].pat);
+                slk_string_free(c);
+            }
+            char* q = slk_generate_alloc(gg, "{gem:-*}", "foobar", 0, &err);
+            CHECK(q && strcmp(q, "quartz") == 0, "{gem:-*} -> quartz (untagged)");
+            slk_string_free(q);
+            char* gt = slk_generate_alloc(gg, "{gem:+red-*}", "foobar", 0, &err);
+            CHECK(gt && strcmp(gt, "garnet") == 0, "{gem:+red-*} -> garnet (only red)");
+            slk_string_free(gt);
+            slk_generator_destroy(gg);
+        }
+    }
+
     slk_string_free(a);
     slk_string_free(b);
     slk_string_free(cap);
