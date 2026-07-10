@@ -368,12 +368,26 @@ noun:
 > **Note**: Dictionaries are not included with the library. See the example application for sample dictionaries.
 
 
-## Example Application
+## Command-line tool
 
-The repository includes a complete [example application](slugkit/examples/yaml-dict/main.cpp) demonstrating:
+The `slugkit` CLI generates slugs from **compiled binary dictionaries** and is **fully userver-free** — build the library standalone and it depends only on `fmt`, `utf8proc`, and the header-only [CLI11](https://github.com/CLIUtils/CLI11) (fetched automatically):
 
-- Dictionary loading from YAML files
-- Bulk slug generation
+```bash
+cmake -S slugkit -B build -DSLUGKIT_USE_USERVER=OFF -DSLUGKIT_GENERATOR_BUILD_CLI=ON
+cmake --build build --target slugkit
+
+# Compile a source YAML dictionary to the binary format first (Python tool, see slugkit/py/tools),
+# then generate:
+./build/cli/slugkit -b nouns.noun.bin -b adjectives.adjective.bin \
+    -p '{adjective}-{noun}-{number:4R}' -c 1000
+./build/cli/slugkit -b colours.colour.bin -p '{colour@fr}' -c 5 --enable-opt-in nsfw
+```
+
+Run `slugkit --help` for all options (`--bin`, `--pattern`, `--count`, `--sequence`, `--seed`, `--enable-opt-in`, `--quiet`).
+
+## YAML Example (userver build)
+
+The repository also includes a [YAML example](slugkit/examples/yaml-dict/main.cpp) that loads a dictionary straight from YAML. Because YAML parsing goes through userver's formats, it only builds in the userver build (`SLUGKIT_USE_USERVER=ON`):
 
 ```bash
 ./yaml-dict -f dictionary.yaml -p '{Adjective} {Noun} {number:4R}' -c 1000
