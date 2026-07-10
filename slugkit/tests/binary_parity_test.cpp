@@ -90,6 +90,13 @@ auto BuildInMemorySet(const binary::BinaryDictionary& dict) -> DictionarySet {
         }
     }
 
+    // Mirror the binary dictionary's opt-in tags onto the in-memory dictionaries so both backends
+    // hide the same words by default -- that byte-identical output is the parity contract.
+    std::set<Tag> opt_in_tags;
+    for (auto opt_in_tag : dict.OptInTags()) {
+        opt_in_tags.insert(Tag{std::string{opt_in_tag.GetUnderlying()}});
+    }
+
     std::vector<Dictionary> dictionaries;
     for (const auto& lang : dict.Languages()) {
         const auto& info = dict[lang];
@@ -106,7 +113,7 @@ auto BuildInMemorySet(const binary::BinaryDictionary& dict) -> DictionarySet {
             }
             words.push_back(std::move(w));
         }
-        dictionaries.emplace_back(kind, lang, std::move(words));
+        dictionaries.emplace_back(kind, lang, std::move(words), opt_in_tags);
     }
     return DictionarySet{std::move(dictionaries)};
 }

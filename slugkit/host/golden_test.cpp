@@ -303,6 +303,24 @@ TEST(Generator, SelfConsistent) {
     }
 }
 
+// Honest opt-ins on an in-memory dictionary: flagging `nsfw` opt-in hides the one noun that carries
+// it (noun4) unless requested or enabled -- the same behaviour as the binary path, so the two
+// backends filter identically (see the userver BinaryParity tests).
+TEST(Generator, InMemoryOptIn) {
+    DictionarySet dictionaries{{Dictionary("noun", "en"_lang_view, kNouns, {"nsfw"_tag})}};
+    Generator generator(std::move(dictionaries));
+
+    // Hidden by default: 5 nouns minus noun4 (nsfw) = 4.
+    EXPECT_EQ(generator.GetCapacity("{noun}").capacity, 4);
+    // Explicit request still selects exactly the opt-in word.
+    EXPECT_EQ(generator.GetCapacity("{noun:+nsfw}").capacity, 1);
+    // Enabling lifts the gate; clearing restores the default.
+    generator.EnableOptIn("nsfw");
+    EXPECT_EQ(generator.GetCapacity("{noun}").capacity, 5);
+    generator.ClearOptIns();
+    EXPECT_EQ(generator.GetCapacity("{noun}").capacity, 4);
+}
+
 #if defined(SLK_ADVERB_BIN_PATH) || defined(SLK_MULTILANG_BIN_PATH) || defined(SLK_VERBATIM_BIN_PATH)
 namespace {
 // Load a compiled binary dictionary into a set. The memory-mapped file is the keepalive: it owns

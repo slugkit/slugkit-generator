@@ -50,8 +50,11 @@ std::int64_t Selector::GetHash() const {
     for (const auto& tag : include_tags) {
         boost::hash_combine(seed, StrHash(tag.GetUnderlying().data(), tag.GetUnderlying().size()));
     }
+    // Salt exclude tags so `{x:+t}` and `{x:-t}` hash differently -- otherwise they collide (the
+    // filter cache would return the wrong set and equivalent-alternation collapse would merge them).
+    constexpr std::size_t kExcludeSalt = 0x9e3779b97f4a7c15ULL;
     for (const auto& exclude_tag : exclude_tags) {
-        boost::hash_combine(seed, StrHash(exclude_tag.GetUnderlying().data(), exclude_tag.GetUnderlying().size()));
+        boost::hash_combine(seed, StrHash(exclude_tag.GetUnderlying().data(), exclude_tag.GetUnderlying().size()) ^ kExcludeSalt);
     }
     if (size_limit.has_value()) {
         boost::hash_combine(seed, size_limit->GetHash());

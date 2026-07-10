@@ -1,0 +1,111 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  # Userver-free (standalone) build: the compat-shim + utf8proc core that ships to
+  # mobile. Builds golden_test + c_abi_test and runs them via ctest, on both the
+  # Linux/gcc+libstdc++ and macOS/clang+libc++ toolchains.
+  host-tests:
+    name: host tests (no userver) — ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            cmake g++ libfmt-dev libboost-dev libutf8proc-dev libgtest-dev
+
+      - name: Install dependencies (macOS)
+        if: runner.os == 'macOS'
+        run: brew install fmt boost utf8proc googletest
+
+      - name: Configure
+        run: >-
+          cmake -S slugkit/host -B build/host
+          ${{ runner.os == 'macOS' && '-DCMAKE_PREFIX_PATH=/opt/homebrew' || '' }}
+
+      - name: Build
+        run: cmake --build build/host --parallel
+
+      - name: Test
+        run: ctest --test-dir build/host --output-on-failure
+
+  # The Python dictionary compiler: install it, recompile the committed test
+  # fixtures from their YAML sources, and assert the binaries are byte-identical
+  # (catches a stale committed .bin or a non-deterministic compiler change).
+  compiler:
+    name: dictionary compiler
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install compile-dict
+        run: pip install -e slugkit/py/tools
+
+      - name: Recompile fixtures and verify they match the committed binaries
+        run: |
+          set -euo pipefail
+          compile-dict slugkit/tests/data/multilang.yaml -o /tmp/multilang.yaml
+          compile-dict slugkit/tests/data/verbatim.yaml  -o /tmp/verbatim.yaml
+          cmp /tmp/multilang.colour.bin slugkit/tests/data/multilang.colour.bin
+          cmp /tmp/verbatim.corpus.bin  slugkit/tests/data/verbatim.corpus.bin
+
+  # Full userver build + UTEST suite, inside a PREBUILT userver dev container: userver is already
+  # compiled and installed in the image, so find_package(userver) resolves it and nothing rebuilds
+  # userver here. ci/CMakeLists.txt is a thin entry point that finds that userver and builds the
+  # library + tests standalone (mirrors poke-me's backend CMake: find_package + userver_setup_environment).
+  #
+  # Reuses poke-me's prebuilt image (same org, userver installed). Pulling it needs the repo to have
+  # read access to the package; grant that (or set a GHCR_PULL_TOKEN PAT secret) — the default
+  # GITHUB_TOKEN is used as a fallback.
+  userver-tests:
+    name: userver tests
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/slugkit/pokeme-userver-build-ci-amd64:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GHCR_PULL_TOKEN || secrets.GITHUB_TOKEN }}
+    env:
+      CC: clang
+      CXX: clang++
+    steps:
+      - uses: actions/checkout@v4
+
+      # The image bundles userver + fmt + boost but not utf8proc (a pure-C dep of utils/text.cpp).
+      - name: Install utf8proc
+        run: apt-get update && apt-get install -y --no-install-recommends libutf8proc-dev
+
+      - name: Configure
+        # Release matches how userver is built/installed in the prebuilt image; its CMake config
+        # only ships the release targets file (a Debug configure looks for userver-targets_d.cmake).
+        run: cmake -S ci -B build/userver -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build/userver --parallel
+
+      - name: Test
+        run: ctest --test-dir build/userver --output-on-failure
