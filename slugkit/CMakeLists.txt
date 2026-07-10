@@ -17,6 +17,13 @@ else()
     set(${PROJECT_NAME}_COMPILE_DEFS)
 endif()
 
+# fmt (formatting) and Boost headers (hash_combine) come transitively from userver in the userver
+# build; the standalone build must find them itself so the library links without userver.
+if (NOT SLUGKIT_USE_USERVER)
+    find_package(fmt REQUIRED)
+    find_package(Boost REQUIRED)
+endif()
+
 # utf8proc backs case conversion in utils/text.cpp for BOTH builds (replaced boost::locale/ICU).
 find_package(utf8proc CONFIG QUIET)
 if (NOT TARGET utf8proc::utf8proc)
@@ -46,8 +53,15 @@ target_link_libraries(${PROJECT_NAME}-utils
 )
 if (SLUGKIT_USE_USERVER)
     target_link_libraries(${PROJECT_NAME}-utils PUBLIC userver::core)
+else()
+    # Standalone: fmt for formatting, Boost headers for hash_combine (both PUBLIC so they propagate
+    # to the generator library and its consumers, e.g. the CLI).
+    target_link_libraries(${PROJECT_NAME}-utils PUBLIC fmt::fmt Boost::headers)
 endif()
 target_compile_definitions(${PROJECT_NAME}-utils PUBLIC ${${PROJECT_NAME}_COMPILE_DEFS})
+# The library requires C++20 (concepts, is_same_v, etc.). The monorepo sets this globally; declare
+# it PUBLIC on the target so a standalone consumer (e.g. the CLI) inherits it too.
+target_compile_features(${PROJECT_NAME}-utils PUBLIC cxx_std_20)
 target_include_directories(${PROJECT_NAME}-utils
     PUBLIC
         ${${PROJECT_NAME}_INCLUDE_ROOT}
@@ -88,7 +102,10 @@ target_include_directories(
 )
 
 
-if (SLUGKIT_GENERATOR_BUILD_TESTS OR SLUGKIT_GENERATOR_BUILD_BENCHMARKS OR SLUGKIT_GENERATOR_BUILD_EXAMPLES)
+# The embedded test data + test-utils use userver_embed_file (a userver CMake helper) and only feed
+# the userver tests/benchmarks, so gate the block on the userver build. The standalone CLI and the
+# host test harness don't need it.
+if (SLUGKIT_USE_USERVER AND (SLUGKIT_GENERATOR_BUILD_TESTS OR SLUGKIT_GENERATOR_BUILD_BENCHMARKS OR SLUGKIT_GENERATOR_BUILD_EXAMPLES))
     set(
         ${PROJECT_NAME}-test-dictionary-data
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/data/test-adv.slugs
@@ -148,6 +165,26 @@ if(SLUGKIT_GENERATOR_BUILD_BENCHMARKS)
     add_subdirectory(benchmarks)
 else()
     message(STATUS "Skipping benchmarks, set SLUGKIT_GENERATOR_BUILD_BENCHMARKS to ON to build them")
+endif()
+
+option(SLUGKIT_GENERATOR_BUILD_CLI "Build the standalone slugkit CLI" OFF)
+
+# The CLI and the examples parse arguments with the header-only CLI11 (replaces boost::program_options).
+if(SLUGKIT_GENERATOR_BUILD_CLI OR SLUGKIT_GENERATOR_BUILD_EXAMPLES)
+    include(FetchContent)
+    FetchContent_Declare(
+        cli11
+        GIT_REPOSITORY https://github.com/CLIUtils/CLI11.git
+        GIT_TAG v2.4.2
+        GIT_SHALLOW TRUE
+    )
+    FetchContent_MakeAvailable(cli11)
+endif()
+
+if(SLUGKIT_GENERATOR_BUILD_CLI)
+    add_subdirectory(cli)
+else()
+    message(STATUS "Skipping CLI, set SLUGKIT_GENERATOR_BUILD_CLI to ON to build it")
 endif()
 
 if(SLUGKIT_GENERATOR_BUILD_EXAMPLES)
