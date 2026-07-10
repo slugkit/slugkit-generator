@@ -321,7 +321,33 @@ TEST(Generator, InMemoryOptIn) {
     EXPECT_EQ(generator.GetCapacity("{noun}").capacity, 4);
 }
 
-#if defined(SLK_ADVERB_BIN_PATH) || defined(SLK_MULTILANG_BIN_PATH) || defined(SLK_VERBATIM_BIN_PATH)
+// Exclusive tag match `-*`: keep only words whose every tag is in the include set (an exact tag
+// set; untagged when there are no includes). Distinct from a plain include, which allows extra tags.
+TEST(Generator, ExclusiveTags) {
+    Generator generator(MakeDictionarySet());
+    // kNouns: noun1{}, noun2{}, noun3{tag1}, noun4{tag2,nsfw}, noun5{tag1,tag2}.
+    EXPECT_EQ(generator.GetCapacity("{noun:-*}").capacity, 2);             // untagged: noun1, noun2
+    EXPECT_EQ(generator.GetCapacity("{noun:+tag1-*}").capacity, 1);        // exactly {tag1}: noun3
+    EXPECT_EQ(generator.GetCapacity("{noun:+tag1+tag2-*}").capacity, 1);   // exactly {tag1,tag2}: noun5
+    // Plain include still allows extra tags (tag1 is on noun3 and noun5).
+    EXPECT_EQ(generator.GetCapacity("{noun:+tag1}").capacity, 2);
+
+    // Round-trips through the parser (the `-*` token is preserved).
+    EXPECT_EQ(ParsePattern("{noun:-*}").ToString(), "{noun:-*}");
+    EXPECT_EQ(ParsePattern("{noun:+tag1-*}").ToString(), "{noun:+tag1-*}");
+
+    // The generated set is exactly the untagged nouns.
+    auto seed_hash = PatternGenerator::SeedHash(kTestSeed);
+    PatternGenerator untagged(MakeDictionarySet(), "{noun:-*}"_pattern_ptr);
+    std::set<std::string> seen;
+    for (std::uint64_t i = 0; i < 2; ++i) {
+        seen.insert(untagged(seed_hash, i));
+    }
+    EXPECT_EQ(seen, (std::set<std::string>{"noun1", "noun2"}));
+}
+
+#if defined(SLK_ADVERB_BIN_PATH) || defined(SLK_MULTILANG_BIN_PATH) || defined(SLK_VERBATIM_BIN_PATH) || \
+    defined(SLK_TAGGED_BIN_PATH)
 namespace {
 // Load a compiled binary dictionary into a set. The memory-mapped file is the keepalive: it owns
 // the bytes and is retained by the set, so the mapping outlives the dictionaries that view it.
@@ -423,6 +449,25 @@ TEST(Generator, VerbatimDictionary) {
     }
 }
 #endif  // SLK_VERBATIM_BIN_PATH
+
+#ifdef SLK_TAGGED_BIN_PATH
+// Exclusive tag match `-*` on a binary dictionary (kind "gem" with varied tag sets):
+//   ruby[red,precious]  garnet[red]  emerald[green,precious]  jade[green]  quartz[]
+TEST(Generator, ExclusiveTagsBinary) {
+    Generator generator(LoadBinaryDictionary(SLK_TAGGED_BIN_PATH));
+
+    EXPECT_EQ(generator.GetCapacity("{gem}").capacity, 5);
+    EXPECT_EQ(generator.GetCapacity("{gem:-*}").capacity, 1);               // untagged: quartz
+    EXPECT_EQ(generator.GetCapacity("{gem:+red}").capacity, 2);            // any red: ruby, garnet
+    EXPECT_EQ(generator.GetCapacity("{gem:+red-*}").capacity, 1);           // only red: garnet
+    EXPECT_EQ(generator.GetCapacity("{gem:+red+precious-*}").capacity, 1);  // exactly {red,precious}: ruby
+
+    // The exact-match queries select the specific words.
+    EXPECT_EQ(generator.Generate("{gem:-*}", "foobar", 0), "quartz");
+    EXPECT_EQ(generator.Generate("{gem:+red-*}", "foobar", 0), "garnet");
+    EXPECT_EQ(generator.Generate("{gem:+red+precious-*}", "foobar", 0), "ruby");
+}
+#endif  // SLK_TAGGED_BIN_PATH
 
 // Turkish probe: captures the utf8proc casing reference (no ICU parity assumed). Asserts only
 // determinism, and prints the produced bytes for the report.

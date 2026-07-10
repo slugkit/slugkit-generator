@@ -117,6 +117,22 @@ struct PatternParser {
         }
     };
 
+    struct SetSelectorNoOtherTags {
+        void operator()(Selector& selector) const {
+            selector.no_other_tags = true;
+        }
+        // Global settings propagate into alternation branches' placeholders.
+        void operator()(Pattern::Alternation& alternation) const {
+            for (auto& group : alternation.alternatives) {
+                for (auto& placeholder : group.placeholders) {
+                    std::visit(*this, placeholder);
+                }
+            }
+        }
+        void operator()(auto&&) const {
+        }
+    };
+
     struct SetSelectorSizeLimit {
         SizeLimit size_limit;
         void operator()(Selector& selector) const {
@@ -458,7 +474,13 @@ struct PatternParser {
                 placeholder.include_tags.insert(ParseTag());
             } else if (Match('-')) {
                 Next();
-                placeholder.exclude_tags.insert(ParseTag());
+                if (Match('*')) {
+                    // `-*`: exclusive match -- the word may carry no tags beyond the includes.
+                    Next();
+                    placeholder.no_other_tags = true;
+                } else {
+                    placeholder.exclude_tags.insert(ParseTag());
+                }
             } else {
                 break;
             }
@@ -665,9 +687,16 @@ struct PatternParser {
                 }
             } else if (Match('-')) {
                 Next();
-                auto tag = ParseTag();
-                for (auto& placeholder : placeholders) {
-                    std::visit(AddSelectorExcludeTag{tag}, placeholder);
+                if (Match('*')) {
+                    Next();
+                    for (auto& placeholder : placeholders) {
+                        std::visit(SetSelectorNoOtherTags{}, placeholder);
+                    }
+                } else {
+                    auto tag = ParseTag();
+                    for (auto& placeholder : placeholders) {
+                        std::visit(AddSelectorExcludeTag{tag}, placeholder);
+                    }
                 }
             } else {
                 break;

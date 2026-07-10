@@ -125,7 +125,9 @@ SlugKit uses a powerful pattern language that supports multiple element types:
 ### Dictionary Selectors
 - `{adjective}` - Basic word selection
 - `{noun@en}` - Language-specific selection  
-- `{verb:+formal-slang}` - Tag-based filtering
+- `{verb:+formal-slang}` - Tag-based filtering (has `formal`, not `slang`; may carry other tags)
+- `{noun:-*}` - Exclusive match: **no tags at all** (untagged words)
+- `{noun:+idea-*}` - Exclusive match: **exactly** the `idea` tag and no others
 - `{adjective:<8}` - Length constraints
 
 ### Number Generators
@@ -192,9 +194,12 @@ special_char_gen  := 'special', [':', number, ['-', length]];
 emoji_gen         := 'emoji', [':', [tags], [options]]
 kind              := identifier;
 lang              := identifier;
-tags              := (include_tag | exclude_tag)*;
+tags              := (include_tag | exclude_tag | no_other_tags)*;
 include_tag       := '+', tag;
 exclude_tag       := '-', tag;
+{* `-*` (exclusive): the word may carry no tags beyond the include tags, so with includes it
+   matches an exact tag set and with none it matches only untagged words *}
+no_other_tags     := '-', '*';
 length_constraint := comparison_op, length;
 comparison_op     := eq | ne | lt | le | gt | ge;
 options           := option (' ' option)*;

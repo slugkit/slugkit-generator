@@ -120,7 +120,20 @@ void TagIndex::Add(Iterator it) {
 }
 
 auto TagIndex::Query(const Selector& selector) const -> FilteredWords {
-    return Query(selector.include_tags, selector.exclude_tags);
+    auto result = Query(selector.include_tags, selector.exclude_tags);
+    if (selector.no_other_tags) {
+        // Exclusive match (`-*`): drop any word carrying a tag outside the include set, leaving
+        // words whose tags are exactly the includes (or untagged when there are no includes).
+        std::erase_if(result, [&](const auto& it) {
+            for (const auto& word_tag : it->tags) {
+                if (!selector.include_tags.contains(TagView{std::string_view{word_tag.GetUnderlying()}})) {
+                    return true;
+                }
+            }
+            return false;
+        });
+    }
+    return result;
 }
 
 auto TagIndex::Query(const TagSet& include_tags, const TagSet& exclude_tags) const -> FilteredWords {

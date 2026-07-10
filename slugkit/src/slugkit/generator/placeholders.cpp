@@ -56,6 +56,9 @@ std::int64_t Selector::GetHash() const {
     for (const auto& exclude_tag : exclude_tags) {
         boost::hash_combine(seed, StrHash(exclude_tag.GetUnderlying().data(), exclude_tag.GetUnderlying().size()) ^ kExcludeSalt);
     }
+    if (no_other_tags) {
+        boost::hash_combine(seed, std::size_t{0x2a2a2a2a2a2a2a2aULL});  // '-*' exclusive-match flag
+    }
     if (size_limit.has_value()) {
         boost::hash_combine(seed, size_limit->GetHash());
     }
@@ -122,7 +125,8 @@ std::string Selector::ToString() const {
     if (language.has_value()) {
         result += "@" + std::string(language->GetUnderlying());
     }
-    if (!include_tags.empty() || !exclude_tags.empty() || size_limit.has_value() || !options.empty()) {
+    if (!include_tags.empty() || !exclude_tags.empty() || no_other_tags || size_limit.has_value() ||
+        !options.empty()) {
         result += ":";
     }
     if (!include_tags.empty()) {
@@ -134,6 +138,9 @@ std::string Selector::ToString() const {
         for (const auto& tag : exclude_tags) {
             result += "-" + std::string(tag.GetUnderlying());
         }
+    }
+    if (no_other_tags) {
+        result += "-*";
     }
     if (size_limit.has_value()) {
         switch (size_limit->op) {
@@ -297,6 +304,9 @@ std::int64_t EmojiGen::GetHash() const {
     for (const auto& tag : exclude_tags) {
         boost::hash_combine(seed, StrHash(tag.GetUnderlying().data(), tag.GetUnderlying().size()));
     }
+    if (no_other_tags) {
+        boost::hash_combine(seed, std::size_t{0x2a2a2a2a2a2a2a2aULL});  // '-*' exclusive-match flag
+    }
     boost::hash_combine(seed, min_count);
     boost::hash_combine(seed, max_count);
     boost::hash_combine(seed, unique);
@@ -308,7 +318,7 @@ std::int64_t EmojiGen::GetHash() const {
 
 std::string EmojiGen::ToString() const {
     std::string result(detail::PatternParser::kEmojiKeyword);
-    if (!include_tags.empty() || !exclude_tags.empty() || has_options_) {
+    if (!include_tags.empty() || !exclude_tags.empty() || no_other_tags || has_options_) {
         result += ":";
     }
     for (const auto& tag : include_tags) {
@@ -316,6 +326,9 @@ std::string EmojiGen::ToString() const {
     }
     for (const auto& tag : exclude_tags) {
         result += "-" + std::string(tag.GetUnderlying());
+    }
+    if (no_other_tags) {
+        result += "-*";
     }
     if (min_count != 1 || max_count != 1) {
         if (result.back() != ':') {

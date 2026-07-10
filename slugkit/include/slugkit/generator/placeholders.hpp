@@ -43,13 +43,18 @@ struct Selector {
     std::string_view kind;
     TagsType include_tags;
     TagsType exclude_tags;
+    // Exclusive tag match (the `-*` token): keep only words whose every tag is in include_tags.
+    // With includes present this means the word's tags == include_tags exactly; with none, the
+    // word must be untagged. Distinct from an empty tag list, which means "no tag filter".
+    bool no_other_tags = false;
     std::optional<LanguageCodeView> language;
     std::optional<SizeLimit> size_limit;
     OptionsType options;
 
     auto operator==(const Selector& other) const -> bool {
         return kind == other.kind && include_tags == other.include_tags && exclude_tags == other.exclude_tags &&
-               language == other.language && size_limit == other.size_limit && options == other.options;
+               no_other_tags == other.no_other_tags && language == other.language && size_limit == other.size_limit &&
+               options == other.options;
     }
 
     /// @brief Get the case of the selector.
@@ -60,11 +65,11 @@ struct Selector {
     }
 
     [[nodiscard]] auto HasTags() const -> bool {
-        return !include_tags.empty() || !exclude_tags.empty();
+        return !include_tags.empty() || !exclude_tags.empty() || no_other_tags;
     }
 
     [[nodiscard]] auto NoFilter() const -> bool {
-        return include_tags.empty() && exclude_tags.empty() && !HasSizeLimit();
+        return include_tags.empty() && exclude_tags.empty() && !no_other_tags && !HasSizeLimit();
     }
 
     /// @brief Check if the selector has mutually exclusive tags.
@@ -157,6 +162,8 @@ struct EmojiGen {
 
     TagsType include_tags{};
     TagsType exclude_tags{};
+    // Exclusive tag match (`-*`): the emoji's every tag must be in include_tags (see Selector).
+    bool no_other_tags = false;
     std::uint8_t min_count = 1;
     std::uint8_t max_count = 1;
     bool unique = false;

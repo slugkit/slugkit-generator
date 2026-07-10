@@ -692,6 +692,16 @@ auto BinaryDictionary::Filter(const Selector& selector, const TagSet& enabled_op
         }
         indices = indices - (*tags_table_)[opt_in_tag].Filter();
     }
+    // Exclusive match (`-*`): drop any word carrying a tag outside the include set, by subtracting
+    // every non-included tag's word set. Leaves words whose tags are exactly the includes (or
+    // untagged when there are none). Rare/explicit, so scanning all tags here is acceptable.
+    if (selector.no_other_tags) {
+        for (const auto& tag_entry : *tags_table_) {
+            if (!selector.include_tags.contains(tag_entry.Name())) {
+                indices = indices - tag_entry.Filter();
+            }
+        }
+    }
     auto filtered = std::make_shared<FilteredDictionary>(indices, index_table_, word_data_, selector.GetCase());
     filter_cache_->Put(hash, filtered);
     return filtered;
